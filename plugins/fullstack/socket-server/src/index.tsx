@@ -1,36 +1,41 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import SocketIO from "socket.io";
-import { Transport } from "@react-fullstack/fullstack/shared";
+import type { Transport } from "@react-fullstack/fullstack/shared";
 import type { Server as ServerBase, ServerProps } from "@react-fullstack/fullstack/server";
 import type { Server as HTTPServer } from "http";
 
-interface Props extends Pick<ServerProps<any, any>, 'children' | 'singleInstance' | 'instanceRenderHandler'> {
-  /**
-   * The port the socket will run on.
-   */
-  port?: number;
-  /**
-   * pass existing http server to socket.io
-   */
-  server?: HTTPServer;
-  /**
-   * socket.io server options, note: must be passed with the first component mount, updating this prop will have no effect.
-   * Note: cors header does not default to "*"
-   */
-  socketOptions?: Partial<SocketIO.ServerOptions>;
+interface SocketClientEvents {
+  readonly disconnect: void;
 }
 
-function SocketServer(props: Props & { ServerBase: typeof ServerBase }) {
+interface SocketServerEvents {
+  readonly connection: Transport<SocketClientEvents> & { readonly id: string };
+}
+
+interface Props extends Pick<ServerProps<SocketClientEvents, SocketServerEvents>, 'children' | 'singleInstance' | 'instanceRenderHandler'> {
+  readonly port?: number;
+  readonly server?: HTTPServer;
+  readonly socketOptions?: Partial<SocketIO.ServerOptions>;
+}
+
+interface SocketServerComponentProps extends Props {
+  readonly ServerBase: typeof ServerBase;
+}
+
+function SocketServer(props: SocketServerComponentProps): React.ReactElement {
   const { ServerBase } = props;
-  const serverRef = useRef<SocketIO.Server<any, any>>();
+  const serverRef = useRef<SocketIO.Server | null>(null);
+
   if (!serverRef.current) {
     const server = props.server
       ? new SocketIO.Server(props.server, props.socketOptions)
       : new SocketIO.Server(props.socketOptions);
+
     server.setMaxListeners(Infinity);
-    server.on("connection", (socket) => {
+    server.on("connection", (socket: SocketIO.Socket) => {
       socket.setMaxListeners(Infinity);
     });
+
     if (!props.server) {
       if (!props.port) {
         throw new Error("port is required when server is not passed");
@@ -39,41 +44,63 @@ function SocketServer(props: Props & { ServerBase: typeof ServerBase }) {
     }
     serverRef.current = server;
   }
+
   const server = serverRef.current;
+
   useEffect(() => {
-    return () => {
-      if (server) server.close();
+    return (): void => {
+      if (server) {
+        server.close();
+      }
     };
-  }, []);
-  const getProps = useCallback(() => {
+  }, [server]);
+
+  const getProps = useCallback((): ServerProps<SocketClientEvents, SocketServerEvents> => {
     const { children, singleInstance, instanceRenderHandler } = props;
+
+    const transport: Transport<SocketServerEvents> = {
+      on: <T extends keyof SocketServerEvents>(
+        event: T,
+        callback: (data: SocketServerEvents[T]) => void
+      ): void => {
+        if (event === "connection") {
+          // Socket.IO's connection event passes a Socket, which we treat as Transport
+          server.on("connection", (socket: SocketIO.Socket) => {
+            callback(socket as unknown as SocketServerEvents[T]);
+          });
+        }
+      },
+      emit: <T extends keyof SocketServerEvents>(
+        event: T,
+        data?: SocketServerEvents[T]
+      ): void => {
+        server.sockets.emit(event as string, data);
+      },
+      off: <T extends keyof SocketServerEvents>(
+        event: T,
+        callback: (data: SocketServerEvents[T]) => void
+      ): void => {
+        server.sockets.removeListener(event as string, callback as (...args: unknown[]) => void);
+        if (event === "connection") {
+          server.removeAllListeners("connection");
+        }
+      },
+    };
+
     return {
-      transport: {
-        on: (event: string, callback: (...args: any[]) => void) => {
-          if (event === "connection") {
-            server.on(event, callback);
-          }
-        },
-        emit: (event: string, ...args: any[]) => {
-          server.sockets.emit(event, ...args);
-        },
-        off: (event: string, callback: (...args: any[]) => void) => {
-          server.sockets.removeListener(event, callback);
-          if (event === "connection") {
-            server.off(event, callback);
-          }
-        },
-      } as Transport<any>,
+      transport,
       singleInstance,
       children,
       instanceRenderHandler,
     };
-  }, [props.children, props.singleInstance]);
+  }, [props.children, props.singleInstance, props.instanceRenderHandler, server]);
+
   return <ServerBase {...getProps()} />;
 }
 
-function createSocketServer(Server: typeof ServerBase) {
-  return (props: Props) => <SocketServer {...props} ServerBase={Server} />;
+function createSocketServer(Server: typeof ServerBase): React.FC<Props> {
+  return (props: Props): React.ReactElement => <SocketServer {...props} ServerBase={Server} />;
 }
 
 export { createSocketServer };
+export type { Props as SocketServerProps };

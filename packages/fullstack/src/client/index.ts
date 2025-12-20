@@ -1,7 +1,6 @@
-import Client from "./Client"
-export { ViewComponentProps } from "./Component"
-export { TransformViewProps, ViewsToComponents } from "./types"
+import Client from "./Client";
 
-export {
-    Client,
-}
+export type { ViewComponentProps } from "./Component";
+export type { TransformViewProps, ViewsToComponents } from "./types";
+
+export { Client };

@@ -4,8 +4,10 @@ import type { ReactNode } from "react";
 
 type Container = Record<string, never>;
 type Instance = Record<string, never>;
-type TextInstance = Record<string, never>;
-type HostContext = null;
+type HostContext = Record<string, never>;
+
+// Track current update priority for React 19 reconciler
+let currentUpdatePriority: number = DefaultEventPriority;
 
 const hostConfig = {
   // Instance creation - return empty objects
@@ -30,8 +32,8 @@ const hostConfig = {
   // Required callbacks - minimal implementations
   finalizeInitialChildren: () => false,
   shouldSetTextContent: () => false,
-  getRootHostContext: () => null,
-  getChildHostContext: (ctx: HostContext) => ctx,
+  getRootHostContext: (): HostContext => ({}),
+  getChildHostContext: (_parentContext: HostContext): HostContext => ({}),
   getPublicInstance: (i: Instance) => i,
   prepareForCommit: () => null,
   resetAfterCommit: () => {},
@@ -50,6 +52,13 @@ const hostConfig = {
       ? queueMicrotask
       : (fn: () => void) => Promise.resolve().then(fn),
   getCurrentEventPriority: () => DefaultEventPriority,
+
+  // React 19 required priority methods
+  setCurrentUpdatePriority: (priority: number) => {
+    currentUpdatePriority = priority;
+  },
+  getCurrentUpdatePriority: () => currentUpdatePriority,
+  resolveUpdatePriority: () => currentUpdatePriority || DefaultEventPriority,
 
   // Additional required methods
   preparePortalMount: () => {},
@@ -71,7 +80,7 @@ export const Render = (element: ReactNode) => {
     false, // isStrictMode
     null, // concurrentUpdatesByDefaultOverride
     "", // identifierPrefix
-    (error: unknown) => console.error(error), // onUncaughtError
+    (error: unknown) => console.error(error), // onRecoverableError
     null // transitionCallbacks
   );
 

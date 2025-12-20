@@ -1,39 +1,64 @@
 import React, { useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, type ReactNode } from "react";
 import { AppContext, type AppContextValue } from "./contexts";
-import { ViewData, ExistingSharedViewData, Prop, Transport, DecompileTransport, decompileTransport, randomId } from "../shared";
-import { deeplyEqual } from "./utils";
+import type {
+  ViewData,
+  ExistingSharedViewData,
+  MutableExistingSharedViewData,
+  Prop,
+  Transport,
+  AppEvents,
+  SerializableValue,
+  DataProp,
+} from "../shared/types";
+import type { EventUid, ViewUid } from "../shared/branded.types";
+import { createEventUid, createPropName } from "../shared/branded.types";
+import type { DecompileTransport } from "../shared/decompiled-transport";
+import { decompileTransport } from "../shared/decompiled-transport";
+import { randomId } from "../shared/id";
+import { deeplyEqual } from "../shared/comparison.utils";
 
-interface AppProps {
-  children: () => ReactNode;
-  transport: Transport<any>;
-  paused: boolean;
-  transportIsClient: boolean;
+/**
+ * Event handler type for registered view events.
+ */
+type EventHandler = (...args: ReadonlyArray<SerializableValue>) => SerializableValue | Promise<SerializableValue>;
+
+interface AppProps<TEvents extends Record<string | number, unknown> = Record<string, unknown>> {
+  readonly children: () => ReactNode;
+  readonly transport: Transport<TEvents>;
+  readonly paused: boolean;
+  readonly transportIsClient: boolean;
 }
 
 export interface AppHandle {
-  views: ExistingSharedViewData[];
-  addClient: (client: Transport<any>) => void;
-  removeClient: (client: Transport<any>) => void;
+  readonly views: ReadonlyArray<ExistingSharedViewData>;
+  readonly addClient: <TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => void;
+  readonly removeClient: <TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => void;
 }
 
-const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, paused, transportIsClient }, ref) {
+const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(function App({ children, transport, paused, transportIsClient }, ref) {
   const serverRef = useRef<DecompileTransport>(decompileTransport(transport));
-  const clientsRef = useRef<Transport<any>[]>([]);
-  const existingSharedViewsRef = useRef<ExistingSharedViewData[]>([]);
-  const viewEventsRef = useRef<Map<string, (...args: any) => any | Promise<any>>>(new Map());
-  const cleanUpFunctionsRef = useRef<Function[]>([]);
+  const clientsRef = useRef<ReadonlyArray<Transport<Record<string | number, unknown>>>>([]);
+  const existingSharedViewsRef = useRef<MutableExistingSharedViewData[]>([]);
+  const viewEventsRef = useRef<ReadonlyMap<EventUid, EventHandler>>(new Map());
+  const cleanUpFunctionsRef = useRef<ReadonlyArray<() => void>>([]);
 
-  const registerViewEvent = useCallback((event: (...args: any) => any | Promise<any>): string => {
-    const eventUid = randomId();
-    viewEventsRef.current.set(eventUid, event);
+  const registerViewEvent = useCallback((event: EventHandler): EventUid => {
+    const eventUid = createEventUid(randomId());
+    viewEventsRef.current = new Map([...viewEventsRef.current, [eventUid, event]]);
     return eventUid;
   }, []);
 
   const registerSocketListener = useCallback((client: DecompileTransport) => {
-    const requestViewsTreeHandler = () => {
-      client.emit("update_views_tree", {
-        views: existingSharedViewsRef.current,
-      });
+    const requestViewsTreeHandler = (): void => {
+      const views = existingSharedViewsRef.current.map((view): ExistingSharedViewData => ({
+        uid: view.uid,
+        name: view.name,
+        parentUid: view.parentUid,
+        childIndex: view.childIndex,
+        isRoot: view.isRoot,
+        props: [...view.props],
+      }));
+      client.emit("update_views_tree", { views });
     };
     const cleanReqTree = client.on("request_views_tree", requestViewsTreeHandler);
 
@@ -41,11 +66,7 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
       eventArguments,
       eventUid: requestedEventUid,
       uid: currentEventUid,
-    }: {
-      eventArguments: any[];
-      uid: string;
-      eventUid: string;
-    }) => {
+    }: AppEvents['request_event']): void => {
       const handler = viewEventsRef.current.get(requestedEventUid);
       if (!handler) {
         throw new Error(
@@ -56,14 +77,14 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
       if (eventResult instanceof Promise) {
         eventResult.then((result) => {
           client.emit("respond_to_event", {
-            data: result && result,
+            data: result,
             uid: currentEventUid,
             eventUid: requestedEventUid,
           });
         });
       } else {
         client.emit("respond_to_event", {
-          data: eventResult && eventResult,
+          data: eventResult,
           uid: currentEventUid,
           eventUid: requestedEventUid,
         });
@@ -71,21 +92,21 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     };
     const cleanReqEvent = client.on("request_event", requestEventHandler);
 
-    cleanUpFunctionsRef.current.push(() => {
-      cleanReqTree();
-      cleanReqEvent();
-    });
+    cleanUpFunctionsRef.current = [...cleanUpFunctionsRef.current, () => {
+      cleanReqTree?.();
+      cleanReqEvent?.();
+    }];
   }, []);
 
-  const addClient = useCallback((client: Transport<any>) => {
+  const addClient = useCallback(<TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => {
     const clientTransport = decompileTransport(client);
-    clientsRef.current.push(client);
+    clientsRef.current = [...clientsRef.current, client as Transport<Record<string | number, unknown>>];
     registerSocketListener(clientTransport);
   }, [registerSocketListener]);
 
-  const removeClient = useCallback((client: Transport<any>) => {
+  const removeClient = useCallback(<TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => {
     clientsRef.current = clientsRef.current.filter(
-      (currentClient) => currentClient !== client
+      (currentClient) => currentClient !== (client as Transport<Record<string | number, unknown>>)
     );
   }, []);
 
@@ -94,116 +115,170 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     if (!server) {
       return;
     }
-    const existingView = existingSharedViewsRef.current.find(
+
+    const existingViewIndex = existingSharedViewsRef.current.findIndex(
       (view) => view.uid === viewData.uid
     );
+    const existingView = existingViewIndex >= 0 ? existingSharedViewsRef.current[existingViewIndex] : undefined;
+
     const mapProps = (name: string): Prop => {
       const prop = viewData.props[name];
       if (typeof prop === "function") {
         return {
-          name,
+          name: createPropName(name),
           type: "event" as const,
-          uid: registerViewEvent(prop),
-        };
-      } else {
-        return {
-          name,
-          type: "data" as const,
-          data: prop,
+          uid: registerViewEvent(prop as EventHandler),
         };
       }
+      return {
+        name: createPropName(name),
+        type: "data" as const,
+        data: prop as SerializableValue,
+      };
     };
-    const isValidProps = (name: string) => {
+
+    const isValidProp = (name: string): boolean => {
       return !["children", "key"].includes(name) && viewData.props[name] !== undefined;
     };
+
     const newPropsNames = Object.keys(viewData.props);
+
     if (!existingView) {
-      const newView: ExistingSharedViewData = {
-        ...viewData,
-        props: newPropsNames.filter(isValidProps).map(mapProps),
+      const newProps = newPropsNames.filter(isValidProp).map(mapProps);
+      const newView: MutableExistingSharedViewData = {
+        uid: viewData.uid,
+        name: viewData.name,
+        parentUid: viewData.parentUid,
+        childIndex: viewData.childIndex,
+        isRoot: viewData.isRoot,
+        props: newProps as Prop[],
       };
-      existingSharedViewsRef.current.push(newView);
+      existingSharedViewsRef.current = [...existingSharedViewsRef.current, newView];
       server.emit("update_view", {
         view: {
-          ...newView,
+          uid: newView.uid,
+          name: newView.name,
+          parentUid: newView.parentUid,
+          childIndex: newView.childIndex,
+          isRoot: newView.isRoot,
           props: {
             delete: [],
             merge: [],
-            create: newView.props,
+            create: newProps,
           },
         },
       });
       return;
     }
-    const propsToDelete = (existingView?.props || []).filter(
-      (propName) => viewData.props[propName.name] === undefined
+
+    const propsToDelete = existingView.props.filter(
+      (propName) => viewData.props[propName.name as string] === undefined
     );
-    propsToDelete.forEach((prop) => {
-      Reflect.deleteProperty(existingView.props as any, prop.name);
-    });
-    const boundExistingProps = (name: string) => {
-      const existing = existingView && existingView.props.find((prop) => prop.name === name);
-      if (!existing) {
-        existingView.props.push(mapProps(name));
-        return true;
+
+    // Remove deleted props from existingView
+    existingView.props = existingView.props.filter(
+      (prop) => viewData.props[prop.name as string] !== undefined
+    );
+
+    const propsToAdd: Prop[] = [];
+
+    for (const name of newPropsNames) {
+      if (!isValidProp(name)) {
+        continue;
       }
-      if (existing.type === "data") {
-        if (!deeplyEqual(existing.data, viewData.props[name])) {
-          existing.data = viewData.props[name];
-          return true;
+
+      const propName = createPropName(name);
+      const existingPropIndex = existingView.props.findIndex((prop) => prop.name === propName);
+      const existingProp = existingPropIndex >= 0 ? existingView.props[existingPropIndex] : undefined;
+
+      if (!existingProp) {
+        const newProp = mapProps(name);
+        existingView.props = [...existingView.props, newProp];
+        propsToAdd.push(newProp);
+        continue;
+      }
+
+      if (existingProp.type === "data") {
+        const dataValue = viewData.props[name];
+        if (!deeplyEqual(existingProp.data, dataValue as SerializableValue)) {
+          const updatedProp: DataProp = {
+            name: propName,
+            type: "data" as const,
+            data: dataValue as SerializableValue,
+          };
+          existingView.props = [
+            ...existingView.props.slice(0, existingPropIndex),
+            updatedProp,
+            ...existingView.props.slice(existingPropIndex + 1),
+          ];
+          propsToAdd.push(updatedProp);
         }
-        return false;
+        continue;
       }
-      if (existing.type === "event") {
-        if (typeof viewData.props[name] === "function") {
-          viewEventsRef.current.set(existing.uid, viewData.props[name]);
-          return false;
+
+      if (existingProp.type === "event") {
+        const propValue = viewData.props[name];
+        if (typeof propValue === "function") {
+          // Update the event handler in the registry
+          viewEventsRef.current = new Map([
+            ...viewEventsRef.current,
+            [existingProp.uid, propValue as EventHandler],
+          ]);
+        } else {
+          // Event changed to data prop
+          const filteredProps = existingView.props.filter((prop) => prop.name !== propName);
+          const newProp = mapProps(name);
+          existingView.props = [...filteredProps, newProp];
+          propsToAdd.push(newProp);
         }
-        existingView.props = existingView.props.filter((prop) => prop.name !== name);
-        existingView.props.push(mapProps(name));
-        return true;
       }
-      return false;
-    };
-    const propsToAdd = newPropsNames.filter(
-      (name) => {
-        if (!isValidProps(name)) {
-          return false;
-        }
-        return boundExistingProps(name);
-      }
-    ).map((name) => {
-      return existingView.props.find((prop) => prop.name === name);
-    }).filter(Boolean) as Prop[];
+    }
+
     if (propsToAdd.length === 0 && propsToDelete.length === 0) {
       return;
     }
-    if (propsToAdd.length > 0 || propsToDelete.length > 0) {
-      server.emit("update_view", {
-        view: {
-          ...existingView,
-          props: {
-            create: propsToAdd,
-            delete: propsToDelete.map((prop) => prop.name),
-            merge: [],
-          },
+
+    server.emit("update_view", {
+      view: {
+        uid: existingView.uid,
+        name: existingView.name,
+        parentUid: existingView.parentUid,
+        childIndex: existingView.childIndex,
+        isRoot: existingView.isRoot,
+        props: {
+          create: propsToAdd,
+          delete: propsToDelete.map((prop) => prop.name),
+          merge: [],
         },
-      });
-    }
+      },
+    });
   }, [registerViewEvent]);
 
-  const deleteRunningView = useCallback((uid: string) => {
+  const deleteRunningView = useCallback((uid: ViewUid) => {
     const runningViewIndex = existingSharedViewsRef.current.findIndex(
       (view) => view.uid === uid
     );
     if (runningViewIndex !== -1) {
-      const deletedView = existingSharedViewsRef.current.splice(
-        runningViewIndex,
-        1
-      )[0];
-      deletedView.props.forEach(
-        (prop) => prop.type === "event" && viewEventsRef.current.delete(prop.uid)
-      );
+      const deletedView = existingSharedViewsRef.current[runningViewIndex];
+      if (!deletedView) {
+        return;
+      }
+      existingSharedViewsRef.current = [
+        ...existingSharedViewsRef.current.slice(0, runningViewIndex),
+        ...existingSharedViewsRef.current.slice(runningViewIndex + 1),
+      ];
+
+      // Clean up event handlers for deleted view
+      const eventUidsToDelete = deletedView.props
+        .filter((prop): prop is Prop & { type: 'event' } => prop.type === "event")
+        .map((prop) => prop.uid);
+
+      const newEventsMap = new Map(viewEventsRef.current);
+      for (const eventUid of eventUidsToDelete) {
+        newEventsMap.delete(eventUid);
+      }
+      viewEventsRef.current = newEventsMap;
+
       const server = serverRef.current;
       if (!server) {
         return;
@@ -222,19 +297,35 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
   // componentWillUnmount equivalent
   useEffect(() => {
     return () => {
-      cleanUpFunctionsRef.current.forEach((f) => f());
+      for (const cleanup of cleanUpFunctionsRef.current) {
+        cleanup();
+      }
     };
   }, []);
 
   // Expose methods via ref for Server component
   useImperativeHandle(ref, () => ({
-    views: existingSharedViewsRef.current,
+    views: existingSharedViewsRef.current.map((view): ExistingSharedViewData => ({
+      uid: view.uid,
+      name: view.name,
+      parentUid: view.parentUid,
+      childIndex: view.childIndex,
+      isRoot: view.isRoot,
+      props: [...view.props],
+    })),
     addClient,
     removeClient,
   }), [addClient, removeClient]);
 
   const contextValue = useMemo<AppContextValue>(() => ({
-    views: existingSharedViewsRef.current,
+    views: existingSharedViewsRef.current.map((view): ExistingSharedViewData => ({
+      uid: view.uid,
+      name: view.name,
+      parentUid: view.parentUid,
+      childIndex: view.childIndex,
+      isRoot: view.isRoot,
+      props: [...view.props],
+    })),
     addClient,
     removeClient,
     updateRunningView,

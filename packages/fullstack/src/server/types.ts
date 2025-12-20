@@ -1,7 +1,8 @@
-import { Views } from "../shared";
+import type React from "react";
+import type { Views } from "../shared/types";
 
 export type ViewsToServerComponents<ViewsToTransform extends Views> = {
-    [ViewName in keyof ViewsToTransform]: React.FunctionComponent<
-      ViewsToTransform[ViewName]["props"]
-    >;
-  };        
+  readonly [ViewName in keyof ViewsToTransform]: React.FunctionComponent<
+    ViewsToTransform[ViewName]["props"]
+  >;
+};

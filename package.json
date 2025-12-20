@@ -8,9 +8,22 @@
   "license": "MIT",
   "workspaces": [
     "packages/*",
-    "plugins/*/*"
+    "plugins/*/*",
+    "demo/*"
   ],
+  "scripts": {
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "lint:packages": "oxlint packages/",
+    "lint:plugins": "oxlint plugins/",
+    "knip": "knip",
+    "knip:fix": "knip --fix"
+  },
   "dependencies": {
     "@changesets/cli": "^2.25.2"
+  },
+  "devDependencies": {
+    "knip": "^5.0.0",
+    "oxlint": "^0.13.0"
   }
 }

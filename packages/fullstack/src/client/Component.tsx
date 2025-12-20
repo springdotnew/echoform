@@ -1,5 +1,5 @@
-import { TransformViewProps } from "./types";
-import { View as ViewType } from "../shared";
+import type { TransformViewProps } from "./types";
+import type { View as ViewType, ViewProps } from "../shared/types";
 
 /**
  * Type helper for creating view component props.
@@ -14,4 +14,4 @@ import { View as ViewType } from "../shared";
  * };
  * ```
  */
-export type ViewComponentProps<View extends ViewType<any>> = TransformViewProps<View["props"]>;
+export type ViewComponentProps<View extends ViewType<ViewProps>> = TransformViewProps<View["props"]>;

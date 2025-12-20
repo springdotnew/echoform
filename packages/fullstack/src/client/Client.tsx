@@ -1,60 +1,37 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { ViewsToComponents } from "./types";
-import {
+import type { ViewsToComponents } from "./types";
+import type {
   ExistingSharedViewData,
-  ShareableViewData,
   Transport,
   Views,
-  decompileTransport,
-  randomId,
-  ViewsRenderer,
-} from "../shared";
+  SerializableValue,
+  Prop,
+  AppEvents,
+} from "../shared/types";
+import type { EventUid } from "../shared/branded.types";
+import { createRequestUid } from "../shared/branded.types";
+import { decompileTransport } from "../shared/decompiled-transport";
+import { randomId } from "../shared/id";
+import { ViewsRenderer } from "../shared/ViewsRenderer";
+import { stringifyWithoutCircular } from "../shared/serialization.utils";
 
-const stringifyWithoutCircular = (json: any[]) => {
-  if (
-    json.some(
-      (child) =>
-        child instanceof Event ||
-        (typeof child === "object" && "_reactName" in child)
-    )
-  ) {
-    throw new Error(
-      "passing js events to the server is prohibited, make sure you are not passing a callback's directly to a dom element"
-    );
-  }
-  const getCircularReplacer = () => {
-    const seen = new WeakSet();
-    return (_key: string, value: any) => {
-      if (typeof value === "object" && value !== null) {
-        if (seen.has(value)) {
-          return;
-        }
-        seen.add(value);
-      }
-      return value;
-    };
-  };
-
-  return JSON.stringify(json, getCircularReplacer());
-};
-
-interface ClientProps<ViewsInterface extends Views> {
-  transport: Transport<Record<string, any>>;
-  views: ViewsToComponents<ViewsInterface>;
-  requestViewTreeOnMount?: boolean;
+interface ClientProps<ViewsInterface extends Views, TEvents extends Record<string | number, unknown> = Record<string, unknown>> {
+  readonly transport: Transport<TEvents>;
+  readonly views: ViewsToComponents<ViewsInterface>;
+  readonly requestViewTreeOnMount?: boolean;
 }
 
-function Client<ViewsInterface extends Views>({
+function Client<ViewsInterface extends Views, TEvents extends Record<string | number, unknown> = Record<string, unknown>>({
   transport: rawTransport,
   views,
   requestViewTreeOnMount,
-}: ClientProps<ViewsInterface>) {
-  const [runningViews, setRunningViews] = useState<ExistingSharedViewData[]>([]);
+}: ClientProps<ViewsInterface, TEvents>): React.ReactElement {
+  const [runningViews, setRunningViews] = useState<ReadonlyArray<ExistingSharedViewData>>([]);
   const transportRef = useRef(decompileTransport(rawTransport));
 
-  const createEvent = useCallback((eventUid: string, ...args: any) => {
+  const createEvent = useCallback((eventUid: EventUid, ...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
     return new Promise((resolve) => {
-      const requestUid = randomId();
+      const requestUid = createRequestUid(randomId());
       const transport = transportRef.current;
 
       let unsubscribe: (() => void) | undefined;
@@ -63,22 +40,19 @@ function Client<ViewsInterface extends Views>({
         data,
         uid,
         eventUid: responseEventUid,
-      }: {
-        data: any;
-        uid: string;
-        eventUid: string;
-      }) => {
+      }: AppEvents['respond_to_event']): void => {
         if (uid === requestUid && responseEventUid === eventUid) {
           resolve(data);
-          // Clean up listener after response received
           unsubscribe?.();
         }
       };
 
-      unsubscribe = transport.on("respond_to_event", handler) || undefined;
+      unsubscribe = transport.on("respond_to_event", handler) ?? undefined;
+
+      const serializedArgs = JSON.parse(stringifyWithoutCircular(args)) as ReadonlyArray<SerializableValue>;
 
       transport.emit("request_event", {
-        eventArguments: JSON.parse(stringifyWithoutCircular(args)),
+        eventArguments: serializedArgs,
         eventUid: eventUid,
         uid: requestUid,
       });
@@ -88,37 +62,66 @@ function Client<ViewsInterface extends Views>({
   useEffect(() => {
     const transport = transportRef.current;
 
-    const updateViewsTreeHandler = ({ views }: { views: ExistingSharedViewData[] }) => {
+    const updateViewsTreeHandler = ({ views }: AppEvents['update_views_tree']): void => {
       setRunningViews(views);
     };
 
-    const updateViewHandler = ({ view }: { view: ShareableViewData }) => {
-      setRunningViews((state) => {
-        const runningView = state.find(
+    const updateViewHandler = ({ view }: AppEvents['update_view']): void => {
+      setRunningViews((state): ReadonlyArray<ExistingSharedViewData> => {
+        const existingIndex = state.findIndex(
           (currentView) => currentView.uid === view.uid
         );
-        if (runningView) {
-          runningView.props = runningView.props.filter(
-            (prop) => !view.props.delete.includes(prop.name)
+
+        if (existingIndex >= 0) {
+          const existingView = state[existingIndex];
+          if (!existingView) {
+            return state;
+          }
+
+          // Filter out deleted props
+          const deletedNames = new Set(view.props.delete);
+          const filteredProps = existingView.props.filter(
+            (prop) => !deletedNames.has(prop.name)
           );
-          view.props.create.forEach((newProp) => {
-            runningView.props.push(newProp);
-          });
-        } else {
-          state.push({ ...view, props: view.props.create });
+
+          // Add new props
+          const updatedProps: ReadonlyArray<Prop> = [...filteredProps, ...view.props.create];
+
+          const updatedView: ExistingSharedViewData = {
+            ...existingView,
+            props: updatedProps,
+          };
+
+          return [
+            ...state.slice(0, existingIndex),
+            updatedView,
+            ...state.slice(existingIndex + 1),
+          ];
         }
-        return [...state];
+
+        // New view
+        const newView: ExistingSharedViewData = {
+          uid: view.uid,
+          name: view.name,
+          parentUid: view.parentUid,
+          childIndex: view.childIndex,
+          isRoot: view.isRoot,
+          props: view.props.create,
+        };
+        return [...state, newView];
       });
     };
 
-    const deleteViewHandler = ({ viewUid }: { viewUid: string }) => {
-      setRunningViews((state) => {
+    const deleteViewHandler = ({ viewUid }: AppEvents['delete_view']): void => {
+      setRunningViews((state): ReadonlyArray<ExistingSharedViewData> => {
         const runningViewIndex = state.findIndex(
           (view) => view.uid === viewUid
         );
         if (runningViewIndex !== -1) {
-          state.splice(runningViewIndex, 1);
-          return [...state];
+          return [
+            ...state.slice(0, runningViewIndex),
+            ...state.slice(runningViewIndex + 1),
+          ];
         }
         return state;
       });
@@ -132,7 +135,6 @@ function Client<ViewsInterface extends Views>({
       transport.emit("request_views_tree");
     }
 
-    // Cleanup listeners on unmount
     return () => {
       unsubscribeViewsTree?.();
       unsubscribeUpdateView?.();
@@ -142,7 +144,7 @@ function Client<ViewsInterface extends Views>({
 
   return (
     <ViewsRenderer
-      views={views}
+      views={views as Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>}
       viewsData={runningViews}
       createEvent={createEvent}
     />

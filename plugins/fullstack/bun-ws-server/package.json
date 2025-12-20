@@ -1,0 +1,29 @@
+{
+  "name": "@react-fullstack/fullstack-bun-ws-server",
+  "version": "0.3.1-alpha.8",
+  "description": "Bun WebSocket server transport for react-fullstack",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "bun run build"
+  },
+  "peerDependencies": {
+    "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
+    "react": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@react-fullstack/fullstack": "workspace:*",
+    "@types/react": "19.0.2",
+    "typescript": "5.7.2"
+  },
+  "keywords": [
+    "react",
+    "bun",
+    "websocket",
+    "fullstack",
+    "typescript"
+  ],
+  "author": "shmuelhizmi",
+  "license": "MIT"
+}

@@ -1,21 +1,27 @@
 import React, { useContext, useRef, useState, useEffect, type ReactNode } from "react";
-import { randomId } from "../shared";
+import { randomId } from "../shared/id";
+import type { ViewUid } from "../shared/branded.types";
+import { createViewUid } from "../shared/branded.types";
+import type { ViewProps, SerializableViewProps } from "../shared/types";
 import { AppContext } from "./contexts";
 
-const ViewParentContext = React.createContext<
-  { uid: string; childIndex: number } | undefined
->(undefined);
-
-interface ViewComponentProps {
-  name: string;
-  props: Record<string, any> & { children?: ReactNode };
-  children?: ReactNode;
+interface ViewParentContextValue {
+  readonly uid: ViewUid;
+  readonly childIndex: number;
 }
 
-function ViewComponent({ name, props, children }: ViewComponentProps) {
+const ViewParentContext = React.createContext<ViewParentContextValue | undefined>(undefined);
+
+interface ViewComponentProps {
+  readonly name: string;
+  readonly props: ViewProps & { readonly children?: ReactNode };
+  readonly children?: ReactNode;
+}
+
+function ViewComponent({ name, props, children: _children }: ViewComponentProps): React.ReactElement {
   const app = useContext(AppContext);
   const parent = useContext(ViewParentContext);
-  const uidRef = useRef(randomId());
+  const uidRef = useRef<ViewUid>(createViewUid(randomId()));
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -32,11 +38,11 @@ function ViewComponent({ name, props, children }: ViewComponentProps) {
   }
 
   app.updateRunningView({
-    parentUid: parent?.uid || "",
+    parentUid: parent?.uid ?? ('' as ViewUid | ''),
     isRoot: parent === undefined,
-    childIndex: parent?.childIndex || 0,
+    childIndex: parent?.childIndex ?? 0,
     name: name,
-    props: props,
+    props: props as SerializableViewProps,
     uid: uidRef.current,
   });
 
@@ -45,7 +51,7 @@ function ViewComponent({ name, props, children }: ViewComponentProps) {
   if (Array.isArray(childrenFromProps)) {
     return (
       <>
-        {(childrenFromProps as ReactNode[]).map((child, index) => (
+        {(childrenFromProps as ReadonlyArray<ReactNode>).map((child, index) => (
           <ViewParentContext.Provider
             key={index}
             value={{ uid: uidRef.current, childIndex: index }}
