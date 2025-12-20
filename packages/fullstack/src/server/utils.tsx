@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext, type ReactNode } from "react";
 import { Views } from "../shared";
 import { AppContext } from "./contexts";
 import { ViewsToServerComponents } from "./types";
@@ -20,20 +20,17 @@ export const viewProxy = new Proxy({} as Record<string, any>, {
   }
 }) as any;
 
-export const ViewsProvider = <ViewsInterface extends Views>(props: {
-  children: (views: ViewsToServerComponents<ViewsInterface>) => JSX.Element;
-}) => {
-  return (
-    <AppContext.Consumer>
-      {(app) => {
-        if (!app) {
-          return;
-        }
-        return props.children(viewProxy);
-      }}
-    </AppContext.Consumer>
-  );
-};
+export function ViewsProvider<ViewsInterface extends Views>(props: {
+  children: (views: ViewsToServerComponents<ViewsInterface>) => ReactNode;
+}) {
+  const app = useContext(AppContext);
+
+  if (!app) {
+    return null;
+  }
+
+  return <>{props.children(viewProxy)}</>;
+}
 
 export function deeplyEqual(x: any, y: any) {
   if (x === y) {

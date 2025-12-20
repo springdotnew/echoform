@@ -57,15 +57,15 @@
     "prepare": "npm run build"
   },
   "peerDependencies": {
-    "react": ">=18.0.0"
+    "react": ">=19.0.0"
   },
   "dependencies": {
     "crypto-random-string": "5.0.0"
   },
   "devDependencies": {
-    "@types/react": "18.0.25",
+    "@types/react": "19.0.2",
     "concurrently": "7.5.0",
-    "react": "18.2.0",
+    "react": "19.0.0",
     "typescript": "4.8.4"
   },
   "keywords": [

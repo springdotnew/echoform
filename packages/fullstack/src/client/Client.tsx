@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ViewsToComponents } from "./types";
 import {
   ExistingSharedViewData,
@@ -9,10 +9,6 @@ import {
   randomId,
   ViewsRenderer,
 } from "../shared";
-
-interface ClientState {
-  runningViews: ExistingSharedViewData[];
-}
 
 const stringifyWithoutCircular = (json: any[]) => {
   if (
@@ -41,94 +37,116 @@ const stringifyWithoutCircular = (json: any[]) => {
 
   return JSON.stringify(json, getCircularReplacer());
 };
-class Client<ViewsInterface extends Views> extends React.Component<
-  {
-    transport: Transport<Record<string, any>>;
-    views: ViewsToComponents<ViewsInterface>;
-    requestViewTreeOnMount?: boolean;
-  },
-  ClientState
-> {
-  state: ClientState = {
-    runningViews: [],
-  };
-  transport = decompileTransport(this.props.transport);
-  componentDidMount = () => {
-    this.transport.on("update_views_tree", ({ views }) => {
-      this.setState({ runningViews: views });
-    });
-    this.transport.on(
-      "update_view",
-      ({ view }: { view: ShareableViewData }) => {
-        this.setState((state) => {
-          const runningView = state.runningViews.find(
-            (currentView) => currentView.uid === view.uid
-          );
-          if (runningView) {
-            runningView.props = runningView.props.filter(
-              (prop) => !view.props.delete.includes(prop.name)
-            );
-            view.props.create.forEach((newProp) => {
-              runningView.props.push(newProp);
-            });
-          } else {
-            state.runningViews.push({ ...view, props: view.props.create });
-          }
-          return { runningViews: [...state.runningViews] };
-        });
-      }
-    );
-    this.transport.on("delete_view", ({ viewUid }: { viewUid: string }) => {
-      this.setState((state) => {
-        const runningViewIndex = state.runningViews.findIndex(
-          (view) => view.uid === viewUid
-        );
-        if (runningViewIndex !== -1) {
-          state.runningViews.splice(runningViewIndex, 1);
-          return { runningViews: [...state.runningViews] };
-        }
-      });
-    });
-    if (this.props.requestViewTreeOnMount) {
-      this.transport.emit("request_views_tree");
-    }
-  };
 
-  createEvent = (eventUid: string, ...args: any) => {
+interface ClientProps<ViewsInterface extends Views> {
+  transport: Transport<Record<string, any>>;
+  views: ViewsToComponents<ViewsInterface>;
+  requestViewTreeOnMount?: boolean;
+}
+
+function Client<ViewsInterface extends Views>({
+  transport: rawTransport,
+  views,
+  requestViewTreeOnMount,
+}: ClientProps<ViewsInterface>) {
+  const [runningViews, setRunningViews] = useState<ExistingSharedViewData[]>([]);
+  const transportRef = useRef(decompileTransport(rawTransport));
+
+  const createEvent = useCallback((eventUid: string, ...args: any) => {
     return new Promise((resolve) => {
       const requestUid = randomId();
-      this.transport.on(
-        "respond_to_event",
-        ({
-          data,
-          uid,
-          eventUid,
-        }: {
-          data: any;
-          uid: string;
-          eventUid: string;
-        }) => {
-          if (uid === requestUid && eventUid === eventUid) {
-            resolve(data);
-          }
+      const transport = transportRef.current;
+
+      let unsubscribe: (() => void) | undefined;
+
+      const handler = ({
+        data,
+        uid,
+        eventUid: responseEventUid,
+      }: {
+        data: any;
+        uid: string;
+        eventUid: string;
+      }) => {
+        if (uid === requestUid && responseEventUid === eventUid) {
+          resolve(data);
+          // Clean up listener after response received
+          unsubscribe?.();
         }
-      );
-      this.transport.emit("request_event", {
+      };
+
+      unsubscribe = transport.on("respond_to_event", handler) || undefined;
+
+      transport.emit("request_event", {
         eventArguments: JSON.parse(stringifyWithoutCircular(args)),
         eventUid: eventUid,
         uid: requestUid,
       });
     });
-  };
-  render = () => {
-    return (
-      <ViewsRenderer
-        views={this.props.views}
-        viewsData={this.state.runningViews}
-        createEvent={this.createEvent}
-      />
-    );
-  };
+  }, []);
+
+  useEffect(() => {
+    const transport = transportRef.current;
+
+    const updateViewsTreeHandler = ({ views }: { views: ExistingSharedViewData[] }) => {
+      setRunningViews(views);
+    };
+
+    const updateViewHandler = ({ view }: { view: ShareableViewData }) => {
+      setRunningViews((state) => {
+        const runningView = state.find(
+          (currentView) => currentView.uid === view.uid
+        );
+        if (runningView) {
+          runningView.props = runningView.props.filter(
+            (prop) => !view.props.delete.includes(prop.name)
+          );
+          view.props.create.forEach((newProp) => {
+            runningView.props.push(newProp);
+          });
+        } else {
+          state.push({ ...view, props: view.props.create });
+        }
+        return [...state];
+      });
+    };
+
+    const deleteViewHandler = ({ viewUid }: { viewUid: string }) => {
+      setRunningViews((state) => {
+        const runningViewIndex = state.findIndex(
+          (view) => view.uid === viewUid
+        );
+        if (runningViewIndex !== -1) {
+          state.splice(runningViewIndex, 1);
+          return [...state];
+        }
+        return state;
+      });
+    };
+
+    const unsubscribeViewsTree = transport.on("update_views_tree", updateViewsTreeHandler);
+    const unsubscribeUpdateView = transport.on("update_view", updateViewHandler);
+    const unsubscribeDeleteView = transport.on("delete_view", deleteViewHandler);
+
+    if (requestViewTreeOnMount) {
+      transport.emit("request_views_tree");
+    }
+
+    // Cleanup listeners on unmount
+    return () => {
+      unsubscribeViewsTree?.();
+      unsubscribeUpdateView?.();
+      unsubscribeDeleteView?.();
+    };
+  }, [requestViewTreeOnMount]);
+
+  return (
+    <ViewsRenderer
+      views={views}
+      viewsData={runningViews}
+      createEvent={createEvent}
+    />
+  );
 }
 
 export default Client;

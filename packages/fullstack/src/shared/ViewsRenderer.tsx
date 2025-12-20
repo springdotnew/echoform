@@ -1,4 +1,4 @@
-import React from "react";
+import React, { type ReactElement } from "react";
 import { ExistingSharedViewData } from "./types";
 
 export interface RenderProps {
@@ -10,7 +10,7 @@ export interface RenderProps {
 export function ViewsRenderer(props: RenderProps) {
   const { viewsData, views } = props;
   const createEvent = props.createEvent || (() => {});
-  const renderView = (view: ExistingSharedViewData): JSX.Element => {
+  const renderView = (view: ExistingSharedViewData): ReactElement => {
     const ComponentToRender = views[view.name];
     const props: any = { key: view.uid };
     view.props.forEach((prop) => {

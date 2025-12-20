@@ -3,20 +3,12 @@
   "private": true,
   "packageManager": "bun@1.3.4",
   "version": "1.0.0",
-  "main": "index.js",
   "repository": "https://github.com/shmuelhizmi/react-fullstack.git",
   "author": "shmuelhizmi <shmuelhizmi1@gmail.com>",
   "license": "MIT",
   "workspaces": [
     "packages/*",
-    "plugins/*/*",
-    "apps/*/*"
-  ],
-  "nohoist": [
-    "**/react-native",
-    "**/react-native/**",
-    "**/expo",
-    "**/expo/**"
+    "plugins/*/*"
   ],
   "dependencies": {
     "@changesets/cli": "^2.25.2"

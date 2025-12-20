@@ -1,10 +1,6 @@
-import React, { useState } from "react";
-import { useEffect, useRef } from "react";
-import {
-  Transport,
-  ViewsRenderer,
-} from "../shared";
-import App from "./App";
+import React, { useState, useEffect, useRef, type ReactNode } from "react";
+import { Transport, ViewsRenderer } from "../shared";
+import App, { type AppHandle } from "./App";
 
 export interface ServerProps<
   TransportClientEvents extends { disconnect: any },
@@ -12,35 +8,22 @@ export interface ServerProps<
     connection: Transport<TransportClientEvents> & { id: string };
   }
 > {
-  /**
-   * The server react app
-   */
-  children: () => JSX.Element;
-  /**
-   * share one app across all clients.
-   */
+  children: () => ReactNode;
   singleInstance?: boolean;
-  /**
-   * main server commination transport
-   */
   transport: Transport<TransportServerEvents>;
-  /**
-   * instance render handler
-   * could be used to render the app into a components tree (for ssr)
-   */
   instanceRenderHandler?: ServerInstanceRenderHandler;
 }
 
 const setApp = Symbol("setApp");
 
 export function createInstanceRenderHandler() {
-  let app: App;
+  let appHandle: AppHandle | null = null;
   return {
-    [setApp]: (newApp: App) => {
-      app = newApp;
+    [setApp]: (newAppHandle: AppHandle | null) => {
+      appHandle = newAppHandle;
     },
     render(views: Record<string, React.ComponentType<any>>) {
-      return <ViewsRenderer viewsData={app?.views || []} views={views} />;
+      return <ViewsRenderer viewsData={appHandle?.views || []} views={views} />;
     },
   };
 }
@@ -56,14 +39,14 @@ export function Server<
   }
 >(props: ServerProps<TransportClientEvents, TransportServerEvents>) {
   const { children, singleInstance, transport } = props;
-  const app = useRef<App>();
+  const appRef = useRef<AppHandle>(null);
   const [clients, setClients] = useState<Record<string, Transport<any>>>({});
 
   useEffect(() => {
     transport.on("connection", (clientTransport) => {
-      if (app.current) {
+      if (appRef.current) {
         if (singleInstance) {
-          app.current.addClient(clientTransport);
+          appRef.current.addClient(clientTransport);
         } else {
           setClients((clients) => {
             const newClients = { ...clients };
@@ -73,9 +56,9 @@ export function Server<
         }
       }
       clientTransport.on("disconnect", () => {
-        if (app.current) {
+        if (appRef.current) {
           if (singleInstance) {
-            app.current.removeClient(clientTransport);
+            appRef.current.removeClient(clientTransport);
           } else {
             setClients((clients) => {
               const newClients = { ...clients };
@@ -88,7 +71,6 @@ export function Server<
     });
   }, [singleInstance, transport]);
 
-
   return (
     <>
       <App
@@ -96,9 +78,11 @@ export function Server<
         transport={transport}
         transportIsClient={false}
         children={children}
-        ref={(ref) => {
-          app.current = ref || undefined;
-          if (props.instanceRenderHandler) props.instanceRenderHandler[setApp](ref!);
+        ref={(handle) => {
+          (appRef as React.MutableRefObject<AppHandle | null>).current = handle;
+          if (props.instanceRenderHandler) {
+            props.instanceRenderHandler[setApp](handle);
+          }
         }}
       />
       {!singleInstance &&
