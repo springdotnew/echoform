@@ -12,6 +12,8 @@
     "demo/*"
   ],
   "scripts": {
+    "build": "bun run --filter '*' build",
+    "clean": "rm -rf packages/*/dist packages/*/lib plugins/*/*/dist plugins/*/*/lib",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
     "lint:packages": "oxlint packages/",

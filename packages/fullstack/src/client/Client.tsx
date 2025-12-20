@@ -78,13 +78,16 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
             return state;
           }
 
-          // Filter out deleted props
+          // Collect names to remove: deleted props + props being replaced by create
           const deletedNames = new Set(view.props.delete);
+          const createNames = new Set(view.props.create.map((prop) => prop.name));
+
+          // Filter out deleted props and props being replaced
           const filteredProps = existingView.props.filter(
-            (prop) => !deletedNames.has(prop.name)
+            (prop) => !deletedNames.has(prop.name) && !createNames.has(prop.name)
           );
 
-          // Add new props
+          // Add new/updated props
           const updatedProps: ReadonlyArray<Prop> = [...filteredProps, ...view.props.create];
 
           const updatedView: ExistingSharedViewData = {

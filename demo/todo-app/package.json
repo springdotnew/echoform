@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "server": "bun server/index.tsx",
     "dev:server": "bun server/index.tsx",
     "dev:client": "vite",
     "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
-    "build:client": "vite build"
+    "build:client": "vite build",
+    "test": "bun test test/e2e.test.ts"
   },
   "dependencies": {
     "@react-fullstack/fullstack": "workspace:*",

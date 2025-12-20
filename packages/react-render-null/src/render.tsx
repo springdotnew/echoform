@@ -2,19 +2,16 @@ import Reconciler from "react-reconciler";
 import { DefaultEventPriority } from "react-reconciler/constants.js";
 import type { ReactNode } from "react";
 
-type Container = Record<string, never>;
-type Instance = Record<string, never>;
-type HostContext = Record<string, never>;
+type Container = Record<string, unknown>;
+type Instance = Record<string, unknown>;
+type HostContext = Record<string, unknown>;
 
-// Track current update priority for React 19 reconciler
 let currentUpdatePriority: number = DefaultEventPriority;
 
 const hostConfig = {
-  // Instance creation - return empty objects
   createInstance: () => ({}),
   createTextInstance: () => ({}),
 
-  // Tree operations - no-op
   appendInitialChild: () => {},
   appendChild: () => {},
   appendChildToContainer: () => {},
@@ -23,44 +20,41 @@ const hostConfig = {
   removeChild: () => {},
   removeChildFromContainer: () => {},
 
-  // Configuration
   supportsMutation: true,
   isPrimaryRenderer: false,
   supportsPersistence: false,
   supportsHydration: false,
 
-  // Required callbacks - minimal implementations
   finalizeInitialChildren: () => false,
   shouldSetTextContent: () => false,
   getRootHostContext: (): HostContext => ({}),
-  getChildHostContext: (_parentContext: HostContext): HostContext => ({}),
-  getPublicInstance: (i: Instance) => i,
-  prepareForCommit: () => null,
+  getChildHostContext: (): HostContext => ({}),
+  getPublicInstance: (instance: Instance): Instance => instance,
+  prepareForCommit: (): null => null,
   resetAfterCommit: () => {},
   commitTextUpdate: () => {},
   commitUpdate: () => {},
+  commitMount: () => {},
   clearContainer: () => {},
-  prepareUpdate: () => null,
 
-  // Scheduling
+  prepareUpdate: () => true,
+
   scheduleTimeout: setTimeout,
   cancelTimeout: clearTimeout,
-  noTimeout: -1,
+  noTimeout: -1 as const,
   supportsMicrotasks: true,
   scheduleMicrotask:
     typeof queueMicrotask === "function"
       ? queueMicrotask
-      : (fn: () => void) => Promise.resolve().then(fn),
+      : (fn: () => void) => { Promise.resolve().then(fn); },
   getCurrentEventPriority: () => DefaultEventPriority,
 
-  // React 19 required priority methods
   setCurrentUpdatePriority: (priority: number) => {
     currentUpdatePriority = priority;
   },
   getCurrentUpdatePriority: () => currentUpdatePriority,
   resolveUpdatePriority: () => currentUpdatePriority || DefaultEventPriority,
 
-  // Additional required methods
   preparePortalMount: () => {},
   getInstanceFromNode: () => null,
   beforeActiveInstanceBlur: () => {},
@@ -68,6 +62,11 @@ const hostConfig = {
   prepareScopeUpdate: () => {},
   getInstanceFromScope: () => null,
   detachDeletedInstance: () => {},
+
+  hideInstance: () => {},
+  unhideInstance: () => {},
+  hideTextInstance: () => {},
+  unhideTextInstance: () => {},
 };
 
 const reconciler = Reconciler(hostConfig);

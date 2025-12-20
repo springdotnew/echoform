@@ -34,6 +34,7 @@ function TodoApp({ View }: { View: ViewsToServerComponents<Views> }): React.Reac
   }, []);
 
   const deleteTodo = useCallback((id: string) => {
+    console.log("delete")
     setTodos((prev) => prev.filter((todo) => todo.id !== id));
   }, []);
 
@@ -48,6 +49,8 @@ function TodoApp({ View }: { View: ViewsToServerComponents<Views> }): React.Reac
   });
 
   const completedCount = todos.filter((t) => t.completed).length;
+
+  console.log('re-render')
 
   return (
     <View.TodoApp
@@ -77,7 +80,7 @@ function TodoApp({ View }: { View: ViewsToServerComponents<Views> }): React.Reac
   );
 }
 
-const PORT = 3001;
+const PORT = parseInt(process.env.PORT ?? "3001", 10);
 
 const { transport, start } = createBunWebSocketServer({
   port: PORT,

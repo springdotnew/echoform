@@ -37,7 +37,7 @@ export interface AppHandle {
 
 const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(function App({ children, transport, paused, transportIsClient }, ref) {
   const serverRef = useRef<DecompileTransport>(decompileTransport(transport));
-  const clientsRef = useRef<ReadonlyArray<Transport<Record<string | number, unknown>>>>([]);
+  const clientsRef = useRef<ReadonlyArray<DecompileTransport>>([]);
   const existingSharedViewsRef = useRef<MutableExistingSharedViewData[]>([]);
   const viewEventsRef = useRef<ReadonlyMap<EventUid, EventHandler>>(new Map());
   const cleanUpFunctionsRef = useRef<ReadonlyArray<() => void>>([]);
@@ -49,7 +49,9 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
   }, []);
 
   const registerSocketListener = useCallback((client: DecompileTransport) => {
+    console.log("[App] registerSocketListener called");
     const requestViewsTreeHandler = (): void => {
+      console.log("[App] request_views_tree handler called, views count:", existingSharedViewsRef.current.length);
       const views = existingSharedViewsRef.current.map((view): ExistingSharedViewData => ({
         uid: view.uid,
         name: view.name,
@@ -58,6 +60,7 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
         isRoot: view.isRoot,
         props: [...view.props],
       }));
+      console.log("[App] emitting update_views_tree with", views.length, "views");
       client.emit("update_views_tree", { views });
     };
     const cleanReqTree = client.on("request_views_tree", requestViewsTreeHandler);
@@ -100,13 +103,14 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
 
   const addClient = useCallback(<TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => {
     const clientTransport = decompileTransport(client);
-    clientsRef.current = [...clientsRef.current, client as Transport<Record<string | number, unknown>>];
+    clientsRef.current = [...clientsRef.current, clientTransport];
     registerSocketListener(clientTransport);
   }, [registerSocketListener]);
 
   const removeClient = useCallback(<TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => {
+    const clientTransport = decompileTransport(client);
     clientsRef.current = clientsRef.current.filter(
-      (currentClient) => currentClient !== (client as Transport<Record<string | number, unknown>>)
+      (currentClient) => currentClient !== clientTransport
     );
   }, []);
 
@@ -154,7 +158,7 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
         props: newProps as Prop[],
       };
       existingSharedViewsRef.current = [...existingSharedViewsRef.current, newView];
-      server.emit("update_view", {
+      const updatePayload = {
         view: {
           uid: newView.uid,
           name: newView.name,
@@ -167,7 +171,11 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
             create: newProps,
           },
         },
-      });
+      };
+      server.emit("update_view", updatePayload);
+      for (const client of clientsRef.current) {
+        client.emit("update_view", updatePayload);
+      }
       return;
     }
 
@@ -238,7 +246,7 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
       return;
     }
 
-    server.emit("update_view", {
+    const updatePayload = {
       view: {
         uid: existingView.uid,
         name: existingView.name,
@@ -251,7 +259,11 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
           merge: [],
         },
       },
-    });
+    };
+    server.emit("update_view", updatePayload);
+    for (const client of clientsRef.current) {
+      client.emit("update_view", updatePayload);
+    }
   }, [registerViewEvent]);
 
   const deleteRunningView = useCallback((uid: ViewUid) => {
@@ -283,7 +295,11 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
       if (!server) {
         return;
       }
-      server.emit("delete_view", { viewUid: uid });
+      const deletePayload = { viewUid: uid };
+      server.emit("delete_view", deletePayload);
+      for (const client of clientsRef.current) {
+        client.emit("delete_view", deletePayload);
+      }
     }
   }, []);
 

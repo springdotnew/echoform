@@ -49,9 +49,12 @@ export function Server<
   const [clients, setClients] = useState<Readonly<Record<string, Transport<TransportClientEvents>>>>({});
 
   useEffect(() => {
+    console.log("[Server] Setting up connection handler");
     transport.on("connection", (clientTransport) => {
+      console.log("[Server] Client connected, appRef.current:", !!appRef.current, "singleInstance:", singleInstance);
       if (appRef.current) {
         if (singleInstance) {
+          console.log("[Server] Adding client to single instance app");
           appRef.current.addClient(clientTransport);
         } else {
           setClients((prevClients) => ({
