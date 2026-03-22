@@ -1,6 +1,6 @@
 export { default as App } from "./App";
 export type { AppHandle } from "./App";
-export { ViewsProvider } from "./utils";
+export { useViews, ViewsProvider } from "./utils";
 export type { ViewsToServerComponents } from "./types";
 export { AppContext } from "./contexts";
 export type { AppContextValue } from "./contexts";

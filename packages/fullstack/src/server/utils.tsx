@@ -32,14 +32,25 @@ export const viewProxy = new Proxy({} as ViewComponentCache, {
   }
 }) as ViewsToServerComponents<Views>;
 
-export function ViewsProvider<ViewsInterface extends Views>(props: {
-  readonly children: (views: ViewsToServerComponents<ViewsInterface>) => ReactNode;
-}): React.ReactElement | null {
+export function useViews<ViewsInterface extends Views>(): ViewsToServerComponents<ViewsInterface> | null {
   const app = useContext(AppContext);
 
   if (!app) {
     return null;
   }
 
-  return <>{props.children(viewProxy as ViewsToServerComponents<ViewsInterface>)}</>;
+  return viewProxy as ViewsToServerComponents<ViewsInterface>;
+}
+
+/** @deprecated Use useViews hook instead */
+export function ViewsProvider<ViewsInterface extends Views>(props: {
+  readonly children: (views: ViewsToServerComponents<ViewsInterface>) => ReactNode;
+}): React.ReactElement | null {
+  const views = useViews<ViewsInterface>();
+
+  if (!views) {
+    return null;
+  }
+
+  return <>{props.children(views)}</>;
 }

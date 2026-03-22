@@ -99,20 +99,18 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
 
   function handleMessage(id: string, message: string): void {
     const client = clients.get(id);
-    console.log("[WS-Server] handleMessage, client found:", !!client, "message:", message.slice(0, 100));
     if (!client) return;
 
     try {
       const { event, data } = JSON.parse(message) as { event: string; data: unknown };
       const eventHandlers = client.handlers.get(event);
-      console.log("[WS-Server] event:", event, "handlers count:", eventHandlers?.size ?? 0);
       if (eventHandlers) {
         for (const handler of eventHandlers) {
           handler(data);
         }
       }
-    } catch (e) {
-      console.error("[WS-Server] Error parsing message:", e);
+    } catch {
+      // Invalid JSON, ignore
     }
   }
 

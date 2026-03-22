@@ -20,7 +20,7 @@ function App(): React.ReactElement {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const wsTransport = createWebSocketTransport({ url: "ws://localhost:3001/ws" });
+    const wsTransport = createWebSocketTransport({ url: "ws://localhost:4201/ws" });
 
     wsTransport.connect()
       .then(() => {

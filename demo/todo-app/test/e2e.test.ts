@@ -2,14 +2,15 @@ import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import type { Transport, AppEvents, ExistingSharedViewData, Prop } from "@react-fullstack/fullstack/shared";
 import { decompileTransport } from "@react-fullstack/fullstack/shared";
 
-const PORT = 3002;
+const PORT = 4202;
 const WS_URL = `ws://localhost:${PORT}/ws`;
 
 interface TestClient {
   readonly connect: () => Promise<void>;
   readonly disconnect: () => void;
   readonly getViews: () => ReadonlyArray<ExistingSharedViewData>;
-  readonly waitForUpdate: () => Promise<void>;
+  readonly waitForUpdate: (timeout?: number) => Promise<void>;
+  readonly waitForMultipleUpdates: (count: number, timeout?: number) => Promise<void>;
   readonly requestViewsTree: () => void;
   readonly callEvent: (eventUid: string, ...args: readonly unknown[]) => Promise<unknown>;
 }
@@ -90,7 +91,6 @@ function createTestClient(): TestClient {
 
   function setupHandlers(): void {
     transport.on("update_views_tree", (data) => {
-      console.log("[Client] Received update_views_tree, views count:", data.views.length);
       views = [...data.views];
       for (const resolver of updateResolvers) {
         resolver();
@@ -99,12 +99,10 @@ function createTestClient(): TestClient {
     });
 
     transport.on("update_view", (data) => {
-      console.log("[Client] Received update_view:", data.view.name);
       applyViewUpdate(data.view);
     });
 
     transport.on("delete_view", (data) => {
-      console.log("[Client] Received delete_view:", data.viewUid);
       views = views.filter((v) => v.uid !== data.viewUid);
       for (const resolver of updateResolvers) {
         resolver();
@@ -113,7 +111,6 @@ function createTestClient(): TestClient {
     });
 
     transport.on("respond_to_event", (data) => {
-      console.log("[Client] Received respond_to_event:", data.uid);
       const resolver = responseResolvers.get(data.uid as string);
       if (resolver) {
         resolver(data.data);
@@ -137,10 +134,9 @@ function createTestClient(): TestClient {
             event: string;
             data: unknown;
           };
-          console.log(`[Client] Raw message: event=${eventName}`);
           notifyHandlers(eventName, data);
-        } catch (e) {
-          console.error("[Client] Error parsing message:", e);
+        } catch {
+          // Ignore parse errors
         }
       };
 
@@ -148,9 +144,7 @@ function createTestClient(): TestClient {
         reject(new Error("WebSocket connection error"));
       };
 
-      ws.onclose = () => {
-        console.log("[Client] WebSocket closed");
-      };
+      ws.onclose = () => {};
     });
   }
 
@@ -163,10 +157,34 @@ function createTestClient(): TestClient {
     return views;
   }
 
-  function waitForUpdate(): Promise<void> {
-    return new Promise((resolve) => {
-      updateResolvers.push(resolve);
+  function waitForUpdate(timeout = 1000): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const idx = updateResolvers.indexOf(resolver);
+        if (idx >= 0) updateResolvers.splice(idx, 1);
+        reject(new Error("Timeout waiting for update"));
+      }, timeout);
+
+      const resolver = (): void => {
+        clearTimeout(timer);
+        resolve();
+      };
+      updateResolvers.push(resolver);
     });
+  }
+
+  async function waitForMultipleUpdates(count: number, timeout = 2000): Promise<void> {
+    const startTime = Date.now();
+    let received = 0;
+
+    while (received < count && Date.now() - startTime < timeout) {
+      try {
+        await waitForUpdate(timeout - (Date.now() - startTime));
+        received++;
+      } catch {
+        break;
+      }
+    }
   }
 
   function requestViewsTree(): void {
@@ -186,7 +204,7 @@ function createTestClient(): TestClient {
     });
   }
 
-  return { connect, disconnect, getViews, waitForUpdate, requestViewsTree, callEvent };
+  return { connect, disconnect, getViews, waitForUpdate, waitForMultipleUpdates, requestViewsTree, callEvent };
 }
 
 function getViewProp(view: ExistingSharedViewData, propName: string): Prop | undefined {
@@ -214,20 +232,17 @@ describe("Todo App E2E", () => {
   let client: TestClient;
 
   beforeAll(async () => {
-    console.log("[Test] Starting server...");
-
     serverProcess = Bun.spawn(["bun", "run", "server/index.tsx"], {
       cwd: import.meta.dir + "/..",
       env: { ...process.env, PORT: String(PORT) },
-      stdout: "inherit",
-      stderr: "inherit",
+      stdout: "pipe",
+      stderr: "pipe",
     });
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     client = createTestClient();
     await client.connect();
-    console.log("[Test] Client connected");
   });
 
   afterAll(() => {
@@ -237,14 +252,10 @@ describe("Todo App E2E", () => {
 
   test("should receive initial view tree on request", async () => {
     const updatePromise = client.waitForUpdate();
-
     client.requestViewsTree();
-
     await updatePromise;
 
     const views = client.getViews();
-    console.log("[Test] Initial views:", JSON.stringify(views, null, 2));
-
     expect(views.length).toBeGreaterThan(0);
 
     const todoApp = views.find((v) => v.name === "TodoApp");
@@ -260,103 +271,72 @@ describe("Todo App E2E", () => {
     const views = client.getViews();
     const todoInput = views.find((v) => v.name === "TodoInput");
     expect(todoInput).toBeDefined();
-
     if (!todoInput) return;
 
     const onAddUid = getEventPropUid(todoInput, "onAdd");
     expect(onAddUid).toBeDefined();
-
     if (!onAddUid) return;
 
-    console.log("[Test] Calling onAdd event with uid:", onAddUid);
-
     const updatePromise = client.waitForUpdate();
-
     await client.callEvent(onAddUid, "New test todo");
-
     await updatePromise;
 
     const updatedViews = client.getViews();
-    console.log("[Test] Updated views after add:", JSON.stringify(updatedViews, null, 2));
-
     const todoApp = updatedViews.find((v) => v.name === "TodoApp");
     expect(todoApp).toBeDefined();
 
     if (todoApp) {
-      const itemCount = getDataPropValue(todoApp, "itemCount");
-      console.log("[Test] Item count after add:", itemCount);
-      expect(itemCount).toBe(3);
+      expect(getDataPropValue(todoApp, "itemCount")).toBe(3);
     }
   });
 
   test("should update view when toggling a todo", async () => {
     const views = client.getViews();
     const todoItems = views.filter((v) => v.name === "TodoItem");
-
-    console.log("[Test] Found TodoItems:", todoItems.length);
     expect(todoItems.length).toBeGreaterThan(0);
 
     const firstTodoItem = todoItems[0];
     if (!firstTodoItem) return;
 
-    const initialCompleted = getDataPropValue(firstTodoItem, "completed");
-    console.log("[Test] Initial completed state:", initialCompleted);
-
     const onToggleUid = getEventPropUid(firstTodoItem, "onToggle");
     expect(onToggleUid).toBeDefined();
-
     if (!onToggleUid) return;
 
     const updatePromise = client.waitForUpdate();
-
     await client.callEvent(onToggleUid);
-
     await updatePromise;
 
     const updatedViews = client.getViews();
     const updatedTodoApp = updatedViews.find((v) => v.name === "TodoApp");
 
-    console.log("[Test] Updated TodoApp:", JSON.stringify(updatedTodoApp, null, 2));
-
     if (updatedTodoApp) {
-      const completedCount = getDataPropValue(updatedTodoApp, "completedCount");
-      console.log("[Test] Completed count after toggle:", completedCount);
-      expect(completedCount).toBe(1);
+      expect(getDataPropValue(updatedTodoApp, "completedCount")).toBe(1);
     }
   });
 
   test("should update view when deleting a todo", async () => {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     let views = client.getViews();
     let todoApp = views.find((v) => v.name === "TodoApp");
     const initialCount = getDataPropValue(todoApp!, "itemCount") as number;
 
-    console.log("[Test] Initial item count before delete:", initialCount);
-
     const todoItems = views.filter((v) => v.name === "TodoItem");
     const lastTodoItem = todoItems[todoItems.length - 1];
-
     if (!lastTodoItem) return;
 
     const onDeleteUid = getEventPropUid(lastTodoItem, "onDelete");
     expect(onDeleteUid).toBeDefined();
-
     if (!onDeleteUid) return;
 
-    const updatePromise = client.waitForUpdate();
-
     await client.callEvent(onDeleteUid);
-
-    await updatePromise;
+    await client.waitForMultipleUpdates(3, 2000);
 
     views = client.getViews();
     todoApp = views.find((v) => v.name === "TodoApp");
 
-    console.log("[Test] Updated TodoApp after delete:", JSON.stringify(todoApp, null, 2));
-
     if (todoApp) {
-      const itemCount = getDataPropValue(todoApp, "itemCount");
-      console.log("[Test] Item count after delete:", itemCount);
-      expect(itemCount).toBe(initialCount - 1);
+      expect(getDataPropValue(todoApp, "itemCount")).toBe(initialCount - 1);
     }
   });
 });

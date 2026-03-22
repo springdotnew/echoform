@@ -49,9 +49,7 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
   }, []);
 
   const registerSocketListener = useCallback((client: DecompileTransport) => {
-    console.log("[App] registerSocketListener called");
     const requestViewsTreeHandler = (): void => {
-      console.log("[App] request_views_tree handler called, views count:", existingSharedViewsRef.current.length);
       const views = existingSharedViewsRef.current.map((view): ExistingSharedViewData => ({
         uid: view.uid,
         name: view.name,
@@ -60,7 +58,6 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
         isRoot: view.isRoot,
         props: [...view.props],
       }));
-      console.log("[App] emitting update_views_tree with", views.length, "views");
       client.emit("update_views_tree", { views });
     };
     const cleanReqTree = client.on("request_views_tree", requestViewsTreeHandler);

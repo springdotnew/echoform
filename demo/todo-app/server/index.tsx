@@ -1,15 +1,16 @@
 import React, { useState, useCallback } from "react";
 import { Render } from "@react-fullstack/render";
-import { Server, ViewsProvider } from "@react-fullstack/fullstack/server";
+import { Server, useViews } from "@react-fullstack/fullstack/server";
 import { createBunWebSocketServer } from "@react-fullstack/fullstack-bun-ws-server";
 import type { Views, TodoItem } from "../shared/views";
-import type { ViewsToServerComponents } from "@react-fullstack/fullstack/server";
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-function TodoApp({ View }: { View: ViewsToServerComponents<Views> }): React.ReactElement {
+function TodoApp(): React.ReactElement | null {
+  const View = useViews<Views>();
+
   const [todos, setTodos] = useState<ReadonlyArray<TodoItem>>([
     { id: generateId(), text: "Learn react-fullstack", completed: false },
     { id: generateId(), text: "Build something awesome", completed: false },
@@ -34,13 +35,16 @@ function TodoApp({ View }: { View: ViewsToServerComponents<Views> }): React.Reac
   }, []);
 
   const deleteTodo = useCallback((id: string) => {
-    console.log("delete")
     setTodos((prev) => prev.filter((todo) => todo.id !== id));
   }, []);
 
   const clearCompleted = useCallback(() => {
     setTodos((prev) => prev.filter((todo) => !todo.completed));
   }, []);
+
+  if (!View) {
+    return null;
+  }
 
   const filteredTodos = todos.filter((todo) => {
     if (filter === "active") return !todo.completed;
@@ -49,8 +53,6 @@ function TodoApp({ View }: { View: ViewsToServerComponents<Views> }): React.Reac
   });
 
   const completedCount = todos.filter((t) => t.completed).length;
-
-  console.log('re-render')
 
   return (
     <View.TodoApp
@@ -80,7 +82,7 @@ function TodoApp({ View }: { View: ViewsToServerComponents<Views> }): React.Reac
   );
 }
 
-const PORT = parseInt(process.env.PORT ?? "3001", 10);
+const PORT = parseInt(process.env.PORT ?? "4201", 10);
 
 const { transport, start } = createBunWebSocketServer({
   port: PORT,
@@ -93,11 +95,7 @@ console.log(`Server running on http://localhost:${PORT}`);
 console.log(`WebSocket endpoint: ws://localhost:${PORT}/ws`);
 
 Render(
-  <Server transport={transport} singleInstance={true}>
-    {() => (
-      <ViewsProvider<Views>>
-        {(View) => <TodoApp View={View} />}
-      </ViewsProvider>
-    )}
+  <Server transport={transport} singleInstance>
+    {() => <TodoApp />}
   </Server>
 );
