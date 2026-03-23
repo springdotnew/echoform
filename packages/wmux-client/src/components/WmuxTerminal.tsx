@@ -2,12 +2,19 @@ import React, { useEffect, useRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import type { InferClientProps } from "@playfast/echoform/client";
-import type { WmuxTerminal as WmuxTerminalDef } from "@playfast/wmux/views";
 import { toBase64, fromBase64 } from "../utils/base64";
-import { THEME } from "../styles/theme";
 
-export function WmuxTerminal(props: InferClientProps<typeof WmuxTerminalDef>): React.ReactElement {
+interface WmuxTerminalProps {
+  readonly id: string;
+  readonly name: string;
+  readonly status: string;
+  readonly output: { readonly subscribe: (listener: (chunk: string) => void) => () => void };
+  readonly onInput: { readonly mutate: (data: string) => void };
+  readonly onResize: { readonly mutate: (size: { cols: number; rows: number }) => void };
+  readonly children?: React.ReactNode;
+}
+
+export function WmuxTerminal(props: WmuxTerminalProps): React.ReactElement {
   const { output, id, status } = props;
   const sendInput = props.onInput.mutate;
   const sendResize = props.onResize.mutate;
@@ -21,12 +28,12 @@ export function WmuxTerminal(props: InferClientProps<typeof WmuxTerminalDef>): R
       cursorBlink: true,
       screenReaderMode: true,
       fontSize: 14,
-      fontFamily: THEME.fontMono,
+      fontFamily: "'JetBrainsMono Nerd Font Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace",
       theme: {
-        background: THEME.bg,
-        foreground: THEME.text,
-        cursor: THEME.text,
-        selectionBackground: "#264f78",
+        background: "#030304",
+        foreground: "#fafafa",
+        cursor: "#fafafa",
+        selectionBackground: "oklch(0.7 0.1 285 / 20%)",
       },
     });
 
@@ -65,17 +72,14 @@ export function WmuxTerminal(props: InferClientProps<typeof WmuxTerminalDef>): R
   }, [output]);
 
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative" }}>
-      <div ref={containerRef} style={{ width: "100%", height: "100%" }} data-testid={`terminal-${id}`} />
+    <div className="w-full h-full relative">
+      <div ref={containerRef} className="w-full h-full" data-testid={`terminal-${id}`} />
       {status !== "running" && (
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0,
-          padding: "4px 12px",
-          background: status === "failed" ? "rgba(229,83,75,0.12)" : "rgba(255,255,255,0.04)",
-          color: status === "failed" ? THEME.error : "#555",
-          fontSize: 12, fontFamily: THEME.fontFamily,
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
-        }}>
+        <div className={`absolute top-0 left-0 right-0 px-3 py-1 text-xs font-sans border-b border-border ${
+          status === "failed"
+            ? "bg-destructive/10 text-destructive"
+            : "bg-secondary/30 text-muted-foreground"
+        }`}>
           {status === "idle" && "Process not started"}
           {status === "stopped" && "Process exited"}
           {status === "failed" && "Process failed"}

@@ -1,3 +1,4 @@
+import "./index.css";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { Client } from "@playfast/echoform/client";
@@ -5,7 +6,6 @@ import { parseHashParams } from "./utils/params";
 import { useAuthenticatedTransport } from "./utils/transport";
 import { WmuxApp } from "./components/WmuxApp";
 import { WmuxTerminal } from "./components/WmuxTerminal";
-import { THEME } from "./styles/theme";
 
 const viewComponents = {
   WmuxApp,
@@ -14,13 +14,7 @@ const viewComponents = {
 
 function ErrorPage({ message }: { readonly message: string }): React.ReactElement {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "center",
-      height: "100vh", width: "100vw",
-      background: THEME.bg, color: THEME.error,
-      fontFamily: THEME.fontFamily, fontSize: 14,
-      padding: 40, textAlign: "center",
-    }}>
+    <div className="flex items-center justify-center h-screen w-screen bg-background text-destructive font-sans text-sm p-10 text-center">
       {message}
     </div>
   );
@@ -28,12 +22,7 @@ function ErrorPage({ message }: { readonly message: string }): React.ReactElemen
 
 function LoadingPage(): React.ReactElement {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "center",
-      height: "100vh", width: "100vw",
-      background: THEME.bg, color: THEME.textMuted,
-      fontFamily: THEME.fontFamily, fontSize: 14,
-    }}>
+    <div className="flex items-center justify-center h-screen w-screen bg-background text-muted-foreground font-sans text-sm">
       Connecting...
     </div>
   );
@@ -51,7 +40,7 @@ function App(): React.ReactElement {
   if (error) return <ErrorPage message={`Connection failed: ${error}`} />;
   if (!transport) return <LoadingPage />;
 
-  return <Client transport={transport} views={viewComponents as any} requestViewTreeOnMount />;
+  return <Client transport={transport} views={viewComponents} requestViewTreeOnMount />;
 }
 
 const container = document.getElementById("root");

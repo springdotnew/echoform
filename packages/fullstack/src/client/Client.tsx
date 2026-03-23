@@ -50,17 +50,18 @@ function applyViewDeletion(
   return [...state.slice(0, runningViewIndex), ...state.slice(runningViewIndex + 1)];
 }
 
-interface ClientProps<ViewsInterface extends Record<string, unknown> = Record<string, unknown>, TEvents extends Record<string | number, unknown> = Record<string, unknown>> {
+interface ClientProps<TEvents extends Record<string | number, unknown> = Record<string, unknown>> {
   readonly transport: Transport<TEvents>;
-  readonly views: Readonly<Record<string, React.ComponentType<ViewsInterface[keyof ViewsInterface] & Record<string, unknown>>>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- props are built dynamically by ViewsRenderer
+  readonly views: Readonly<Record<string, React.ComponentType<any>>>;
   readonly requestViewTreeOnMount?: boolean;
 }
 
-function Client<ViewsInterface extends Record<string, unknown> = Record<string, unknown>, TEvents extends Record<string | number, unknown> = Record<string, unknown>>({
+function Client<TEvents extends Record<string | number, unknown> = Record<string, unknown>>({
   transport: rawTransport,
   views,
   requestViewTreeOnMount = true,
-}: ClientProps<ViewsInterface, TEvents>): React.ReactElement {
+}: ClientProps<TEvents>): React.ReactElement {
   const [runningViews, setRunningViews] = useState<ReadonlyArray<ExistingSharedViewData>>([]);
   const transportRef = useRef(decompileTransport(rawTransport));
   const streamListenersRef = useRef<Map<StreamUid, Set<(chunk: SerializableValue) => void>>>(new Map());
@@ -168,7 +169,7 @@ function Client<ViewsInterface extends Record<string, unknown> = Record<string, 
 
   return (
     <ViewsRenderer
-      views={views as Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>}
+      views={views}
       viewsData={runningViews}
       createEvent={createEvent}
       streamSubscribe={streamSubscribe}

@@ -15,17 +15,14 @@ function IconButton({ icon, title, disabled, onClick, active }: {
       onClick={onClick}
       disabled={disabled}
       title={title}
-      style={{
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 24, height: 24,
-        borderRadius: 4,
-        border: "1px solid transparent",
-        background: active ? "rgba(255,255,255,0.06)" : "none",
-        color: disabled ? "#333" : active ? "#ccc" : "#999",
-        cursor: disabled ? "default" : "pointer",
-        opacity: disabled ? 0.4 : 1,
-        padding: 0,
-      }}
+      className={`flex items-center justify-center w-6 h-6 rounded border border-transparent p-0 transition-colors ${
+        disabled
+          ? "text-ring/40 cursor-default opacity-40"
+          : active
+            ? "text-foreground/80 bg-secondary cursor-pointer"
+            : "text-muted-foreground cursor-pointer hover:text-foreground hover:bg-secondary/50"
+      }`}
+      style={{ background: active && !disabled ? "var(--color-secondary)" : "none" }}
     >
       {icon}
     </button>
@@ -58,14 +55,14 @@ export function HeaderActions(): React.ReactElement {
   const running = activeStatus === "running";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 8px", marginLeft: 4, borderLeft: "1px solid #2a2a2a", height: "100%" }}>
+    <div className="flex items-center gap-0.5 px-2 ml-1 border-l border-border h-full">
       <IconButton icon={<Play size={12} />} title="Start" disabled={running} onClick={start} />
       <IconButton icon={<RotateCw size={11} />} title="Restart" disabled={!running} onClick={restart} />
       <IconButton icon={<Square size={10} />} title="Stop" disabled={!running} onClick={stop} />
 
       {layoutActions && (
         <>
-          <div style={{ width: 1, height: 14, background: "#2a2a2a", margin: "0 4px" }} />
+          <div className="w-px h-3.5 bg-border mx-1" />
           {PRESETS.map((preset) => (
             <IconButton
               key={preset}
