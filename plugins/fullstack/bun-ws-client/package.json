@@ -2,18 +2,13 @@
   "name": "@react-fullstack/fullstack-bun-ws-client",
   "version": "0.3.1-alpha.8",
   "description": "WebSocket client transport for react-fullstack (works with Bun server)",
+  "type": "module",
   "exports": {
-    ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
-    },
-    "./package.json": "./package.json"
+    ".": "./src/index.ts"
   },
-  "types": "dist/esm/index.d.ts",
+  "files": ["src"],
   "scripts": {
-    "build": "tsc --module commonjs --outDir dist/cjs && tsc --module esnext --outDir dist/esm",
-    "start": "concurrently \"tsc -w --module commonjs --outDir dist/cjs\" \"tsc -w --module esnext --outDir dist/esm\"",
-    "prepare": "bun run build"
+    "build": "tsgo -p ."
   },
   "peerDependencies": {
     "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
@@ -23,17 +18,8 @@
   "devDependencies": {
     "@react-fullstack/fullstack": "workspace:*",
     "@types/react": "19.0.2",
-    "@types/react-dom": "19.0.2",
-    "concurrently": "7.5.0",
-    "typescript": "5.7.2"
+    "@types/react-dom": "19.0.2"
   },
-  "keywords": [
-    "react",
-    "websocket",
-    "fullstack",
-    "typescript",
-    "bun"
-  ],
   "author": "shmuelhizmi",
   "license": "MIT"
 }

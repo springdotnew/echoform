@@ -12,7 +12,8 @@
     "demo/*"
   ],
   "scripts": {
-    "build": "bun run --filter '*' build",
+    "typecheck": "tsgo -p packages/fullstack && tsgo -p packages/react-render-null && tsgo -p plugins/fullstack/bun-ws-client && tsgo -p plugins/fullstack/bun-ws-server && tsgo -p plugins/fullstack/socket-client && tsgo -p plugins/fullstack/socket-server",
+    "build": "bun run typecheck",
     "clean": "rm -rf packages/*/dist packages/*/lib plugins/*/*/dist plugins/*/*/lib",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
@@ -25,6 +26,7 @@
     "@changesets/cli": "^2.25.2"
   },
   "devDependencies": {
+    "@typescript/native-preview": "^7.0.0-dev.20260323.1",
     "knip": "^5.0.0",
     "oxlint": "^0.13.0"
   }

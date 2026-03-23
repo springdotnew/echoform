@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Transport } from "@react-fullstack/fullstack/shared";
-import { createWebSocketTransport } from "@react-fullstack/fullstack/shared";
+import { createWebSocketTransport, type WebSocketLike } from "@react-fullstack/fullstack/shared";
 
 export interface WebSocketTransportState {
   readonly transport: Transport<Record<string, unknown>> | null;
@@ -21,7 +21,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
 
-    const { transport, dispatch, disconnect } = createWebSocketTransport(ws, { checkOpen: true });
+    const { transport, dispatch, disconnect } = createWebSocketTransport(ws as unknown as WebSocketLike, { checkOpen: true });
 
     ws.onopen = () => {
       if (!disposed) {

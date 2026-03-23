@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Client as ClientBase } from "@react-fullstack/fullstack/client";
-import { connect } from "socket.io-client";
+import { connect, type Socket, type ManagerOptions, type SocketOptions } from "socket.io-client";
 import type { Transport } from "@react-fullstack/fullstack/shared";
 import { emit } from "@react-fullstack/fullstack/shared";
 
@@ -8,13 +8,13 @@ interface Props<ViewsInterface extends Record<string, unknown> = Record<string, 
   readonly port: number;
   readonly host: string;
   readonly views: Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>;
-  readonly socketOptions?: SocketIOClient.ConnectOpts;
+  readonly socketOptions?: Partial<ManagerOptions & SocketOptions>;
 }
 
 function Client<ViewsInterface extends Record<string, unknown> = Record<string, unknown>>(props: Props<ViewsInterface>): React.ReactElement {
   const { host, port, views, socketOptions } = props;
   const [connected, setConnected] = useState(false);
-  const socketRef = useRef<SocketIOClient.Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     const socket = connect(`${host}:${port}`, socketOptions);

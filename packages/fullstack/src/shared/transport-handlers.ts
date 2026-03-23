@@ -69,7 +69,7 @@ export function fireDisconnect(handlers: HandlerRegistry): void {
  * WebSocket-like interface for creating transports.
  */
 export interface WebSocketLike {
-  readonly send: (data: string | Uint8Array | ArrayBuffer) => void;
+  send(data: string | Uint8Array | ArrayBuffer | ArrayBufferView): void;
   readonly readyState?: number;
 }
 
