@@ -1,5 +1,11 @@
 # @playfast/echoform-bun-ws-client
 
+## 1.0.1
+
+### Patch Changes
+
+- e654ca0: Fix workspace:\* dependencies not resolved in published packages.
+
 ## 1.0.0
 
 ### Minor Changes
