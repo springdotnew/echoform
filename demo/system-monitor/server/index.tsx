@@ -1,3 +1,8 @@
+// systeminformation shells out to sysctl/vm_stat on macOS without full paths
+if (process.env.PATH && !process.env.PATH.includes("/usr/sbin")) {
+  process.env.PATH = `/usr/sbin:/sbin:${process.env.PATH}`;
+}
+
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import * as os from "os";
 import si from "systeminformation";
