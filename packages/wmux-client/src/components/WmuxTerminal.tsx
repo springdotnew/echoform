@@ -47,6 +47,8 @@ export function WmuxTerminal(props: WmuxTerminalProps): React.ReactElement {
 
     xterm.attachCustomKeyEventHandler((event) => {
       if ((event.metaKey || event.ctrlKey) && event.key >= "1" && event.key <= "9") return false;
+      if ((event.metaKey || event.ctrlKey) && (event.key === "[" || event.key === "]")) return false;
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") return false;
       if (event.key === "Escape") { event.preventDefault(); return true; }
       return true;
     });

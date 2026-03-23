@@ -23,6 +23,27 @@ interface CategoryInfo {
   readonly tabs: readonly TabInfo[];
 }
 
+// ── Helpers ──
+
+function hexToRgb(hex: string): [number, number, number] {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return [0, 0, 0];
+  return [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)];
+}
+
+/** Blend a category color into a dark base at a given ratio (0–1). */
+function blendColor(accent: string, base: string, ratio: number): string {
+  const [ar, ag, ab] = hexToRgb(accent);
+  const [br, bg, bb] = hexToRgb(base);
+  const r = Math.round(br + (ar - br) * ratio);
+  const g = Math.round(bg + (ag - bg) * ratio);
+  const b = Math.round(bb + (ab - bb) * ratio);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+const BASE_BG = "#030304";
+const BASE_CARD = "#111113";
+
 // ── Contexts ──
 
 type TerminalRegistry = ReadonlyMap<string, ReactNode>;
@@ -173,29 +194,29 @@ function Sidebar({
                     if (!isActive) onSelectCategory(cat.name);
                     onSelectTab(tab.id);
                   }}
-                  className={`flex items-start gap-2 pl-5 pr-2 py-[3px] cursor-pointer transition-colors duration-100 ${
+                  className={`flex items-center gap-2.5 pl-5 pr-2 py-[7px] cursor-pointer transition-colors duration-100 rounded-sm mx-1 ${
                     isActiveTab
                       ? "bg-card/80 text-foreground"
                       : "text-muted-foreground/60 hover:bg-card/40 hover:text-foreground/70"
                   }`}
                 >
                   {TabIcon ? (
-                    <TabIcon size={12} className="shrink-0 mt-[3px]" />
+                    <TabIcon size={14} className="shrink-0" />
                   ) : (
                     <span
-                      className="w-[5px] h-[5px] rounded-full shrink-0 mt-[7px]"
+                      className="w-[6px] h-[6px] rounded-full shrink-0"
                       style={{ background: STATUS_COLORS[tab.status] ?? "#3f3f46" }}
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-[12px] leading-tight truncate">{tab.name}</div>
+                    <div className="text-[13px] leading-snug truncate">{tab.name}</div>
                     {tab.description && (
-                      <div className="text-[10px] leading-tight text-muted-foreground/30 truncate">{tab.description}</div>
+                      <div className="text-[10px] leading-snug text-muted-foreground/30 truncate mt-px">{tab.description}</div>
                     )}
                   </div>
                   {TabIcon && (
                     <span
-                      className="w-[5px] h-[5px] rounded-full shrink-0 mt-[7px]"
+                      className="w-[6px] h-[6px] rounded-full shrink-0"
                       style={{ background: STATUS_COLORS[tab.status] ?? "#3f3f46" }}
                     />
                   )}
@@ -206,11 +227,19 @@ function Sidebar({
         );
       })}
 
-      {/* Keyboard hint */}
-      <div className="mt-auto py-2 px-3 border-t border-border/20">
+      {/* Keyboard hints */}
+      <div className="mt-auto py-2 px-2.5 border-t border-border/20 flex flex-col gap-1">
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/20">
           <kbd className="bg-background/50 px-1 py-px rounded border border-border/20 font-mono text-[9px]">⌘K</kbd>
           <span>Command palette</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/20">
+          <kbd className="bg-background/50 px-1 py-px rounded border border-border/20 font-mono text-[9px]">⌘1-9</kbd>
+          <span>Switch category</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/20">
+          <kbd className="bg-background/50 px-1 py-px rounded border border-border/20 font-mono text-[9px]">⌘[]</kbd>
+          <span>Switch tab</span>
         </div>
       </div>
     </div>
@@ -263,20 +292,52 @@ export function WmuxApp(props: {
   const activeTabs = activeCategoryData?.tabs ?? [];
   const hasActiveCategory = activeCategory !== "";
 
-  // Cmd+K handler
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      const mod = e.metaKey || e.ctrlKey;
+
+      // Cmd+K — command palette
+      if (mod && e.key === "k") {
         e.preventDefault();
         setCmdkOpen((prev) => !prev);
+        return;
       }
+
+      // Escape — close palette
       if (e.key === "Escape" && cmdkOpen) {
         setCmdkOpen(false);
+        return;
+      }
+
+      // Cmd+1-9 — switch sidebar category
+      if (mod && e.key >= "1" && e.key <= "9") {
+        e.preventDefault();
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx < categories.length) {
+          selectCategory(categories[idx]!.name);
+        }
+        return;
+      }
+
+      // Cmd+[ / Cmd+] — switch dockview tabs
+      if (mod && (e.key === "[" || e.key === "]")) {
+        e.preventDefault();
+        const api = apiRef.current;
+        if (!api || api.panels.length === 0) return;
+        const panels = api.panels;
+        const activeIdx = panels.findIndex((p) => p.id === api.activePanel?.id);
+        if (activeIdx === -1) return;
+        const next = e.key === "]"
+          ? (activeIdx + 1) % panels.length
+          : (activeIdx - 1 + panels.length) % panels.length;
+        panels[next]!.api.setActive();
+        return;
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [cmdkOpen]);
+  }, [cmdkOpen, categories, selectCategory]);
 
   // Sync dockview with active category
   useEffect(() => {
@@ -349,12 +410,21 @@ export function WmuxApp(props: {
           {hasActiveCategory && activeTabs.length > 0 ? (
             <ProcessActionsContext.Provider value={processActions}>
               <TerminalRegistryContext.Provider value={terminalRegistry}>
-                <DockviewReact
-                  className="dockview-theme-dark"
-                  components={panelComponents}
-                  onReady={onReady}
-                  rightHeaderActionsComponent={HeaderActions}
-                />
+                <div
+                  className="w-full h-full"
+                  style={{
+                    "--dv-tabs-and-actions-container-background-color": blendColor(activeCategoryData?.color ?? "#3f3f46", BASE_CARD, 0.08),
+                    "--dv-activegroup-visiblepanel-tab-background-color": blendColor(activeCategoryData?.color ?? "#3f3f46", BASE_BG, 0.12),
+                    "--dv-activegroup-hiddenpanel-tab-background-color": blendColor(activeCategoryData?.color ?? "#3f3f46", BASE_CARD, 0.06),
+                  } as React.CSSProperties}
+                >
+                  <DockviewReact
+                    className="dockview-theme-dark"
+                    components={panelComponents}
+                    onReady={onReady}
+                    rightHeaderActionsComponent={HeaderActions}
+                  />
+                </div>
               </TerminalRegistryContext.Provider>
             </ProcessActionsContext.Provider>
           ) : (
