@@ -34,6 +34,10 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Build wmux-client
+        working-directory: packages/wmux-client
+        run: bun run build
+
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
 

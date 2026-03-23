@@ -6,7 +6,8 @@ import type { StreamReceiver } from "./view-inference";
 export interface RenderProps {
   readonly viewsData: ReadonlyArray<ExistingSharedViewData>;
   readonly createEvent?: (eventUid: EventUid, ...args: ReadonlyArray<SerializableValue>) => Promise<SerializableValue>;
-  readonly views: Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- props are constructed dynamically at runtime
+  readonly views: Readonly<Record<string, React.ComponentType<any>>>;
   readonly streamSubscribe?: (streamUid: StreamUid, listener: (chunk: SerializableValue) => void) => () => void;
 }
 

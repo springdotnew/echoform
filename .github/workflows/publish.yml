@@ -50,7 +50,7 @@ jobs:
       - name: Bump versions
         run: |
           BUMP="${{ inputs.bump }}"
-          for pkg in packages/fullstack packages/react-render-null plugins/fullstack/bun-ws-client plugins/fullstack/bun-ws-server plugins/fullstack/socket-client plugins/fullstack/socket-server; do
+          for pkg in packages/fullstack packages/react-render-null packages/wmux plugins/fullstack/bun-ws-client plugins/fullstack/bun-ws-server plugins/fullstack/socket-client plugins/fullstack/socket-server; do
             cd "$pkg"
             CURRENT=$(node -p "require('./package.json').version")
             npm version "$BUMP" --no-git-tag-version
@@ -59,10 +59,15 @@ jobs:
             cd "$GITHUB_WORKSPACE"
           done
 
+      - name: Set wmux client URL
+        run: |
+          WMUX_CLIENT_URL="${{ vars.WMUX_CLIENT_URL || 'https://wmux.playfast.dev' }}"
+          sed -i "s|__WMUX_CLIENT_URL__|$WMUX_CLIENT_URL|g" packages/wmux/src/wmux.tsx
+
       - name: Publish with provenance
         run: |
           TAG="${{ inputs.tag }}"
-          for pkg in packages/fullstack packages/react-render-null plugins/fullstack/bun-ws-client plugins/fullstack/bun-ws-server plugins/fullstack/socket-client plugins/fullstack/socket-server; do
+          for pkg in packages/fullstack packages/react-render-null packages/wmux plugins/fullstack/bun-ws-client plugins/fullstack/bun-ws-server plugins/fullstack/socket-client plugins/fullstack/socket-server; do
             cd "$pkg"
             NAME=$(node -p "require('./package.json').name")
             VERSION=$(node -p "require('./package.json').version")

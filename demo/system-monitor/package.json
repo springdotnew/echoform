@@ -1,0 +1,30 @@
+{
+  "name": "@demo/system-monitor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "server": "PATH=/usr/sbin:/sbin:$PATH bun server/index.tsx",
+    "dev:server": "PATH=/usr/sbin:/sbin:$PATH bun server/index.tsx",
+    "dev:client": "vite",
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\""
+  },
+  "dependencies": {
+    "@heroui/react": "^3.0.1",
+    "@heroui/styles": "^3.0.1",
+    "@playfast/echoform": "workspace:*",
+    "@playfast/echoform-bun-ws-client": "workspace:*",
+    "@playfast/echoform-bun-ws-server": "workspace:*",
+    "@playfast/echoform-render": "workspace:*",
+    "@tailwindcss/vite": "^4.2.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "systeminformation": "^5.31.5",
+    "tailwindcss": "4",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.4.1",
+    "concurrently": "^9.1.2",
+    "vite": "^6.0.0"
+  }
+}

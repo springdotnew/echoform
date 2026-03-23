@@ -1,8 +1,8 @@
-# React Fullstack
+# echoform
 
-A framework for building fullstack React applications with server-driven UI, type-safe RPC callbacks, and streaming — powered by Standard Schema validation.
+Build web UIs where all logic stays on the server. The browser is just a screen.
 
-## Quick Start
+echoform is for dev tools, local apps, and anywhere you want a web interface without building an API layer. You write React on the server — state, callbacks, streaming — and echoform handles the rest.
 
 ```bash
 bun add @playfast/echoform @playfast/echoform-render
@@ -11,126 +11,140 @@ bun add @playfast/echoform-bun-ws-client   # client
 bun add zod  # or valibot, arktype — any Standard Schema library
 ```
 
-## Define Views
+## Example: System Monitor
 
-Views are the shared contract between server and client. Each view declares its **input** (data props), **callbacks** (client→server RPC), and **streams** (server→client push).
+A live process monitor in ~40 lines of server code. The client is just HTML — zero business logic.
+
+> [Full source](demo/system-monitor)
+
+### 1. Define the contract
 
 ```typescript
 // shared/views.ts
 import { view, callback, stream, createViews } from "@playfast/echoform";
 import { z } from "zod";
 
-export const TodoApp = view("TodoApp", {
+export const Dashboard = view("Dashboard", {
   input: {
-    title: z.string(),
-    itemCount: z.number(),
-    completedCount: z.number(),
+    hostname: z.string(),
+    cpuUsage: z.number(),
+    memoryUsed: z.number(),
+    memoryTotal: z.number(),
   },
 });
 
-export const TodoInput = view("TodoInput", {
-  input: { placeholder: z.string() },
-  callbacks: { onAdd: callback({ input: z.string() }) },
+export const ProcessTable = view("ProcessTable", {
+  input: {
+    processes: z.array(z.object({
+      pid: z.number(), name: z.string(), cpu: z.number(), memory: z.number(),
+    })),
+  },
+  callbacks: {
+    onKill: callback({ input: z.number() }),
+    onRefresh: callback(),
+  },
 });
 
-export const Terminal = view("Terminal", {
-  input: { title: z.string() },
-  callbacks: { onInput: callback({ input: z.string() }) },
-  streams: { output: stream(z.string()) },
+export const LogStream = view("LogStream", {
+  streams: { lines: stream(z.string()) },
 });
 
-export const views = createViews({ TodoApp, TodoInput, Terminal });
+export const views = createViews({ Dashboard, ProcessTable, LogStream });
 ```
 
-## Server
-
-The server renders React components that map to views. State lives on the server — the client is a thin rendering layer.
+### 2. Server — all logic lives here
 
 ```typescript
 // server/index.tsx
+import os from "os";
 import { Render } from "@playfast/echoform-render";
 import { Server, useViews, useStream } from "@playfast/echoform/server";
 import { createBunWebSocketServer } from "@playfast/echoform-bun-ws-server";
-import { views, Terminal } from "../shared/views";
+import { views, LogStream } from "../shared/views";
 
-function App() {
+function Monitor() {
   const View = useViews(views);
-  const output = useStream(Terminal, "output");
+  const log = useStream(LogStream, "lines");
+  const [processes, setProcesses] = useState([]);
 
-  // Stream: server pushes data to client
   useEffect(() => {
-    const interval = setInterval(() => {
-      output.emit("heartbeat " + Date.now());
-    }, 1000);
-    return () => { clearInterval(interval); output.end(); };
+    const refresh = async () => {
+      setProcesses(await getProcessList());
+    };
+    refresh();
+    const interval = setInterval(refresh, 2000);
+    return () => clearInterval(interval);
   }, []);
 
   if (!View) return null;
 
   return (
-    <View.Terminal
-      title="My Terminal"
-      output={output}
-      onInput={(text) => {
-        // Callback: client sends data to server
-        output.emit("echo: " + text);
-      }}
-    />
+    <>
+      <View.Dashboard
+        hostname={os.hostname()}
+        cpuUsage={getCpuUsage()}
+        memoryUsed={os.totalmem() - os.freemem()}
+        memoryTotal={os.totalmem()}
+      />
+      <View.ProcessTable
+        processes={processes}
+        onKill={(pid) => {
+          process.kill(pid, "SIGTERM");
+          log.emit(`Killed PID ${pid}`);
+        }}
+        onRefresh={() => refresh()}
+      />
+      <View.LogStream lines={log} />
+    </>
   );
 }
 
-const { transport, start } = createBunWebSocketServer({ port: 4201, path: "/ws" });
+const { transport, start } = createBunWebSocketServer({ port: 4231, path: "/ws" });
 start();
 
 Render(
   <Server transport={transport}>
-    {() => <App />}
+    {() => <Monitor />}
   </Server>
 );
 ```
 
-## Client
-
-Client components receive typed props with `.mutate()` for callbacks and `.subscribe()` for streams.
-
-```typescript
-// client/components.tsx
-import type { InferClientProps } from "@playfast/echoform/client";
-import { Terminal as TerminalDef } from "../shared/views";
-
-function Terminal(props: InferClientProps<typeof TerminalDef>) {
-  const [lines, setLines] = useState<string[]>([]);
-
-  // Subscribe to server stream
-  useEffect(() => {
-    return props.output.subscribe((line) => {
-      setLines((prev) => [...prev, line]);
-    });
-  }, [props.output]);
-
-  // Call server callback
-  const handleSubmit = (text: string) => {
-    props.onInput.mutate(text);
-  };
-
-  // TanStack Query integration
-  const mutation = useMutation(props.onInput.queryOptions());
-
-  return <div>{lines.map((l, i) => <div key={i}>{l}</div>)}</div>;
-}
-```
+### 3. Client — just renders what the server sends
 
 ```typescript
 // client/index.tsx
 import { Client } from "@playfast/echoform/client";
 import { useWebSocketTransport } from "@playfast/echoform-bun-ws-client";
+import { Dashboard, ProcessTable, LogStream } from "./components";
 
 function App() {
-  const { transport, error } = useWebSocketTransport("ws://localhost:4201/ws");
+  const { transport } = useWebSocketTransport("ws://localhost:4231/ws");
   if (!transport) return <div>Connecting...</div>;
-  return <Client transport={transport} views={{ Terminal }} requestViewTreeOnMount />;
+  return <Client transport={transport} views={{ Dashboard, ProcessTable, LogStream }} />;
 }
 ```
+
+Client components receive typed props — `.mutate()` for callbacks, `.subscribe()` for streams:
+
+```typescript
+// client/components.tsx
+function ProcessTable({ processes, onKill, onRefresh }: InferClientProps<typeof ProcessTableDef>) {
+  return (
+    <table>
+      {processes.map((proc) => (
+        <tr key={proc.pid}>
+          <td>{proc.name}</td>
+          <td>{proc.cpu}%</td>
+          <td><button onClick={() => onKill.mutate(proc.pid)}>Kill</button></td>
+        </tr>
+      ))}
+      <button onClick={() => onRefresh.mutate()}>Refresh</button>
+    </table>
+  );
+}
+```
+
+The server reads system data, manages state, handles kill signals. The client is a dumb terminal. echoform bridges them transparently over WebSocket.
 
 ## API
 
@@ -174,7 +188,7 @@ stream.subscribe(listener)    // Returns unsubscribe function
 ### Transport (`@playfast/echoform-bun-ws-client`)
 
 ```typescript
-const { transport, error, isConnected } = useWebSocketTransport(url);
+const { transport, error, status } = useWebSocketTransport(url);
 ```
 
 ## Packages
@@ -191,6 +205,7 @@ const { transport, error, isConnected } = useWebSocketTransport(url);
 
 ## Demos
 
+- [System Monitor](demo/system-monitor) — live process monitor with kill, streams, and system stats
 - [Todo App](demo/todo-app) — CRUD with callbacks and zod schemas
 - [File Editor](demo/file-editor) — Monaco editor with file tree
-- [Terminal](demo/terminal) — streaming terminal with PTY
+- [Dev Server](demo/dev-server) — multi-process terminal dashboard

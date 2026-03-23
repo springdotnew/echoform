@@ -24,6 +24,14 @@
     "plugins/fullstack/socket-client": {
       "entry": ["src/index.tsx"],
       "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/wmux": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/wmux-client": {
+      "entry": ["src/index.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
     }
   },
   "ignore": [
