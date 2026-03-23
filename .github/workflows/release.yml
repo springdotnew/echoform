@@ -33,7 +33,7 @@ jobs:
 
       - name: Set wmux client URL
         run: |
-          WMUX_CLIENT_URL="${{ vars.WMUX_CLIENT_URL || 'https://wmux.playfast.dev' }}"
+          WMUX_CLIENT_URL="${{ vars.WMUX_CLIENT_URL || 'https://wmux.play.fast' }}"
           sed -i "s|__WMUX_CLIENT_URL__|$WMUX_CLIENT_URL|g" packages/wmux/src/wmux.tsx
 
       - name: Configure npm auth
