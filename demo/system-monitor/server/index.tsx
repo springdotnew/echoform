@@ -26,23 +26,33 @@ function getSystemStats(): { cpuUsage: number; memoryTotal: number; memoryUsed: 
   return { cpuUsage: Math.round(cpuUsage * 1000) / 10, memoryTotal, memoryUsed };
 }
 
+function parseProcessLine(line: string): ProcessSnapshot | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length < 4) return null;
+  const pid = parseInt(parts[0]!, 10);
+  const cpu = parseFloat(parts[1]!);
+  const memory = parseInt(parts[2]!, 10) * 1024;
+  const name = parts.slice(3).join(" ");
+  if (isNaN(pid) || isNaN(cpu)) return null;
+  return { pid, name, cpu, memory };
+}
+
 async function getProcessList(): Promise<ReadonlyArray<ProcessSnapshot>> {
-  const result = Bun.spawnSync(["ps", "-eo", "pid,pcpu,rss,comm", "--no-headers"]);
-  const output = result.stdout.toString();
+  const isDarwin = os.platform() === "darwin";
+  const args = isDarwin
+    ? ["ps", "-axo", "pid,pcpu,rss,comm"]
+    : ["ps", "-eo", "pid,pcpu,rss,comm", "--no-headers"];
+
+  const result = Bun.spawnSync(args);
+  const lines = result.stdout.toString().split("\n");
+  const startIndex = isDarwin ? 1 : 0;
   const processes: ProcessSnapshot[] = [];
 
-  for (const line of output.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    const parts = trimmed.split(/\s+/);
-    if (parts.length < 4) continue;
-    const pid = parseInt(parts[0]!, 10);
-    const cpu = parseFloat(parts[1]!);
-    const memory = parseInt(parts[2]!, 10) * 1024;
-    const name = parts.slice(3).join(" ");
-    if (!isNaN(pid) && !isNaN(cpu)) {
-      processes.push({ pid, name, cpu, memory });
-    }
+  for (let i = startIndex; i < lines.length; i++) {
+    const snapshot = parseProcessLine(lines[i]!);
+    if (snapshot) processes.push(snapshot);
   }
 
   return processes;
