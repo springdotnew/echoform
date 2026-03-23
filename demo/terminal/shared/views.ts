@@ -3,6 +3,19 @@ import { z } from "zod";
 
 export const TerminalApp = view("TerminalApp", {
   input: {
+    workspaces: z.array(z.object({ id: z.string(), name: z.string() })),
+    activeWorkspaceId: z.string(),
+  },
+  callbacks: {
+    onNewWorkspace: callback(),
+    onSelectWorkspace: callback({ input: z.string() }),
+    onCloseWorkspace: callback({ input: z.string() }),
+  },
+});
+
+export const Workspace = view("Workspace", {
+  input: {
+    id: z.string(),
     tabs: z.array(z.object({ id: z.string(), title: z.string() })),
     activeTabId: z.string(),
   },
@@ -27,4 +40,4 @@ export const Terminal = view("Terminal", {
   },
 });
 
-export const views = createViews({ TerminalApp, Terminal });
+export const views = createViews({ TerminalApp, Workspace, Terminal });

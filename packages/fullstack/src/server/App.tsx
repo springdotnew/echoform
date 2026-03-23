@@ -72,25 +72,25 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
     return eventUid;
   }, []);
 
-  const broadcastStreamChunk = useCallback((streamUid: StreamUid, chunk: SerializableValue): void => {
+  const broadcast = useCallback(<Key extends keyof import("../shared/types").AppEvents>(
+    event: Key,
+    data: import("../shared/types").AppEvents[Key],
+  ): void => {
     const server = serverRef.current;
     if (!server) return;
-    const payload = { streamUid, chunk };
-    server.emit("stream_chunk", payload);
+    server.emit(event, data);
     for (const client of clientsRef.current) {
-      client.emit("stream_chunk", payload);
+      client.emit(event, data);
     }
   }, []);
 
+  const broadcastStreamChunk = useCallback((streamUid: StreamUid, chunk: SerializableValue): void => {
+    broadcast("stream_chunk", { streamUid, chunk });
+  }, [broadcast]);
+
   const broadcastStreamEnd = useCallback((streamUid: StreamUid): void => {
-    const server = serverRef.current;
-    if (!server) return;
-    const payload = { streamUid };
-    server.emit("stream_end", payload);
-    for (const client of clientsRef.current) {
-      client.emit("stream_end", payload);
-    }
-  }, []);
+    broadcast("stream_end", { streamUid });
+  }, [broadcast]);
 
   const registerSocketListener = useCallback((client: DecompileTransport) => {
     const requestViewsTreeHandler = (): void => {
@@ -155,10 +155,7 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
   }, []);
 
   const updateRunningView = useCallback((viewData: ViewData) => {
-    const server = serverRef.current;
-    if (!server) {
-      return;
-    }
+    if (!serverRef.current) return;
 
     const existingViewIndex = existingSharedViewsRef.current.findIndex(
       (view) => view.uid === viewData.uid
@@ -233,10 +230,7 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
           },
         },
       };
-      server.emit("update_view", updatePayload);
-      for (const client of clientsRef.current) {
-        client.emit("update_view", updatePayload);
-      }
+      broadcast("update_view", updatePayload);
       return;
     }
 
@@ -335,11 +329,8 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
         },
       },
     };
-    server.emit("update_view", updatePayload);
-    for (const client of clientsRef.current) {
-      client.emit("update_view", updatePayload);
-    }
-  }, [registerViewEvent]);
+    broadcast("update_view", updatePayload);
+  }, [registerViewEvent, broadcast]);
 
   const deleteRunningView = useCallback((uid: ViewUid) => {
     const runningViewIndex = existingSharedViewsRef.current.findIndex(
@@ -365,15 +356,8 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
       [...viewEventsRef.current].filter(([key]) => !deleteSet.has(key))
     );
 
-    const server = serverRef.current;
-    if (!server) return;
-
-    const deletePayload = { viewUid: uid };
-    server.emit("delete_view", deletePayload);
-    for (const client of clientsRef.current) {
-      client.emit("delete_view", deletePayload);
-    }
-  }, []);
+    broadcast("delete_view", { viewUid: uid });
+  }, [broadcast]);
 
   // componentDidMount equivalent
   useEffect(() => {

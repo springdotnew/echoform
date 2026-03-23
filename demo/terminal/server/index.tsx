@@ -30,7 +30,7 @@ function TerminalSession({ tab }: { readonly tab: Tab }): React.ReactElement | n
       terminal: {
         cols: 80,
         rows: 24,
-        data(_t, data: Uint8Array) {
+        data(_t: unknown, data: Uint8Array) {
           output.emit(toBase64(data));
         },
       },
@@ -55,48 +55,103 @@ function TerminalSession({ tab }: { readonly tab: Tab }): React.ReactElement | n
   );
 }
 
-function App(): React.ReactElement | null {
+function WorkspaceView({ id, onEmpty }: { readonly id: string; readonly onEmpty: () => void }): React.ReactElement | null {
   const View = useViews(views);
   const [tabs, setTabs] = useState<readonly Tab[]>([
     { id: String(nextId++), title: "bash" },
   ]);
-  const [activeId, setActiveId] = useState(tabs[0]!.id);
+  const [activeTabId, setActiveTabId] = useState(tabs[0]!.id);
 
   const addTab = useCallback(() => {
-    const id = String(nextId++);
-    setTabs((prev) => [...prev, { id, title: "bash" }]);
-    setActiveId(id);
+    const tabId = String(nextId++);
+    setTabs((prev) => [...prev, { id: tabId, title: "bash" }]);
+    setActiveTabId(tabId);
   }, []);
 
-  const closeTab = useCallback((id: string) => {
+  const closeTab = useCallback((tabId: string) => {
     setTabs((prev) => {
-      const next = prev.filter((t) => t.id !== id);
+      const next = prev.filter((t) => t.id !== tabId);
       if (next.length === 0) {
+        onEmpty();
+        return prev;
+      }
+      return next;
+    });
+    setActiveTabId((current) => {
+      if (current !== tabId) return current;
+      const remaining = tabs.filter((t) => t.id !== tabId);
+      return remaining[0]?.id ?? "";
+    });
+  }, [tabs, onEmpty]);
+
+  if (!View) return null;
+
+  return (
+    <View.Workspace
+      id={id}
+      tabs={tabs as Tab[]}
+      activeTabId={activeTabId}
+      onNewTab={addTab}
+      onCloseTab={closeTab}
+      onSelectTab={setActiveTabId}
+    >
+      {tabs.map((tab) => (
+        <TerminalSession key={tab.id} tab={tab} />
+      ))}
+    </View.Workspace>
+  );
+}
+
+interface WorkspaceInfo {
+  readonly id: string;
+  readonly name: string;
+}
+
+function App(): React.ReactElement | null {
+  const View = useViews(views);
+  const [workspaces, setWorkspaces] = useState<readonly WorkspaceInfo[]>([
+    { id: String(nextId++), name: "Workspace 1" },
+  ]);
+  const [activeId, setActiveId] = useState(workspaces[0]!.id);
+  const wsCountRef = useRef(1);
+
+  const addWorkspace = useCallback(() => {
+    wsCountRef.current += 1;
+    const wsId = String(nextId++);
+    setWorkspaces((prev) => [...prev, { id: wsId, name: `Workspace ${wsCountRef.current}` }]);
+    setActiveId(wsId);
+  }, []);
+
+  const closeWorkspace = useCallback((wsId: string) => {
+    setWorkspaces((prev) => {
+      const next = prev.filter((w) => w.id !== wsId);
+      if (next.length === 0) {
+        wsCountRef.current += 1;
         const newId = String(nextId++);
         setActiveId(newId);
-        return [{ id: newId, title: "bash" }];
+        return [{ id: newId, name: `Workspace ${wsCountRef.current}` }];
       }
       return next;
     });
     setActiveId((current) => {
-      if (current !== id) return current;
-      const remaining = tabs.filter((t) => t.id !== id);
+      if (current !== wsId) return current;
+      const remaining = workspaces.filter((w) => w.id !== wsId);
       return remaining[0]?.id ?? "";
     });
-  }, [tabs]);
+  }, [workspaces]);
 
   if (!View) return null;
 
   return (
     <View.TerminalApp
-      tabs={tabs as Tab[]}
-      activeTabId={activeId}
-      onNewTab={addTab}
-      onCloseTab={closeTab}
-      onSelectTab={setActiveId}
+      workspaces={workspaces as WorkspaceInfo[]}
+      activeWorkspaceId={activeId}
+      onNewWorkspace={addWorkspace}
+      onSelectWorkspace={setActiveId}
+      onCloseWorkspace={closeWorkspace}
     >
-      {tabs.map((tab) => (
-        <TerminalSession key={tab.id} tab={tab} />
+      {workspaces.map((ws) => (
+        <WorkspaceView key={ws.id} id={ws.id} onEmpty={() => closeWorkspace(ws.id)} />
       ))}
     </View.TerminalApp>
   );

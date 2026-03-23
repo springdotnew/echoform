@@ -11,30 +11,13 @@ import {
   BufferWriter,
   Measurer,
   MaxValue,
-  object,
   string as binString,
   bool,
   u8,
   u32,
-  f32,
-  dynamicArrayOf,
-  optional,
 } from "typed-binary";
-import type { ISerialInput, ISerialOutput, IMeasurer, Parsed } from "typed-binary";
+import type { ISerialInput, ISerialOutput, IMeasurer } from "typed-binary";
 import type { SerializableValue } from "./types";
-
-// typed-binary doesn't export f64, so we create a custom Float64 schema
-class Float64Schema extends Schema<number> {
-  read(input: ISerialInput): number {
-    return input.readFloat32(); // We'll use a dual-f32 encoding below
-  }
-  write(output: ISerialOutput, value: number): void {
-    output.writeFloat32(value);
-  }
-  measure(_: number | typeof MaxValue, measurer: IMeasurer = new Measurer()): IMeasurer {
-    return measurer.add(4);
-  }
-}
 
 // For numbers, use JSON string encoding to preserve full f64 precision
 // (typed-binary only has f32 which loses precision)
@@ -172,68 +155,69 @@ const PROP_DATA = 0;
 const PROP_EVENT = 1;
 const PROP_STREAM = 2;
 
-const propSchema = object({
-  type: u8,
-  name: binString,
-  // Extra fields are encoded conditionally after the base
-});
+// ---- Wire prop types (unbranded, as they appear on the binary wire) ----
 
-class PropBinarySchema extends Schema<{
+interface BinaryDataProp {
   readonly name: string;
-  readonly type: "data" | "event" | "stream";
-  readonly data?: SerializableValue;
-  readonly uid?: string;
-}> {
-  write(output: ISerialOutput, value: { readonly name: string; readonly type: string; readonly data?: SerializableValue; readonly uid?: string }): void {
+  readonly type: "data";
+  readonly data: SerializableValue;
+}
+
+interface BinaryEventProp {
+  readonly name: string;
+  readonly type: "event";
+  readonly uid: string;
+}
+
+interface BinaryStreamProp {
+  readonly name: string;
+  readonly type: "stream";
+  readonly uid: string;
+}
+
+type BinaryProp = BinaryDataProp | BinaryEventProp | BinaryStreamProp;
+
+class PropBinarySchema extends Schema<BinaryProp> {
+  write(output: ISerialOutput, value: BinaryProp): void {
     binString.write(output, value.name);
     if (value.type === "data") {
       u8.write(output, PROP_DATA);
-      serializableValue.write(output, value.data as SerializableValue);
+      serializableValue.write(output, value.data);
     } else if (value.type === "event") {
       u8.write(output, PROP_EVENT);
-      binString.write(output, value.uid ?? "");
+      binString.write(output, value.uid);
     } else {
       u8.write(output, PROP_STREAM);
-      binString.write(output, value.uid ?? "");
+      binString.write(output, value.uid);
     }
   }
 
-  read(input: ISerialInput): { readonly name: string; readonly type: "data" | "event" | "stream"; readonly data?: SerializableValue; readonly uid?: string } {
+  read(input: ISerialInput): BinaryProp {
     const name = binString.read(input);
     const tag = u8.read(input);
     if (tag === PROP_DATA) {
-      return { name, type: "data", data: serializableValue.read(input) } as any;
+      return { name, type: "data", data: serializableValue.read(input) };
     }
     if (tag === PROP_EVENT) {
-      return { name, type: "event", uid: binString.read(input) } as any;
+      return { name, type: "event", uid: binString.read(input) };
     }
-    return { name, type: "stream", uid: binString.read(input) } as any;
+    return { name, type: "stream", uid: binString.read(input) };
   }
 
-  measure(value: any, measurer: IMeasurer = new Measurer()): IMeasurer {
+  measure(value: BinaryProp | typeof MaxValue, measurer: IMeasurer = new Measurer()): IMeasurer {
     if (value === MaxValue) return measurer.unbounded;
     binString.measure(value.name, measurer);
     measurer.add(1); // tag
     if (value.type === "data") {
       serializableValue.measure(value.data, measurer);
     } else {
-      binString.measure(value.uid ?? "", measurer);
+      binString.measure(value.uid, measurer);
     }
     return measurer;
   }
 }
 
 const propBinary = new PropBinarySchema();
-
-// ---- View data schemas ----
-
-const viewDataBaseSchema = object({
-  uid: binString,
-  name: binString,
-  parentUid: binString,
-  childIndex: u32,
-  isRoot: bool,
-});
 
 // ---- Event type discriminator ----
 
@@ -331,162 +315,183 @@ export function decodeMessage(bytes: Uint8Array): WireMessage {
   return { event, data };
 }
 
-// ---- Per-event payload write/read/measure ----
+// ---- Wire view types (unbranded, as they appear on the binary wire) ----
+
+interface BinaryViewBase {
+  readonly uid: string;
+  readonly name: string;
+  readonly parentUid: string;
+  readonly childIndex: number;
+  readonly isRoot: boolean;
+}
+
+interface BinaryExistingViewData extends BinaryViewBase {
+  readonly props: ReadonlyArray<BinaryProp>;
+}
+
+interface BinaryShareableViewData extends BinaryViewBase {
+  readonly props: {
+    readonly create: ReadonlyArray<BinaryProp>;
+    readonly delete: ReadonlyArray<string>;
+  };
+}
+
+// ---- Wire event payload types ----
+
+type WireUpdateViewsTree = { readonly views: ReadonlyArray<BinaryExistingViewData> };
+type WireUpdateView = { readonly view: BinaryShareableViewData };
+type WireDeleteView = { readonly viewUid: string };
+type WireRespondToEvent = { readonly data: SerializableValue; readonly uid: string; readonly eventUid: string };
+type WireRequestEvent = { readonly eventArguments: ReadonlyArray<SerializableValue>; readonly uid: string; readonly eventUid: string };
+type WireStreamChunk = { readonly streamUid: string; readonly chunk: SerializableValue };
+type WireStreamEnd = { readonly streamUid: string };
+
+// ---- Per-event codec: groups write/read/measure for each event type ----
+
+interface EventCodec<T> {
+  readonly write: (data: T, w: ISerialOutput) => void;
+  readonly read: (r: ISerialInput) => T;
+  readonly measure: (data: T, m: IMeasurer) => void;
+}
+
+const updateViewsTreeCodec: EventCodec<WireUpdateViewsTree> = {
+  write(data, w) {
+    u32.write(w, data.views.length);
+    for (const view of data.views) {
+      writeExistingViewData(view, w);
+    }
+  },
+  read(r) {
+    const len = u32.read(r);
+    const views: BinaryExistingViewData[] = [];
+    for (let i = 0; i < len; i++) {
+      views.push(readExistingViewData(r));
+    }
+    return { views };
+  },
+  measure(data, m) {
+    m.add(4);
+    for (const view of data.views) {
+      measureExistingViewData(view, m);
+    }
+  },
+};
+
+const updateViewCodec: EventCodec<WireUpdateView> = {
+  write(data, w) { writeShareableViewData(data.view, w); },
+  read(r) { return { view: readShareableViewData(r) }; },
+  measure(data, m) { measureShareableViewData(data.view, m); },
+};
+
+const deleteViewCodec: EventCodec<WireDeleteView> = {
+  write(data, w) { binString.write(w, data.viewUid); },
+  read(r) { return { viewUid: binString.read(r) }; },
+  measure(data, m) { binString.measure(data.viewUid, m); },
+};
+
+const requestViewsTreeCodec: EventCodec<void> = {
+  write() {},
+  read() { return undefined as void; },
+  measure() {},
+};
+
+const respondToEventCodec: EventCodec<WireRespondToEvent> = {
+  write(data, w) {
+    serializableValue.write(w, data.data);
+    binString.write(w, data.uid);
+    binString.write(w, data.eventUid);
+  },
+  read(r) {
+    const data = serializableValue.read(r);
+    const uid = binString.read(r);
+    const eventUid = binString.read(r);
+    return { data, uid, eventUid };
+  },
+  measure(data, m) {
+    serializableValue.measure(data.data, m);
+    binString.measure(data.uid, m);
+    binString.measure(data.eventUid, m);
+  },
+};
+
+const requestEventCodec: EventCodec<WireRequestEvent> = {
+  write(data, w) {
+    u32.write(w, data.eventArguments.length);
+    for (const arg of data.eventArguments) {
+      serializableValue.write(w, arg);
+    }
+    binString.write(w, data.uid);
+    binString.write(w, data.eventUid);
+  },
+  read(r) {
+    const argLen = u32.read(r);
+    const eventArguments: SerializableValue[] = [];
+    for (let i = 0; i < argLen; i++) {
+      eventArguments.push(serializableValue.read(r));
+    }
+    const uid = binString.read(r);
+    const eventUid = binString.read(r);
+    return { eventArguments, uid, eventUid };
+  },
+  measure(data, m) {
+    m.add(4);
+    for (const arg of data.eventArguments) {
+      serializableValue.measure(arg, m);
+    }
+    binString.measure(data.uid, m);
+    binString.measure(data.eventUid, m);
+  },
+};
+
+const streamChunkCodec: EventCodec<WireStreamChunk> = {
+  write(data, w) {
+    binString.write(w, data.streamUid);
+    serializableValue.write(w, data.chunk);
+  },
+  read(r) {
+    const streamUid = binString.read(r);
+    const chunk = serializableValue.read(r);
+    return { streamUid, chunk };
+  },
+  measure(data, m) {
+    binString.measure(data.streamUid, m);
+    serializableValue.measure(data.chunk, m);
+  },
+};
+
+const streamEndCodec: EventCodec<WireStreamEnd> = {
+  write(data, w) { binString.write(w, data.streamUid); },
+  read(r) { return { streamUid: binString.read(r) }; },
+  measure(data, m) { binString.measure(data.streamUid, m); },
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const eventCodecs: ReadonlyArray<EventCodec<any> | undefined> = [
+  updateViewsTreeCodec,   // 0 = EVENT_UPDATE_VIEWS_TREE
+  updateViewCodec,        // 1 = EVENT_UPDATE_VIEW
+  deleteViewCodec,        // 2 = EVENT_DELETE_VIEW
+  requestViewsTreeCodec,  // 3 = EVENT_REQUEST_VIEWS_TREE
+  respondToEventCodec,    // 4 = EVENT_RESPOND_TO_EVENT
+  requestEventCodec,      // 5 = EVENT_REQUEST_EVENT
+  streamChunkCodec,       // 6 = EVENT_STREAM_CHUNK
+  streamEndCodec,         // 7 = EVENT_STREAM_END
+];
 
 function writeEventPayload(eventId: number, data: unknown, w: ISerialOutput): void {
-  switch (eventId) {
-    case EVENT_UPDATE_VIEWS_TREE: {
-      const d = data as { readonly views: ReadonlyArray<any> };
-      u32.write(w, d.views.length);
-      for (const view of d.views) {
-        writeExistingViewData(view, w);
-      }
-      break;
-    }
-    case EVENT_UPDATE_VIEW: {
-      const d = data as { readonly view: any };
-      writeShareableViewData(d.view, w);
-      break;
-    }
-    case EVENT_DELETE_VIEW: {
-      const d = data as { readonly viewUid: string };
-      binString.write(w, d.viewUid);
-      break;
-    }
-    case EVENT_REQUEST_VIEWS_TREE:
-      // no payload
-      break;
-    case EVENT_RESPOND_TO_EVENT: {
-      const d = data as { readonly data: SerializableValue; readonly uid: string; readonly eventUid: string };
-      serializableValue.write(w, d.data);
-      binString.write(w, d.uid);
-      binString.write(w, d.eventUid);
-      break;
-    }
-    case EVENT_REQUEST_EVENT: {
-      const d = data as { readonly eventArguments: ReadonlyArray<SerializableValue>; readonly uid: string; readonly eventUid: string };
-      u32.write(w, d.eventArguments.length);
-      for (const arg of d.eventArguments) {
-        serializableValue.write(w, arg);
-      }
-      binString.write(w, d.uid);
-      binString.write(w, d.eventUid);
-      break;
-    }
-    case EVENT_STREAM_CHUNK: {
-      const d = data as { readonly streamUid: string; readonly chunk: SerializableValue };
-      binString.write(w, d.streamUid);
-      serializableValue.write(w, d.chunk);
-      break;
-    }
-    case EVENT_STREAM_END: {
-      const d = data as { readonly streamUid: string };
-      binString.write(w, d.streamUid);
-      break;
-    }
-  }
+  eventCodecs[eventId]?.write(data, w);
 }
 
 function readEventPayload(eventId: number, r: ISerialInput): unknown {
-  switch (eventId) {
-    case EVENT_UPDATE_VIEWS_TREE: {
-      const len = u32.read(r);
-      const views: any[] = [];
-      for (let i = 0; i < len; i++) {
-        views.push(readExistingViewData(r));
-      }
-      return { views };
-    }
-    case EVENT_UPDATE_VIEW:
-      return { view: readShareableViewData(r) };
-    case EVENT_DELETE_VIEW:
-      return { viewUid: binString.read(r) };
-    case EVENT_REQUEST_VIEWS_TREE:
-      return undefined;
-    case EVENT_RESPOND_TO_EVENT: {
-      const data = serializableValue.read(r);
-      const uid = binString.read(r);
-      const eventUid = binString.read(r);
-      return { data, uid, eventUid };
-    }
-    case EVENT_REQUEST_EVENT: {
-      const argLen = u32.read(r);
-      const eventArguments: SerializableValue[] = [];
-      for (let i = 0; i < argLen; i++) {
-        eventArguments.push(serializableValue.read(r));
-      }
-      const uid = binString.read(r);
-      const eventUid = binString.read(r);
-      return { eventArguments, uid, eventUid };
-    }
-    case EVENT_STREAM_CHUNK: {
-      const streamUid = binString.read(r);
-      const chunk = serializableValue.read(r);
-      return { streamUid, chunk };
-    }
-    case EVENT_STREAM_END:
-      return { streamUid: binString.read(r) };
-    default:
-      return undefined;
-  }
+  return eventCodecs[eventId]?.read(r);
 }
 
 function measureEventPayload(eventId: number, data: unknown, m: IMeasurer): void {
-  switch (eventId) {
-    case EVENT_UPDATE_VIEWS_TREE: {
-      const d = data as { readonly views: ReadonlyArray<any> };
-      m.add(4); // array length
-      for (const view of d.views) {
-        measureExistingViewData(view, m);
-      }
-      break;
-    }
-    case EVENT_UPDATE_VIEW: {
-      const d = data as { readonly view: any };
-      measureShareableViewData(d.view, m);
-      break;
-    }
-    case EVENT_DELETE_VIEW: {
-      const d = data as { readonly viewUid: string };
-      binString.measure(d.viewUid, m);
-      break;
-    }
-    case EVENT_REQUEST_VIEWS_TREE:
-      break;
-    case EVENT_RESPOND_TO_EVENT: {
-      const d = data as { readonly data: SerializableValue; readonly uid: string; readonly eventUid: string };
-      serializableValue.measure(d.data, m);
-      binString.measure(d.uid, m);
-      binString.measure(d.eventUid, m);
-      break;
-    }
-    case EVENT_REQUEST_EVENT: {
-      const d = data as { readonly eventArguments: ReadonlyArray<SerializableValue>; readonly uid: string; readonly eventUid: string };
-      m.add(4); // array length
-      for (const arg of d.eventArguments) {
-        serializableValue.measure(arg, m);
-      }
-      binString.measure(d.uid, m);
-      binString.measure(d.eventUid, m);
-      break;
-    }
-    case EVENT_STREAM_CHUNK: {
-      const d = data as { readonly streamUid: string; readonly chunk: SerializableValue };
-      binString.measure(d.streamUid, m);
-      serializableValue.measure(d.chunk, m);
-      break;
-    }
-    case EVENT_STREAM_END: {
-      const d = data as { readonly streamUid: string };
-      binString.measure(d.streamUid, m);
-      break;
-    }
-  }
+  eventCodecs[eventId]?.measure(data, m);
 }
 
 // ---- View data helpers ----
 
-function writeViewBase(view: any, w: ISerialOutput): void {
+function writeViewBase(view: BinaryViewBase, w: ISerialOutput): void {
   binString.write(w, view.uid);
   binString.write(w, view.name);
   binString.write(w, view.parentUid);
@@ -494,7 +499,7 @@ function writeViewBase(view: any, w: ISerialOutput): void {
   bool.write(w, view.isRoot);
 }
 
-function readViewBase(r: ISerialInput): { uid: string; name: string; parentUid: string; childIndex: number; isRoot: boolean } {
+function readViewBase(r: ISerialInput): BinaryViewBase {
   return {
     uid: binString.read(r),
     name: binString.read(r),
@@ -504,14 +509,14 @@ function readViewBase(r: ISerialInput): { uid: string; name: string; parentUid: 
   };
 }
 
-function measureViewBase(view: any, m: IMeasurer): void {
+function measureViewBase(view: BinaryViewBase, m: IMeasurer): void {
   binString.measure(view.uid, m);
   binString.measure(view.name, m);
   binString.measure(view.parentUid, m);
   m.add(4 + 1); // u32 + bool
 }
 
-function writeExistingViewData(view: any, w: ISerialOutput): void {
+function writeExistingViewData(view: BinaryExistingViewData, w: ISerialOutput): void {
   writeViewBase(view, w);
   u32.write(w, view.props.length);
   for (const prop of view.props) {
@@ -519,17 +524,17 @@ function writeExistingViewData(view: any, w: ISerialOutput): void {
   }
 }
 
-function readExistingViewData(r: ISerialInput): any {
+function readExistingViewData(r: ISerialInput): BinaryExistingViewData {
   const base = readViewBase(r);
   const propLen = u32.read(r);
-  const props: any[] = [];
+  const props: BinaryProp[] = [];
   for (let i = 0; i < propLen; i++) {
     props.push(propBinary.read(r));
   }
   return { ...base, props };
 }
 
-function measureExistingViewData(view: any, m: IMeasurer): void {
+function measureExistingViewData(view: BinaryExistingViewData, m: IMeasurer): void {
   measureViewBase(view, m);
   m.add(4); // props array length
   for (const prop of view.props) {
@@ -537,24 +542,22 @@ function measureExistingViewData(view: any, m: IMeasurer): void {
   }
 }
 
-function writeShareableViewData(view: any, w: ISerialOutput): void {
+function writeShareableViewData(view: BinaryShareableViewData, w: ISerialOutput): void {
   writeViewBase(view, w);
-  // props.create
   u32.write(w, view.props.create.length);
   for (const prop of view.props.create) {
     propBinary.write(w, prop);
   }
-  // props.delete
   u32.write(w, view.props.delete.length);
   for (const name of view.props.delete) {
-    binString.write(w, name as string);
+    binString.write(w, name);
   }
 }
 
-function readShareableViewData(r: ISerialInput): any {
+function readShareableViewData(r: ISerialInput): BinaryShareableViewData {
   const base = readViewBase(r);
   const createLen = u32.read(r);
-  const create: any[] = [];
+  const create: BinaryProp[] = [];
   for (let i = 0; i < createLen; i++) {
     create.push(propBinary.read(r));
   }
@@ -566,7 +569,7 @@ function readShareableViewData(r: ISerialInput): any {
   return { ...base, props: { create, delete: del } };
 }
 
-function measureShareableViewData(view: any, m: IMeasurer): void {
+function measureShareableViewData(view: BinaryShareableViewData, m: IMeasurer): void {
   measureViewBase(view, m);
   m.add(4); // create array length
   for (const prop of view.props.create) {
@@ -574,6 +577,6 @@ function measureShareableViewData(view: any, m: IMeasurer): void {
   }
   m.add(4); // delete array length
   for (const name of view.props.delete) {
-    binString.measure(name as string, m);
+    binString.measure(name, m);
   }
 }

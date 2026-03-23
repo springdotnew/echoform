@@ -53,8 +53,8 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
             handler(branded);
           }
         }
-      } catch {
-        // Invalid binary message
+      } catch (err) {
+        console.warn("Failed to decode binary message:", err);
       }
     });
   }
@@ -93,16 +93,56 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
  * Apply branded types to decoded data.
  * typed-binary decodes to plain strings; we wrap them in branded types.
  */
+interface WireViewBase {
+  readonly uid: string;
+  readonly name: string;
+  readonly parentUid: string;
+  readonly childIndex: number;
+  readonly isRoot: boolean;
+}
+
+interface WireExistingView extends WireViewBase {
+  readonly props: ReadonlyArray<UnbrandedProp>;
+}
+
+interface WireShareableView extends WireViewBase {
+  readonly props: {
+    readonly create: ReadonlyArray<UnbrandedProp>;
+    readonly delete: ReadonlyArray<string>;
+  };
+}
+
+function brandExistingView(v: WireExistingView): AppEvents['update_views_tree']['views'][number] {
+  return {
+    ...v,
+    uid: createViewUid(v.uid),
+    parentUid: createViewUid(v.parentUid),
+    props: v.props.map(brandProp),
+  };
+}
+
+function brandShareableView(v: WireShareableView): AppEvents['update_view']['view'] {
+  return {
+    ...v,
+    uid: createViewUid(v.uid),
+    parentUid: createViewUid(v.parentUid),
+    props: {
+      create: v.props.create.map(brandProp),
+      delete: v.props.delete.map(createPropName),
+    },
+  };
+}
+
 function applyBrands(event: string, data: unknown): unknown {
   if (!data || typeof data !== "object") return data;
 
   switch (event) {
     case "delete_view": {
-      const d = data as { viewUid: string };
+      const d = data as { readonly viewUid: string };
       return { viewUid: createViewUid(d.viewUid) };
     }
     case "request_event": {
-      const d = data as { eventArguments: unknown[]; uid: string; eventUid: string };
+      const d = data as { readonly eventArguments: ReadonlyArray<unknown>; readonly uid: string; readonly eventUid: string };
       return {
         eventArguments: d.eventArguments,
         eventUid: createEventUid(d.eventUid),
@@ -110,7 +150,7 @@ function applyBrands(event: string, data: unknown): unknown {
       };
     }
     case "respond_to_event": {
-      const d = data as { data: unknown; uid: string; eventUid: string };
+      const d = data as { readonly data: unknown; readonly uid: string; readonly eventUid: string };
       return {
         data: d.data,
         eventUid: createEventUid(d.eventUid),
@@ -118,36 +158,19 @@ function applyBrands(event: string, data: unknown): unknown {
       };
     }
     case "update_view": {
-      const d = data as { view: any };
-      return {
-        view: {
-          ...d.view,
-          uid: createViewUid(d.view.uid),
-          parentUid: createViewUid(d.view.parentUid),
-          props: {
-            create: (d.view.props.create ?? []).map(brandProp),
-            delete: (d.view.props.delete ?? []).map(createPropName),
-          },
-        },
-      };
+      const d = data as { readonly view: WireShareableView };
+      return { view: brandShareableView(d.view) };
     }
     case "update_views_tree": {
-      const d = data as { views: any[] };
-      return {
-        views: d.views.map((v: any) => ({
-          ...v,
-          uid: createViewUid(v.uid),
-          parentUid: createViewUid(v.parentUid),
-          props: (v.props ?? []).map(brandProp),
-        })),
-      };
+      const d = data as { readonly views: ReadonlyArray<WireExistingView> };
+      return { views: d.views.map(brandExistingView) };
     }
     case "stream_chunk": {
-      const d = data as { streamUid: string; chunk: unknown };
+      const d = data as { readonly streamUid: string; readonly chunk: unknown };
       return { streamUid: createStreamUid(d.streamUid), chunk: d.chunk };
     }
     case "stream_end": {
-      const d = data as { streamUid: string };
+      const d = data as { readonly streamUid: string };
       return { streamUid: createStreamUid(d.streamUid) };
     }
     default:
@@ -155,14 +178,21 @@ function applyBrands(event: string, data: unknown): unknown {
   }
 }
 
-function brandProp(prop: any): any {
+interface UnbrandedProp {
+  readonly name: string;
+  readonly type: "data" | "event" | "stream";
+  readonly data?: unknown;
+  readonly uid?: string;
+}
+
+function brandProp(prop: UnbrandedProp): import("./types").Prop {
   if (prop.type === "data") {
-    return { name: createPropName(prop.name), type: "data", data: prop.data };
+    return { name: createPropName(prop.name), type: "data", data: prop.data as import("./types").SerializableValue };
   }
   if (prop.type === "event") {
-    return { name: createPropName(prop.name), type: "event", uid: createEventUid(prop.uid) };
+    return { name: createPropName(prop.name), type: "event", uid: createEventUid(prop.uid ?? "") };
   }
-  return { name: createPropName(prop.name), type: "stream", uid: createStreamUid(prop.uid) };
+  return { name: createPropName(prop.name), type: "stream", uid: createStreamUid(prop.uid ?? "") };
 }
 
 // ---- Convenience emit helpers ----

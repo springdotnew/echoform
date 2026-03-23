@@ -71,9 +71,9 @@ const hostConfig = {
 
 const reconciler = Reconciler(hostConfig);
 
-export const Render = (element: ReactNode) => {
+export const Render = (element: ReactNode): { stop: () => void; continue: () => void } => {
   const container = reconciler.createContainer(
-    {} as Container,
+    {},
     0, // ConcurrentRoot
     null, // hydrationCallbacks
     false, // isStrictMode
@@ -83,10 +83,14 @@ export const Render = (element: ReactNode) => {
     null // transitionCallbacks
   );
 
-  reconciler.updateContainer(element, container, null, () => {});
+  const update = (el: ReactNode | null): void => {
+    reconciler.updateContainer(el, container, null, () => {});
+  };
+
+  update(element);
 
   return {
-    stop: () => reconciler.updateContainer(null, container, null, () => {}),
-    continue: () => reconciler.updateContainer(element, container, null, () => {}),
+    stop: () => update(null),
+    continue: () => update(element),
   };
 };

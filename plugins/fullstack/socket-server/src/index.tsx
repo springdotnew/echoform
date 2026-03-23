@@ -19,6 +19,10 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
   const serverRef = useRef<SocketIO.Server | null>(null);
 
   if (!serverRef.current) {
+    if (!props.server && !props.port) {
+      throw new Error("port is required when server is not passed");
+    }
+
     const server = props.server
       ? new SocketIO.Server(props.server, props.socketOptions)
       : new SocketIO.Server(props.socketOptions);
@@ -28,10 +32,7 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
       socket.setMaxListeners(Infinity);
     });
 
-    if (!props.server) {
-      if (!props.port) {
-        throw new Error("port is required when server is not passed");
-      }
+    if (!props.server && props.port) {
       server.listen(props.port);
     }
     serverRef.current = server;
