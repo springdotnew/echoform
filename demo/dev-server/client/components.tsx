@@ -48,6 +48,21 @@ const STATUS_COLORS: Record<string, string> = {
   failed: "#e5534b",
 };
 
+// ── Keyboard shortcuts ──
+
+function handleProcessShortcut(
+  event: KeyboardEvent,
+  processes: ReadonlyArray<{ readonly id: string }>,
+  selectProcess: (id: string) => void,
+): void {
+  if (!(event.metaKey || event.ctrlKey)) return;
+  if (event.key < "1" || event.key > "9") return;
+  const shortcutIndex = parseInt(event.key, 10) - 1;
+  if (shortcutIndex >= processes.length) return;
+  event.preventDefault();
+  selectProcess(processes[shortcutIndex]!.id);
+}
+
 // ── DevServerApp ──
 
 export function DevServerApp(props: InferClientProps<typeof DevServerAppDef>): React.ReactElement {
@@ -87,17 +102,8 @@ export function DevServerApp(props: InferClientProps<typeof DevServerAppDef>): R
     }
   }, [processes, activeProcessId]);
 
-  // Keyboard: Cmd+1–9
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key >= "1" && e.key <= "9") {
-        const idx = parseInt(e.key, 10) - 1;
-        if (idx < processes.length) {
-          e.preventDefault();
-          selectProcess(processes[idx]!.id);
-        }
-      }
-    };
+    const onKey = (event: KeyboardEvent) => handleProcessShortcut(event, processes, selectProcess);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selectProcess, processes]);
@@ -111,7 +117,7 @@ export function DevServerApp(props: InferClientProps<typeof DevServerAppDef>): R
     }
   }, []);
 
-  const activeProc = processes.find((p) => p.id === activeProcessId);
+  const activeProc = processes.find((process) => process.id === activeProcessId);
   const activeStatus = activeProc?.status ?? "idle";
 
   const actions = useMemo<ProcessActions>(() => ({

@@ -50,20 +50,21 @@ function isProhibitedEvent(value: unknown): boolean {
 /**
  * Recursively checks if any value in an array is a prohibited event.
  */
+function isProhibitedArray(value: SerializableValue): boolean {
+  return Array.isArray(value) && hasProhibitedEvent(value);
+}
+
+function isProhibitedObject(value: SerializableValue): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const objValues = Object.values(value as Record<string, SerializableValue>);
+  return hasProhibitedEvent(objValues);
+}
+
 function hasProhibitedEvent(values: ReadonlyArray<SerializableValue>): boolean {
   for (const value of values) {
-    if (isProhibitedEvent(value)) {
-      return true;
-    }
-    if (Array.isArray(value) && hasProhibitedEvent(value)) {
-      return true;
-    }
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      const objValues = Object.values(value as Record<string, SerializableValue>);
-      if (hasProhibitedEvent(objValues)) {
-        return true;
-      }
-    }
+    if (isProhibitedEvent(value)) return true;
+    if (isProhibitedArray(value)) return true;
+    if (isProhibitedObject(value)) return true;
   }
   return false;
 }

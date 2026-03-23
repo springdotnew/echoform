@@ -20,23 +20,24 @@ export function createHandlerRegistry(): {
   return {
     get handlers(): HandlerRegistry { return handlers; },
     on: (event: string, handler: EventHandlerFn): void => {
-      const existing = handlers.get(event);
-      const newSet = new Set(existing);
+      const newSet = new Set(handlers.get(event));
       newSet.add(handler);
-      handlers = new Map(handlers);
-      handlers.set(event, newSet);
+      const updated = new Map(handlers);
+      updated.set(event, newSet);
+      handlers = updated;
     },
     off: (event: string, handler: EventHandlerFn): void => {
       const existing = handlers.get(event);
       if (!existing) return;
       const newSet = new Set(existing);
       newSet.delete(handler);
-      handlers = new Map(handlers);
+      const updated = new Map(handlers);
       if (newSet.size === 0) {
-        handlers.delete(event);
+        updated.delete(event);
       } else {
-        handlers.set(event, newSet);
+        updated.set(event, newSet);
       }
+      handlers = updated;
     },
   };
 }

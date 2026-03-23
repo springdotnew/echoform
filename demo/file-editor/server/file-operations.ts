@@ -145,7 +145,6 @@ export async function listDirectory(dirPath: string): Promise<FileNode> {
         const childNode = await listDirectory(childPath);
         children.push(childNode);
       } catch {
-        // Skip directories we can't read
       }
     } else if (isTextFile(entry.name)) {
       children.push({

@@ -41,6 +41,37 @@ export interface ServerInstanceRenderHandler {
   readonly render: <TViews extends Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>>(views: TViews) => React.ReactElement;
 }
 
+function handleClientConnect(
+  appRef: React.RefObject<AppHandle | null>,
+  singleInstance: boolean | undefined,
+  clientTransport: Transport<DisconnectEvent> & { readonly id: string },
+  setClients: React.Dispatch<React.SetStateAction<Readonly<Record<string, Transport<DisconnectEvent>>>>>,
+): void {
+  if (!appRef.current) return;
+  if (singleInstance) {
+    appRef.current.addClient(clientTransport as AnyTransport);
+    return;
+  }
+  setClients((prev) => ({ ...prev, [clientTransport.id]: clientTransport }));
+}
+
+function handleClientDisconnect(
+  appRef: React.RefObject<AppHandle | null>,
+  singleInstance: boolean | undefined,
+  clientTransport: Transport<DisconnectEvent> & { readonly id: string },
+  setClients: React.Dispatch<React.SetStateAction<Readonly<Record<string, Transport<DisconnectEvent>>>>>,
+): void {
+  if (!appRef.current) return;
+  if (singleInstance) {
+    appRef.current.removeClient(clientTransport as AnyTransport);
+    return;
+  }
+  setClients((prev) => {
+    const { [clientTransport.id]: _removed, ...rest } = prev;
+    return rest;
+  });
+}
+
 export function Server(props: ServerProps): React.ReactElement {
   const { children, singleInstance, transport } = props;
   const appRef = useRef<AppHandle>(null);
@@ -48,25 +79,9 @@ export function Server(props: ServerProps): React.ReactElement {
 
   useEffect(() => {
     transport.on("connection", (clientTransport) => {
-      if (!appRef.current) return;
-
-      if (singleInstance) {
-        appRef.current.addClient(clientTransport as AnyTransport);
-      } else {
-        setClients((prev) => ({ ...prev, [clientTransport.id]: clientTransport }));
-      }
-
+      handleClientConnect(appRef, singleInstance, clientTransport, setClients);
       clientTransport.on("disconnect", () => {
-        if (!appRef.current) return;
-
-        if (singleInstance) {
-          appRef.current.removeClient(clientTransport as AnyTransport);
-        } else {
-          setClients((prev) => {
-            const { [clientTransport.id]: _removed, ...rest } = prev;
-            return rest;
-          });
-        }
+        handleClientDisconnect(appRef, singleInstance, clientTransport, setClients);
       });
     });
   }, [singleInstance, transport]);

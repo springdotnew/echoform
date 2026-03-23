@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { InferClientProps } from "@play/echoform/client";
 import type {
   App as AppDef,
@@ -224,6 +224,22 @@ function loadMonaco(onReady: () => void): void {
   document.head.appendChild(script);
 }
 
+function createMonacoEditor(
+  container: HTMLElement,
+  content: string,
+  language: string,
+  onChange: (value: string) => void,
+  onSave: () => void,
+): MonacoEditor {
+  const editor = window.monaco.editor.create(container, {
+    value: content, language, theme: "vs-dark",
+    automaticLayout: true, minimap: { enabled: true }, fontSize: 14, tabSize: 2,
+  });
+  editor.onDidChangeModelContent(() => onChange(editor.getValue()));
+  editor.addCommand(window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.KeyS, onSave);
+  return editor;
+}
+
 export function CodeEditor(props: InferClientProps<typeof CodeEditorDef>): React.ReactElement {
   const { path, content, language } = props;
   const change = props.onChange.mutate;
@@ -239,28 +255,9 @@ export function CodeEditor(props: InferClientProps<typeof CodeEditorDef>): React
 
   useEffect(() => {
     if (!ready || !containerRef.current) return;
-
     if (!editorRef.current) {
-      editorRef.current = window.monaco.editor.create(containerRef.current, {
-        value: content,
-        language,
-        theme: "vs-dark",
-        automaticLayout: true,
-        minimap: { enabled: true },
-        fontSize: 14,
-        tabSize: 2,
-      });
-
-      editorRef.current.onDidChangeModelContent(() => {
-        if (editorRef.current) change(editorRef.current.getValue());
-      });
-
-      editorRef.current.addCommand(
-        window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.KeyS,
-        () => save(),
-      );
+      editorRef.current = createMonacoEditor(containerRef.current, content, language, change, save);
     }
-
     return () => {
       editorRef.current?.dispose();
       editorRef.current = null;
@@ -270,11 +267,11 @@ export function CodeEditor(props: InferClientProps<typeof CodeEditorDef>): React
   useEffect(() => {
     if (!editorRef.current) return;
     const model = editorRef.current.getModel();
-    if (model) {
-      window.monaco.editor.setModelLanguage(model, language);
-      if (model.getValue() !== content) {
-        model.setValue(content);
-      }
+    if (!model) return;
+
+    window.monaco.editor.setModelLanguage(model, language);
+    if (model.getValue() !== content) {
+      model.setValue(content);
     }
   }, [path, content, language]);
 

@@ -14,6 +14,14 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
+type TodoFilter = "all" | "active" | "completed";
+
+function shouldShowTodo(todo: TodoItem, filter: TodoFilter): boolean {
+  if (filter === "active") return !todo.completed;
+  if (filter === "completed") return todo.completed;
+  return true;
+}
+
 function TodoApp(): React.ReactElement | null {
   const View = useViews(views);
 
@@ -21,7 +29,7 @@ function TodoApp(): React.ReactElement | null {
     { id: generateId(), text: "Learn echoform", completed: false },
     { id: generateId(), text: "Build something awesome", completed: false },
   ]);
-  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [filter, setFilter] = useState<TodoFilter>("all");
 
   const addTodo = useCallback((text: string) => {
     if (typeof text === "string" && text.trim()) {
@@ -52,13 +60,8 @@ function TodoApp(): React.ReactElement | null {
     return null;
   }
 
-  const filteredTodos = todos.filter((todo) => {
-    if (filter === "active") return !todo.completed;
-    if (filter === "completed") return todo.completed;
-    return true;
-  });
-
-  const completedCount = todos.filter((t) => t.completed).length;
+  const filteredTodos = todos.filter((todo) => shouldShowTodo(todo, filter));
+  const completedCount = todos.filter((todo) => todo.completed).length;
 
   return (
     <View.TodoApp

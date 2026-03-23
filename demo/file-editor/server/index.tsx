@@ -15,6 +15,16 @@ import type { FileNode, OpenFile } from "../shared/types";
 
 const rootPath = path.resolve(process.argv[2] ?? ".");
 
+function hasFileAccess(filePath: string, setError: (msg: string) => void): boolean {
+  if (validatePath(rootPath, filePath)) return true;
+  setError("Access denied: path outside root directory");
+  return false;
+}
+
+function formatFileError(action: string, err: unknown): string {
+  return `Failed to ${action}: ${err instanceof Error ? err.message : String(err)}`;
+}
+
 function FileEditorApp(): React.ReactElement | null {
   const View = useViews(views);
 
@@ -28,7 +38,7 @@ function FileEditorApp(): React.ReactElement | null {
       const tree = await listDirectory(rootPath);
       setFiles(tree);
     } catch (err) {
-      setError(`Failed to load directory: ${err instanceof Error ? err.message : String(err)}`);
+      setError(formatFileError("load directory", err));
     }
   }, []);
 
@@ -38,12 +48,9 @@ function FileEditorApp(): React.ReactElement | null {
 
   const handleSelectFile = useCallback(
     async (filePath: string) => {
-      if (!validatePath(rootPath, filePath)) {
-        setError("Access denied: path outside root directory");
-        return;
-      }
+      if (!hasFileAccess(filePath, setError)) return;
 
-      const existing = openFiles.find((f) => f.path === filePath);
+      const existing = openFiles.find((file) => file.path === filePath);
       if (existing) {
         setActiveFilePath(filePath);
         return;
@@ -67,7 +74,7 @@ function FileEditorApp(): React.ReactElement | null {
         setOpenFiles((prev) => [...prev, newFile]);
         setActiveFilePath(filePath);
       } catch (err) {
-        setError(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`);
+        setError(formatFileError("open file", err));
       }
     },
     [openFiles]
@@ -75,27 +82,24 @@ function FileEditorApp(): React.ReactElement | null {
 
   const handleContentChange = useCallback((filePath: string, content: string) => {
     setOpenFiles((prev) =>
-      prev.map((f) => (f.path === filePath ? { ...f, content, isDirty: true } : f))
+      prev.map((file) => (file.path === filePath ? { ...file, content, isDirty: true } : file))
     );
   }, []);
 
   const handleSave = useCallback(
     async (filePath: string) => {
-      if (!validatePath(rootPath, filePath)) {
-        setError("Access denied: path outside root directory");
-        return;
-      }
+      if (!hasFileAccess(filePath, setError)) return;
 
-      const file = openFiles.find((f) => f.path === filePath);
+      const file = openFiles.find((openFile) => openFile.path === filePath);
       if (!file) return;
 
       try {
         await writeFile(filePath, file.content);
         setOpenFiles((prev) =>
-          prev.map((f) => (f.path === filePath ? { ...f, isDirty: false } : f))
+          prev.map((file) => (file.path === filePath ? { ...file, isDirty: false } : file))
         );
       } catch (err) {
-        setError(`Failed to save file: ${err instanceof Error ? err.message : String(err)}`);
+        setError(formatFileError("save file", err));
       }
     },
     [openFiles]
@@ -103,9 +107,9 @@ function FileEditorApp(): React.ReactElement | null {
 
   const handleCloseTab = useCallback(
     (filePath: string) => {
-      setOpenFiles((prev) => prev.filter((f) => f.path !== filePath));
+      setOpenFiles((prev) => prev.filter((file) => file.path !== filePath));
       if (activeFilePath === filePath) {
-        const remaining = openFiles.filter((f) => f.path !== filePath);
+        const remaining = openFiles.filter((file) => file.path !== filePath);
         setActiveFilePath(remaining.length > 0 ? remaining[0]?.path ?? null : null);
       }
     },
@@ -124,7 +128,7 @@ function FileEditorApp(): React.ReactElement | null {
     return null;
   }
 
-  const activeFile = openFiles.find((f) => f.path === activeFilePath);
+  const activeFile = openFiles.find((file) => file.path === activeFilePath);
 
   return (
     <View.App rootPath={rootPath} title="File Editor">
