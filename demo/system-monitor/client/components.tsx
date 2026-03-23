@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Card, Table, Chip, Button, ProgressBar, ScrollShadow, Tooltip } from "@heroui/react";
+import type { SortDescriptor } from "@heroui/react";
 import type { InferClientProps } from "@playfast/echoform/client";
 import type {
   Dashboard as DashboardDef,
@@ -24,10 +26,10 @@ function formatUptime(seconds: number): string {
   return `${minutes}m`;
 }
 
-function cpuColor(percent: number): string {
-  if (percent > 50) return "#f85149";
-  if (percent > 10) return "#d29922";
-  return "#8b949e";
+function usageColor(percent: number): "success" | "warning" | "danger" {
+  if (percent < 60) return "success";
+  if (percent < 85) return "warning";
+  return "danger";
 }
 
 // ── Process icons ──
@@ -36,27 +38,25 @@ const PROCESS_ICONS: ReadonlyArray<readonly [ReadonlyArray<string>, string]> = [
   [["chrome", "chromium", "google chrome"], "\uD83C\uDF10"],
   [["firefox", "librewolf"], "\uD83E\uDD8A"],
   [["safari", "webkit"], "\uD83E\uDDED"],
-  [["edge", "msedge"], "\uD83C\uDF10"],
   [["node", "bun", "deno"], "\u2B22"],
   [["python", "python3"], "\uD83D\uDC0D"],
-  [["ruby", "irb"], "\uD83D\uDC8E"],
+  [["ruby"], "\uD83D\uDC8E"],
   [["java", "kotlin"], "\u2615"],
   [["go", "gopls"], "\uD83D\uDC39"],
-  [["rust", "cargo", "rustc"], "\uD83E\uDD80"],
-  [["postgres", "psql", "mysql", "mariadb", "mongod", "redis"], "\uD83D\uDDC4"],
-  [["docker", "containerd", "dockerd"], "\uD83D\uDC33"],
-  [["code", "cursor", "zed", "vim", "nvim", "emacs", "sublime"], "\u270F\uFE0F"],
-  [["terminal", "iterm", "alacritty", "kitty", "wezterm", "tmux"], "\u25A0"],
+  [["rust", "cargo"], "\uD83E\uDD80"],
+  [["postgres", "mysql", "mongod", "redis"], "\uD83D\uDDC4"],
+  [["docker", "containerd"], "\uD83D\uDC33"],
+  [["code", "cursor", "zed", "vim", "nvim"], "\u270F\uFE0F"],
+  [["terminal", "iterm", "alacritty", "kitty", "wezterm"], "\u25A0"],
   [["git", "gh"], "\uD83D\uDD00"],
   [["ssh", "sshd"], "\uD83D\uDD10"],
-  [["nginx", "apache", "caddy", "httpd"], "\uD83C\uDF10"],
-  [["slack", "discord", "telegram", "teams"], "\uD83D\uDCAC"],
+  [["nginx", "apache", "caddy"], "\uD83C\uDF10"],
+  [["slack", "discord", "telegram"], "\uD83D\uDCAC"],
   [["spotify", "music"], "\u266B"],
   [["finder", "explorer"], "\uD83D\uDCC2"],
-  [["launchd", "systemd", "init"], "\u2699\uFE0F"],
-  [["kernel_task", "kworker", "ksoftirqd"], "\u2699\uFE0F"],
-  [["windowserver", "dwm", "xorg", "wayland"], "\uD83D\uDDA5"],
-  [["spotlight", "mds", "mdworker"], "\uD83D\uDD0D"],
+  [["launchd", "systemd", "init", "kernel_task"], "\u2699\uFE0F"],
+  [["windowserver", "dwm"], "\uD83D\uDDA5"],
+  [["spotlight", "mds"], "\uD83D\uDD0D"],
 ];
 
 function getProcessIcon(name: string): string {
@@ -69,37 +69,27 @@ function getProcessIcon(name: string): string {
   return "\u25CB";
 }
 
-// ── Shared styles ──
-
-const card: React.CSSProperties = {
-  border: "1px solid #30363d",
-  borderRadius: 6,
-  background: "#0d1117",
-};
-
-const label: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  color: "#8b949e",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-};
-
 // ── Dashboard ──
 
-function StatCard({ icon, title, value, accent }: {
-  readonly icon: string;
-  readonly title: string;
+function StatCard({ label, value, percent }: {
+  readonly label: string;
   readonly value: string;
-  readonly accent?: string;
+  readonly percent?: number;
 }): React.ReactElement {
   return (
-    <div style={{ ...card, padding: "12px 14px", flex: 1 }}>
-      <div style={{ ...label, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
-        <span style={{ fontSize: 12 }}>{icon}</span> {title}
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: accent ?? "#e6edf3", lineHeight: 1 }}>{value}</div>
-    </div>
+    <Card className="flex-1">
+      <Card.Header>
+        <Card.Description>{label}</Card.Description>
+        <Card.Title className="text-2xl font-bold tabular-nums">{value}</Card.Title>
+      </Card.Header>
+      {percent !== undefined && (
+        <Card.Content className="pt-0">
+          <ProgressBar value={percent} color={usageColor(percent)} size="sm" aria-label={label}>
+            <ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+          </ProgressBar>
+        </Card.Content>
+      )}
+    </Card>
   );
 }
 
@@ -109,21 +99,26 @@ export function Dashboard({
   const memPercent = Math.round((memoryUsed / memoryTotal) * 100);
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#e6edf3" }}>{hostname}</div>
-        <div style={{ fontSize: 12, color: "#484f58" }}>{platform} · up {formatUptime(uptime)}</div>
+    <div className="p-4 space-y-3">
+      <div>
+        <p className="text-sm font-semibold">{hostname}</p>
+        <p className="text-xs text-default-400">{platform} · up {formatUptime(uptime)}</p>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <StatCard icon="◎" title="CPU" value={`${cpuUsage}%`} accent={cpuUsage > 80 ? "#f85149" : undefined} />
-        <StatCard icon="▦" title="Memory" value={`${memPercent}%`} accent={memPercent > 90 ? "#f85149" : undefined} />
-        <StatCard icon="⬡" title="Processes" value={String(processCount)} />
-        <div style={{ ...card, padding: "12px 14px", flex: 1 }}>
-          <div style={{ ...label, marginBottom: 6 }}>⧖ Memory Detail</div>
-          <div style={{ fontSize: 12, color: "#8b949e", lineHeight: 1.6 }}>
-            <span style={{ color: "#e6edf3" }}>{formatBytes(memoryUsed)}</span> / {formatBytes(memoryTotal)}
-          </div>
-        </div>
+      <div className="grid grid-cols-4 gap-3">
+        <StatCard label="CPU" value={`${cpuUsage}%`} percent={cpuUsage} />
+        <StatCard label="Memory" value={`${memPercent}%`} percent={memPercent} />
+        <StatCard label="Processes" value={String(processCount)} />
+        <Card className="flex-1">
+          <Card.Header>
+            <Card.Description>Memory Detail</Card.Description>
+          </Card.Header>
+          <Card.Content className="pt-0">
+            <p className="text-xs tabular-nums">
+              <span className="text-foreground font-medium">{formatBytes(memoryUsed)}</span>
+              <span className="text-default-400"> / {formatBytes(memoryTotal)}</span>
+            </p>
+          </Card.Content>
+        </Card>
       </div>
     </div>
   );
@@ -131,91 +126,93 @@ export function Dashboard({
 
 // ── Process Table ──
 
+type ProcessItem = { readonly pid: number; readonly name: string; readonly cpu: number; readonly memory: number };
+
+const tableColumns = [
+  { id: "pid", label: "PID", allowsSorting: true },
+  { id: "name", label: "Command", allowsSorting: true },
+  { id: "cpu", label: "CPU", allowsSorting: true },
+  { id: "memory", label: "Memory", allowsSorting: true },
+  { id: "actions", label: "", allowsSorting: false },
+];
+
 export function ProcessTable({ processes, sortBy, onKill, onSort, onRefresh }: InferClientProps<typeof ProcessTableDef>): React.ReactElement {
   const killProcess = onKill.mutate;
   const sortProcesses = onSort.mutate;
   const refreshProcesses = onRefresh.mutate;
 
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "0 16px 8px" }}>
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ ...label, flex: 1 }}>⧉ Processes · top {processes.length} by {sortBy}</span>
-        <button onClick={() => refreshProcesses()} style={{
-          background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", borderRadius: 6,
-          padding: "3px 10px", fontSize: 11, cursor: "pointer",
-        }}>
-          Refresh
-        </button>
-      </div>
+  const sortDescriptor: SortDescriptor = useMemo(() => ({
+    column: sortBy,
+    direction: "descending" as const,
+  }), [sortBy]);
 
-      <div style={{ ...card, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <ProcessHeader sortBy={sortBy} onSort={sortProcesses} />
-        <div style={{ flex: 1, overflow: "auto" }}>
-          {processes.map((proc) => (
-            <ProcessRow key={proc.pid} process={proc} onKill={killProcess} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProcessHeader({ sortBy, onSort }: {
-  readonly sortBy: string;
-  readonly onSort: (field: "pid" | "name" | "cpu" | "memory") => void;
-}): React.ReactElement {
-  const cols: ReadonlyArray<{ key: "pid" | "name" | "cpu" | "memory"; label: string; width: string; align: "left" | "right" }> = [
-    { key: "pid", label: "PID", width: "64px", align: "right" },
-    { key: "name", label: "Command", width: "1fr", align: "left" },
-    { key: "cpu", label: "CPU", width: "56px", align: "right" },
-    { key: "memory", label: "Mem", width: "72px", align: "right" },
-  ];
+  const handleSortChange = (descriptor: SortDescriptor): void => {
+    if (descriptor.column) {
+      sortProcesses(descriptor.column as "pid" | "name" | "cpu" | "memory");
+    }
+  };
 
   return (
-    <div style={{
-      display: "grid", gridTemplateColumns: cols.map((col) => col.width).join(" ") + " 32px",
-      padding: "6px 10px", borderBottom: "1px solid #21262d", fontSize: 11, color: "#484f58",
-    }}>
-      {cols.map((col) => (
-        <div
-          key={col.key}
-          onClick={() => onSort(col.key)}
-          style={{ textAlign: col.align, cursor: "pointer", fontWeight: sortBy === col.key ? 600 : 400, color: sortBy === col.key ? "#8b949e" : undefined }}
-        >
-          {col.label}{sortBy === col.key ? " ▾" : ""}
-        </div>
-      ))}
-      <div />
-    </div>
-  );
-}
+    <div className="flex-1 flex flex-col overflow-hidden px-4 pb-2">
+      <div className="flex items-center mb-2">
+        <p className="flex-1 text-xs text-default-400">Top {processes.length} by {sortBy}</p>
+        <Button variant="outline" size="sm" onPress={() => refreshProcesses()}>Refresh</Button>
+      </div>
 
-function ProcessRow({ process: proc, onKill }: {
-  readonly process: { readonly pid: number; readonly name: string; readonly cpu: number; readonly memory: number };
-  readonly onKill: (pid: number) => void;
-}): React.ReactElement {
-  return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "64px 1fr 56px 72px 32px",
-      padding: "4px 10px", borderBottom: "1px solid #161b22", fontSize: 12, alignItems: "center",
-    }}>
-      <div style={{ textAlign: "right", color: "#484f58", fontFamily: "monospace", fontSize: 11 }}>{proc.pid}</div>
-      <div style={{ color: "#c9d1d9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 8, display: "flex", alignItems: "center", gap: 5 }}>
-        <span style={{ fontSize: 11, width: 14, textAlign: "center", flexShrink: 0 }}>{getProcessIcon(proc.name)}</span>
-        {proc.name}
-      </div>
-      <div style={{ textAlign: "right", fontFamily: "monospace", fontSize: 11, color: cpuColor(proc.cpu) }}>{proc.cpu.toFixed(1)}</div>
-      <div style={{ textAlign: "right", color: "#8b949e", fontFamily: "monospace", fontSize: 11 }}>{formatBytes(proc.memory)}</div>
-      <div style={{ textAlign: "center" }}>
-        <span
-          onClick={() => onKill(proc.pid)}
-          style={{ color: "#f8514944", cursor: "pointer", fontSize: 13, lineHeight: 1 }}
-          onMouseEnter={(event) => { (event.target as HTMLElement).style.color = "#f85149"; }}
-          onMouseLeave={(event) => { (event.target as HTMLElement).style.color = "#f8514944"; }}
-        >
-          ×
-        </span>
-      </div>
+      <Table className="flex-1">
+        <Table.ScrollContainer>
+          <Table.Content
+            aria-label="Process list"
+            sortDescriptor={sortDescriptor}
+            onSortChange={handleSortChange}
+          >
+            <Table.Header>
+              {tableColumns.map((col) => (
+                <Table.Column key={col.id} id={col.id} allowsSorting={col.allowsSorting}>
+                  {col.label}
+                </Table.Column>
+              ))}
+            </Table.Header>
+            <Table.Body items={processes as ReadonlyArray<ProcessItem>}>
+              {(proc: ProcessItem) => (
+                <Table.Row key={proc.pid}>
+                  <Table.Cell>
+                    <span className="text-xs text-default-400 tabular-nums font-mono">{proc.pid}</span>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <span className="text-xs">
+                      <span className="mr-1.5">{getProcessIcon(proc.name)}</span>
+                      {proc.name}
+                    </span>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Chip
+                      size="sm"
+                      variant="soft"
+                      color={proc.cpu > 50 ? "danger" : proc.cpu > 10 ? "warning" : "default"}
+                    >
+                      {proc.cpu.toFixed(1)}%
+                    </Chip>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <span className="text-xs text-default-400 tabular-nums font-mono">{formatBytes(proc.memory)}</span>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Tooltip>
+                      <Tooltip.Trigger>
+                        <Button variant="ghost" color="danger" size="sm" isIconOnly onPress={() => killProcess(proc.pid)}>
+                          ×
+                        </Button>
+                      </Tooltip.Trigger>
+                      <Tooltip.Content>Kill process {proc.pid}</Tooltip.Content>
+                    </Tooltip>
+                  </Table.Cell>
+                </Table.Row>
+              )}
+            </Table.Body>
+          </Table.Content>
+        </Table.ScrollContainer>
+      </Table>
     </div>
   );
 }
@@ -239,18 +236,22 @@ export function LogStream({ title, lines }: InferClientProps<typeof LogStreamDef
   }, [logLines]);
 
   return (
-    <div style={{ padding: "0 16px 12px", flexShrink: 0 }}>
-      <div style={{ ...card, overflow: "hidden" }}>
-        <div style={{ padding: "6px 10px", borderBottom: "1px solid #21262d" }}>
-          <span style={label}>{title}</span>
-        </div>
-        <div ref={containerRef} style={{ height: 80, overflow: "auto", padding: "4px 10px" }}>
-          {logLines.length === 0 && <div style={{ fontSize: 11, color: "#30363d" }}>No activity</div>}
-          {logLines.map((line, index) => (
-            <div key={index} style={{ fontSize: 11, fontFamily: "monospace", color: "#484f58", lineHeight: "17px", whiteSpace: "nowrap" }}>{line}</div>
-          ))}
-        </div>
-      </div>
+    <div className="px-4 pb-3 shrink-0">
+      <Card>
+        <Card.Header className="py-2">
+          <Card.Description className="text-xs uppercase tracking-wide">{title}</Card.Description>
+        </Card.Header>
+        <Card.Content className="pt-0">
+          <ScrollShadow className="h-20" hideScrollBar>
+            <div ref={containerRef} className="space-y-0.5">
+              {logLines.length === 0 && <p className="text-xs text-default-300">No activity</p>}
+              {logLines.map((line, index) => (
+                <p key={index} className="text-[11px] font-mono text-default-400 whitespace-nowrap">{line}</p>
+              ))}
+            </div>
+          </ScrollShadow>
+        </Card.Content>
+      </Card>
     </div>
   );
 }
