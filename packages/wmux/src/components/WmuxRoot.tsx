@@ -4,6 +4,7 @@ import { views } from "../views";
 import type { ManagedProcess } from "../process";
 import type { ProcessStatus } from "../types";
 import { TerminalSession } from "./TerminalSession";
+import { FileViewerSession } from "./FileViewerSession";
 
 // Deterministic color per category
 const CATEGORY_COLORS = [
@@ -19,17 +20,25 @@ function categoryColor(name: string): string {
   return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length]!;
 }
 
+interface TabDef {
+  readonly id: string;
+  readonly description?: string;
+  readonly icon?: string;
+}
+
 interface CategoryDef {
   readonly name: string;
-  readonly tabIds: readonly string[];
+  readonly icon?: string;
+  readonly tabs: readonly TabDef[];
 }
 
 interface WmuxRootProps {
   readonly processes: ReadonlyMap<string, ManagedProcess>;
   readonly categoryDefs: readonly CategoryDef[];
+  readonly fileRoot?: string;
 }
 
-export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.ReactElement | null {
+export function WmuxRoot({ processes, categoryDefs, fileRoot }: WmuxRootProps): React.ReactElement | null {
   const View = useViews(views);
   const [activeCategory, setActiveCategory] = useState(categoryDefs[0]?.name ?? "");
   const [activeTabId, setActiveTabId] = useState("");
@@ -57,12 +66,15 @@ export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.Reac
   const categories = categoryDefs.map((def) => ({
     name: def.name,
     color: categoryColor(def.name),
-    tabs: def.tabIds.map((id) => {
-      const proc = processes.get(id)!;
+    icon: def.icon,
+    tabs: def.tabs.map((tab) => {
+      const proc = processes.get(tab.id)!;
       return {
-        id,
+        id: tab.id,
         name: proc.name,
-        status: statuses[id] ?? ("idle" as const),
+        description: tab.description,
+        icon: tab.icon,
+        status: statuses[tab.id] ?? ("idle" as const),
       };
     }),
   }));
@@ -74,10 +86,9 @@ export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.Reac
       activeTabId={activeTabId}
       onSelectCategory={(cat) => {
         setActiveCategory(cat);
-        // Auto-select first tab of the new category
         const catDef = categoryDefs.find((d) => d.name === cat);
-        if (catDef && catDef.tabIds.length > 0) {
-          setActiveTabId(catDef.tabIds[0]!);
+        if (catDef && catDef.tabs.length > 0) {
+          setActiveTabId(catDef.tabs[0]!.id);
         }
       }}
       onSelectTab={setActiveTabId}
@@ -88,6 +99,7 @@ export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.Reac
       {[...processes.keys()].map((id) => (
         <TerminalSession key={id} proc={processes.get(id)!} />
       ))}
+      {fileRoot && <FileViewerSession root={fileRoot} />}
     </View.WmuxApp>
   );
 }

@@ -38,6 +38,7 @@ export const isTerminalConfig = (c: ProcessConfig): c is TerminalProcessConfig =
 export interface TabConfig {
   readonly name: string;
   readonly description?: string;
+  readonly icon?: string;
   readonly process: ProcessConfig;
 }
 
@@ -45,6 +46,7 @@ export interface TabConfig {
 
 export interface SidebarItem {
   readonly category: string;
+  readonly icon?: string;
   readonly tabs: readonly TabConfig[];
 }
 
@@ -52,6 +54,7 @@ export interface SidebarItem {
 
 export interface WmuxConfig {
   readonly sidebarItems: readonly SidebarItem[];
+  readonly files?: string;
   readonly port?: number;
   readonly hostname?: string;
   readonly clientUrl?: string;

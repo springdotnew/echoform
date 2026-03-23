@@ -32,18 +32,24 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
     ?? process.env.WMUX_CLIENT_URL
     ?? (BUILT_IN_CLIENT_URL.startsWith("__") ? "http://localhost:5173" : BUILT_IN_CLIENT_URL);
 
+  const fileRoot = config.files;
+
   // Create managed processes from sidebarItems
   const processes = new Map<string, ManagedProcess>();
-  const categoryDefs: Array<{ name: string; tabIds: string[] }> = [];
+  const categoryDefs: Array<{
+    name: string;
+    icon?: string;
+    tabs: Array<{ id: string; description?: string; icon?: string }>;
+  }> = [];
 
   for (const item of config.sidebarItems) {
-    const tabIds: string[] = [];
+    const tabs: Array<{ id: string; description?: string; icon?: string }> = [];
     for (const tab of item.tabs) {
       const id = `${item.category}/${tab.name}`;
       processes.set(id, createManagedProcess(id, tab.name, tab.process, () => {}));
-      tabIds.push(id);
+      tabs.push({ id, description: tab.description, icon: tab.icon });
     }
-    categoryDefs.push({ name: item.category, tabIds });
+    categoryDefs.push({ name: item.category, icon: item.icon, tabs });
   }
 
   // Start server
@@ -67,7 +73,7 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
 
   Render(
     <Server transport={transport}>
-      {() => <WmuxRoot processes={processes} categoryDefs={categoryDefs} />}
+      {() => <WmuxRoot processes={processes} categoryDefs={categoryDefs} fileRoot={fileRoot} />}
     </Server>,
   );
 
