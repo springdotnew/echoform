@@ -176,7 +176,7 @@ const codecs = {
       return { streamUid: createStreamUid(e[EventContent.StreamUid]) };
     },
   ),
-} satisfies { readonly [K in keyof AppEvents]: EventCodec<K> };
+} as { readonly [K in keyof AppEvents]: EventCodec<K> };
 
 // ---- DecompileTransport ----
 
