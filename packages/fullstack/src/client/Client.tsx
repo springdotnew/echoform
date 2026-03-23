@@ -49,10 +49,10 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
 
       unsubscribe = transport.on("respond_to_event", handler) ?? undefined;
 
-      const serializedArgs = JSON.parse(stringifyWithoutCircular(args)) as ReadonlyArray<SerializableValue>;
+      stringifyWithoutCircular(args); // validate (throws if prohibited events are passed)
 
       transport.emit("request_event", {
-        eventArguments: serializedArgs,
+        eventArguments: args,
         eventUid: eventUid,
         uid: requestUid,
       });

@@ -85,7 +85,6 @@ export type Prop = DataProp | EventProp;
 export interface ShareableViewData extends ViewDataBase {
   readonly [EventContent.Props]: {
     readonly [EventContent.Create]?: ReadonlyArray<Prop>;
-    readonly [EventContent.Merge]?: ReadonlyArray<Prop>;
     readonly [EventContent.Delete]?: ReadonlyArray<string>;
   };
 }

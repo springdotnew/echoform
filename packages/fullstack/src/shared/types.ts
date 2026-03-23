@@ -10,15 +10,6 @@ export type SerializableValue =
   | ReadonlyArray<SerializableValue>
   | { readonly [key: string]: SerializableValue };
 
-export type MutableSerializableValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | MutableSerializableValue[]
-  | { [key: string]: MutableSerializableValue };
-
 export interface Transport<Events extends object> {
   readonly emit: <T extends keyof Events>(event: T, message?: Events[T]) => void;
   readonly on: <T extends keyof Events>(
@@ -91,22 +82,12 @@ export type Prop = DataProp | EventProp;
 export interface ShareableViewData extends ViewDataBase {
   readonly props: {
     readonly create: ReadonlyArray<Prop>;
-    readonly merge: ReadonlyArray<Prop>;
     readonly delete: ReadonlyArray<PropName>;
   };
 }
 
 export interface ExistingSharedViewData extends ViewDataBase {
   readonly props: ReadonlyArray<Prop>;
-}
-
-export interface MutableExistingSharedViewData {
-  uid: ViewUid;
-  name: string;
-  parentUid: ViewUid | '';
-  childIndex: number;
-  isRoot: boolean;
-  props: Prop[];
 }
 
 export type AppTransport = Transport<AppEvents>;

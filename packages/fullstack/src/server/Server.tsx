@@ -50,26 +50,27 @@ export function Server<
 
   useEffect(() => {
     transport.on("connection", (clientTransport) => {
-      if (appRef.current) {
-        if (singleInstance) {
-          appRef.current.addClient(clientTransport);
-        } else {
-          setClients((prevClients) => ({
-            ...prevClients,
-            [clientTransport.id]: clientTransport,
-          }));
-        }
+      if (!appRef.current) return;
+
+      if (singleInstance) {
+        appRef.current.addClient(clientTransport);
+      } else {
+        setClients((prevClients) => ({
+          ...prevClients,
+          [clientTransport.id]: clientTransport,
+        }));
       }
+
       clientTransport.on("disconnect", () => {
-        if (appRef.current) {
-          if (singleInstance) {
-            appRef.current.removeClient(clientTransport);
-          } else {
-            setClients((prevClients) => {
-              const { [clientTransport.id]: _removed, ...rest } = prevClients;
-              return rest;
-            });
-          }
+        if (!appRef.current) return;
+
+        if (singleInstance) {
+          appRef.current.removeClient(clientTransport);
+        } else {
+          setClients((prevClients) => {
+            const { [clientTransport.id]: _removed, ...rest } = prevClients;
+            return rest;
+          });
         }
       });
     });

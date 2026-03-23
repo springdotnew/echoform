@@ -8,15 +8,15 @@ import { nullIfEmpty } from "./collection.utils";
 function propToCompiled(prop: Prop): CompiledProp {
   if (prop.type === "data") {
     return {
-      [EventContent.Name]: prop.name as string,
+      [EventContent.Name]: prop.name,
       [EventContent.Type]: EventContent.Data,
       [EventContent.Data]: prop.data,
     };
   }
   return {
-    [EventContent.Name]: prop.name as string,
+    [EventContent.Name]: prop.name,
     [EventContent.Type]: EventContent.Event,
-    [EventContent.Uid]: prop.uid as string,
+    [EventContent.Uid]: prop.uid,
   };
 }
 
@@ -106,7 +106,6 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
               isRoot: viewData[EventContent.isRoot],
               props: {
                 create: (viewData[EventContent.Props][EventContent.Create] ?? []).map(compiledToProp),
-                merge: (viewData[EventContent.Props][EventContent.Merge] ?? []).map(compiledToProp),
                 delete: (viewData[EventContent.Props][EventContent.Delete] ?? []).map(createPropName),
               },
             },
@@ -179,7 +178,6 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
           [EventContent.isRoot]: viewData.view.isRoot,
           [EventContent.Props]: {
             [EventContent.Create]: nullIfEmpty(viewData.view.props.create)?.map(propToCompiled),
-            [EventContent.Merge]: nullIfEmpty(viewData.view.props.merge)?.map(propToCompiled),
             [EventContent.Delete]: nullIfEmpty(viewData.view.props.delete),
           },
         };

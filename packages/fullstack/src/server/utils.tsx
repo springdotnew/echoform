@@ -1,4 +1,4 @@
-import React, { useContext, type ReactNode } from "react";
+import React, { useContext } from "react";
 import type { Views, ViewProps } from "../shared/types";
 import { AppContext } from "./contexts";
 import type { ViewsToServerComponents } from "./types";
@@ -23,7 +23,7 @@ function getOrCreateViewComponent(name: string): React.ComponentType<ViewProps> 
   return NewViewComponent;
 }
 
-export const viewProxy = new Proxy({} as ViewComponentCache, {
+const viewProxy = new Proxy({} as ViewComponentCache, {
   get: (_target, name): React.ComponentType<ViewProps> => {
     if (typeof name !== 'string') {
       throw new Error('trying to access a view with a non string name');
@@ -42,15 +42,3 @@ export function useViews<ViewsInterface extends Views>(): ViewsToServerComponent
   return viewProxy as ViewsToServerComponents<ViewsInterface>;
 }
 
-/** @deprecated Use useViews hook instead */
-export function ViewsProvider<ViewsInterface extends Views>(props: {
-  readonly children: (views: ViewsToServerComponents<ViewsInterface>) => ReactNode;
-}): React.ReactElement | null {
-  const views = useViews<ViewsInterface>();
-
-  if (!views) {
-    return null;
-  }
-
-  return <>{props.children(views)}</>;
-}

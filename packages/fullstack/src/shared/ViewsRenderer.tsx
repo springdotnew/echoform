@@ -23,10 +23,10 @@ export function ViewsRenderer(props: RenderProps): ReactElement {
 
     for (const prop of view.props) {
       if (prop.type === "data") {
-        builtProps[prop.name as string] = prop.data;
+        builtProps[prop.name] = prop.data;
       } else if (prop.type === "event") {
         const eventUid = prop.uid;
-        builtProps[prop.name as string] = (...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
+        builtProps[prop.name] = (...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
           return createEvent(eventUid, ...args);
         };
       }

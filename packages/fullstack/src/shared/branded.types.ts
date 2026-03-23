@@ -13,23 +13,6 @@ export type RequestUid = Brand<string, 'RequestUid'>;
 export type ViewUid = Brand<string, 'ViewUid'>;
 export type PropName = Brand<string, 'PropName'>;
 
-// Type guards for branded types
-export function isEventUid(value: unknown): value is EventUid {
-  return typeof value === 'string' && value.length > 0;
-}
-
-export function isRequestUid(value: unknown): value is RequestUid {
-  return typeof value === 'string' && value.length > 0;
-}
-
-export function isViewUid(value: unknown): value is ViewUid {
-  return typeof value === 'string' && value.length > 0;
-}
-
-export function isPropName(value: unknown): value is PropName {
-  return typeof value === 'string' && value.length > 0;
-}
-
 // Factory functions to create branded types
 export function createEventUid(value: string): EventUid {
   return value as EventUid;

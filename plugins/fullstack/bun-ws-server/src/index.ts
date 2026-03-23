@@ -1,4 +1,6 @@
 import type { Transport } from "@react-fullstack/fullstack/shared";
+import { createHandlerRegistry, parseAndDispatch, fireDisconnect } from "@react-fullstack/fullstack/shared";
+import type { HandlerRegistry } from "@react-fullstack/fullstack/shared";
 
 interface ClientData {
   readonly id: string;
@@ -21,7 +23,7 @@ interface BunServer {
 
 interface ClientState {
   readonly ws: ServerWebSocket<ClientData>;
-  readonly handlers: Map<string, Set<(data: unknown) => void>>;
+  readonly handlers: HandlerRegistry;
 }
 
 interface SocketClientEvents {
@@ -73,24 +75,15 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
     ws: ServerWebSocket<ClientData>,
     id: string
   ): Transport<SocketClientEvents> & { id: string } {
-    const handlers = new Map<string, Set<(data: unknown) => void>>();
+    const { handlers, on, off } = createHandlerRegistry();
 
     const transport: Transport<SocketClientEvents> & { id: string } = {
       id,
-      on: (event, handler) => {
-        const eventHandlers = handlers.get(event as string) ?? new Set();
-        eventHandlers.add(handler as (data: unknown) => void);
-        handlers.set(event as string, eventHandlers);
-      },
+      on: on as Transport<SocketClientEvents>['on'],
       emit: (event, data) => {
         ws.send(JSON.stringify({ event, data }));
       },
-      off: (event, handler) => {
-        const eventHandlers = handlers.get(event as string);
-        if (eventHandlers) {
-          eventHandlers.delete(handler as (data: unknown) => void);
-        }
-      },
+      off: off as Transport<SocketClientEvents>['off'],
     };
 
     clients.set(id, { ws, handlers });
@@ -100,30 +93,13 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
   function handleMessage(id: string, message: string): void {
     const client = clients.get(id);
     if (!client) return;
-
-    try {
-      const { event, data } = JSON.parse(message) as { event: string; data: unknown };
-      const eventHandlers = client.handlers.get(event);
-      if (eventHandlers) {
-        for (const handler of eventHandlers) {
-          handler(data);
-        }
-      }
-    } catch {
-      // Invalid JSON, ignore
-    }
+    parseAndDispatch(message, client.handlers);
   }
 
   function handleDisconnect(id: string): void {
     const client = clients.get(id);
     if (!client) return;
-
-    const disconnectHandlers = client.handlers.get("disconnect");
-    if (disconnectHandlers) {
-      for (const handler of disconnectHandlers) {
-        handler(undefined);
-      }
-    }
+    fireDisconnect(client.handlers);
     clients.delete(id);
   }
 

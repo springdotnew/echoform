@@ -18,11 +18,11 @@ export type {
   ViewProps,
   SerializableViewProps,
   SerializableValue,
-  MutableSerializableValue,
-  MutableExistingSharedViewData,
   EventResponseData,
   EventRequestData,
 } from "./types";
 export { randomId } from "./id";
 export { ViewsRenderer } from "./ViewsRenderer";
 export type { RenderProps } from "./ViewsRenderer";
+export { createHandlerRegistry, parseAndDispatch, fireDisconnect } from "./transport-handlers";
+export type { EventHandlerFn, HandlerRegistry } from "./transport-handlers";

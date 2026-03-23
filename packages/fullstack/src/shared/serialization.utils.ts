@@ -88,14 +88,3 @@ export function stringifyWithoutCircular(
   return JSON.stringify(values, getCircularReplacer());
 }
 
-/**
- * Parses JSON string back to serializable values.
- * Returns null for invalid JSON rather than throwing.
- */
-export function parseSerializable(json: string): SerializableValue | null {
-  try {
-    return JSON.parse(json) as SerializableValue;
-  } catch {
-    return null;
-  }
-}

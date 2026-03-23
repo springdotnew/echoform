@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Transport } from "@react-fullstack/fullstack/shared";
+import { createHandlerRegistry, parseAndDispatch, fireDisconnect } from "@react-fullstack/fullstack/shared";
 
 export interface WebSocketTransportState {
   readonly transport: Transport<Record<string, unknown>> | null;
@@ -15,25 +16,19 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
   });
 
   useEffect(() => {
-    const handlers = new Map<string, Set<(data: unknown) => void>>();
+    const { handlers, on, off } = createHandlerRegistry();
     let disposed = false;
 
     const ws = new WebSocket(url);
 
     const transport: Transport<Record<string, unknown>> = {
-      on: (event: string, handler: (data: unknown) => void): void => {
-        const set = handlers.get(event) ?? new Set();
-        set.add(handler);
-        handlers.set(event, set);
-      },
+      on: on as Transport<Record<string, unknown>>['on'],
       emit: (event: string, data?: unknown): void => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ event, data }));
         }
       },
-      off: (event: string, handler: (data: unknown) => void): void => {
-        handlers.get(event)?.delete(handler);
-      },
+      off: off as Transport<Record<string, unknown>>['off'],
     };
 
     ws.onopen = () => {
@@ -43,20 +38,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
     };
 
     ws.onmessage = (messageEvent) => {
-      try {
-        const { event, data } = JSON.parse(messageEvent.data as string) as {
-          readonly event: string;
-          readonly data: unknown;
-        };
-        const eventHandlers = handlers.get(event);
-        if (eventHandlers) {
-          for (const handler of eventHandlers) {
-            handler(data);
-          }
-        }
-      } catch {
-        // Invalid message format
-      }
+      parseAndDispatch(messageEvent.data as string, handlers);
     };
 
     ws.onerror = () => {
@@ -67,12 +49,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
 
     ws.onclose = () => {
       if (!disposed) {
-        const disconnectHandlers = handlers.get("disconnect");
-        if (disconnectHandlers) {
-          for (const handler of disconnectHandlers) {
-            handler(undefined);
-          }
-        }
+        fireDisconnect(handlers);
         setState((prev) => (prev.isConnected ? { ...prev, isConnected: false } : prev));
       }
     };
