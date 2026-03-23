@@ -1,16 +1,19 @@
 {
-  "name": "@react-fullstack/fullstack-socket-server",
+  "name": "@playfast/echoform-socket-server",
   "version": "0.3.1-alpha.8",
-  "description": "create node express servers using react! - socket server",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "description": "Socket.IO server transport for echoform",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": ["src"],
   "scripts": {
-    "build": "tsc",
-    "prepare": "npm run build"
+    "typecheck": "tsgo -p .",
+    "build": "tsgo -p ."
   },
   "peerDependencies": {
-    "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
-    "react": ">=18.0.0"
+    "@playfast/echoform": ">=0.3.1-alpha.8",
+    "react": ">=19.0.0"
   },
   "dependencies": {
     "socket.io": "4.5.3",
@@ -18,18 +21,11 @@
     "utf-8-validate": "5.0.10"
   },
   "devDependencies": {
-    "@react-fullstack/fullstack": "workspace:*",
-    "@types/react": "18.0.25",
-    "@types/react-dom": "^17.0.0",
-    "@types/socket.io": "2.1.13",
-    "typescript": "4.8.4"
+    "@playfast/echoform": "workspace:*",
+    "@types/react": "19.0.2",
+    "@types/react-dom": "19.0.2",
+    "@types/socket.io": "2.1.13"
   },
-  "keywords": [
-    "react",
-    "express",
-    "typescript",
-    "http"
-  ],
   "author": "shmuelhizmi",
   "license": "MIT"
 }

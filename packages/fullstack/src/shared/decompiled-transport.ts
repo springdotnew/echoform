@@ -1,200 +1,224 @@
-import { CompiledAppEvents } from "./compiledTypes";
-import { EventContent, Events } from "./enum";
-import { AppEvents, Prop, Transport } from "./types";
+/**
+ * Decompiled transport: bridges between the raw binary WebSocket transport
+ * and the typed AppEvents interface used by the app layer.
+ *
+ * Uses typed-binary (via binary-protocol.ts) for wire encoding.
+ */
 
-const nullIfEmpty = <T>(arr: T[]) => arr.length === 0 ? undefined : arr;
+import { encodeMessage, decodeMessage } from "./binary-protocol";
+import type { AppEvents, Transport } from "./types";
+import { createEventUid, createViewUid, createRequestUid, createPropName, createStreamUid } from "./branded.types";
 
-const emitHandlerMap: {
-    [Key in keyof typeof map]: (data: AppEvents[Key]) => CompiledAppEvents[(typeof map)[Key]];
-} = {
-    delete_view: (data) => {
-        return data.viewUid;
-    },
-    request_event: (data) => {
-        return {
-            [EventContent.EventUid]: data.eventUid,
-            [EventContent.EventArgs]: data.eventArguments,
-            [EventContent.Uid]: data.uid,
-        };
-    },
-    request_views_tree: () => {
-        return undefined;
-    },
-    respond_to_event: (data) => {
-        return {
-            [EventContent.Data]: data.data,
-            [EventContent.EventUid]: data.eventUid,
-            [EventContent.Uid]: data.uid,
-        };
-    },
-    update_view: (data) => {
-        return {
-            [EventContent.ChildIndex]: data.view.childIndex,
-            [EventContent.Name]: data.view.name,
-            [EventContent.ParentUid]: data.view.parentUid,
-            [EventContent.Props]: {
-                [EventContent.Create]: nullIfEmpty(data.view.props.create)?.map((prop) => ({
-                    [EventContent.Data]: prop.type === "data" ? prop.data : undefined,
-                    [EventContent.Name]: prop.name,
-                    [EventContent.Type]: prop.type === "data" ? EventContent.Data : EventContent.Event,
-                    [EventContent.Uid]: prop.type === "event" ? prop.uid : undefined,
-                })),
-                [EventContent.Merge]: nullIfEmpty(data.view.props.merge)?.map((prop) => ({
-                    [EventContent.Data]: prop.type === "data" ? prop.data : undefined,
-                    [EventContent.Name]: prop.name,
-                    [EventContent.Type]: prop.type === "data" ? EventContent.Data : EventContent.Event,
-                    [EventContent.Uid]: prop.type === "event" ? prop.uid : undefined,
-                })),
-                [EventContent.Delete]: nullIfEmpty(data.view.props.delete),
-            },
-            [EventContent.Uid]: data.view.uid,
-            [EventContent.isRoot]: data.view.isRoot,
-        };
-    },
-    update_views_tree: (data) => {
-        return {
-            [EventContent.Views]: data.views.map((view) => ({
-                [EventContent.ChildIndex]: view.childIndex,
-                [EventContent.Name]: view.name,
-                [EventContent.ParentUid]: view.parentUid,
-                [EventContent.Props]: view.props.map((prop) => ({
-                    [EventContent.Data]: prop.type === "data" ? prop.data : undefined,
-                    [EventContent.Name]: prop.name,
-                    [EventContent.Type]: prop.type === "data" ? EventContent.Data : EventContent.Event,
-                    [EventContent.Uid]: prop.type === "event" ? prop.uid : undefined,
-                })),
-                [EventContent.Uid]: view.uid,
-                [EventContent.isRoot]: view.isRoot,
-            })),
-        };
-    },
-};
+// ---- DecompileTransport ----
 
-
-const map = {
-    delete_view: Events.DeleteView,
-    request_event: Events.RequestEvent,
-    request_views_tree: Events.RequestViewsTree,
-    respond_to_event: Events.RespondToEvent,
-    update_view: Events.UpdateView,
-    update_views_tree: Events.UpdateViewsTree,
-} as const;
-
-type ReverseMap<T extends Record<keyof T, keyof any>> = {
-    [P in T[keyof T]]: {
-        [K in keyof T]: T[K] extends P ? K : never
-    }[keyof T]
-}
-
-
-
-
-const onHandlerMap: {
-    [Key in keyof ReverseMap<typeof map>]: (data: CompiledAppEvents[Key]) => AppEvents[ReverseMap<typeof map>[Key]];
-} = {
-    [Events.DeleteView]: (data) => {
-        return { viewUid: data }
-    },
-    [Events.RequestEvent]: (data) => {
-        return {
-            eventArguments: data[EventContent.EventArgs] || [],
-            eventUid: data[EventContent.EventUid],
-            uid: data[EventContent.Uid],
-        }
-    },
-    [Events.RequestViewsTree]: () => {
-        return
-    },
-    [Events.RespondToEvent]: (data) => {
-        return {
-            data: data[EventContent.Data],
-            eventUid: data[EventContent.EventUid],
-            uid: data[EventContent.Uid],
-        }
-    },
-    [Events.UpdateView]: (data) => {
-        return {
-            view: {
-                childIndex: data[EventContent.ChildIndex],
-                name: data[EventContent.Name],
-                parentUid: data[EventContent.ParentUid],
-                props: {
-                    create: (data[EventContent.Props][EventContent.Create] || []).map((prop) => ({
-                        name: prop[EventContent.Name],
-                        data: prop[EventContent.Data],
-                        type: prop[EventContent.Type] === EventContent.Data ? "data" : "event",
-                        uid: prop[EventContent.Uid],
-                    })) as unknown as Prop[],
-                    merge: (data[EventContent.Props][EventContent.Merge] || []).map((prop) => ({
-                        name: prop[EventContent.Name],
-                        data: prop[EventContent.Data],
-                        type: prop[EventContent.Type] === EventContent.Data ? "data" : "event",
-                        uid: prop[EventContent.Uid],
-                    })) as unknown as Prop[],
-                    delete: data[EventContent.Props][EventContent.Delete] || [],
-                },
-                uid: data[EventContent.Uid],
-                isRoot: data[EventContent.isRoot],
-            },
-        }
-    },
-    [Events.UpdateViewsTree]: (data) => {
-        return {
-            views: (data[EventContent.Views] || []).map((view) => ({
-                childIndex: view[EventContent.ChildIndex],
-                name: view[EventContent.Name],
-                parentUid: view[EventContent.ParentUid],
-                props: (view[EventContent.Props] || []).map((prop) => ({
-                    name: prop[EventContent.Name],
-                    data: prop[EventContent.Data],
-                    type: prop[EventContent.Type] === EventContent.Data ? "data" : "event",
-                    uid: prop[EventContent.Uid],
-                }) as unknown as Prop),
-                uid: view[EventContent.Uid],
-                isRoot: view[EventContent.isRoot],
-            })),
-        }
-    },
-};
-
-export const decompileTransport = (transport: Transport<Record<string, any>>) => {
-    const on = <Key extends keyof AppEvents>(event: Key, handler: (data: AppEvents[Key]) => void) => {
-        const handlerExtended = (data: any) => {
-            handler((onHandlerMap[map[event]] as any)(data));
-        };
-        transport.on(String(map[event]), handlerExtended);
-        return () => transport.off?.(String(map[event]), handlerExtended);
-    }
-    const emit = <Key extends keyof AppEvents>(event: Key, data?: AppEvents[Key]) => {
-        transport.emit(String(map[event]), (emitHandlerMap[event] as any)(data!) as any);
-    }
-    return { on, emit };
-}
-
-const emitFactory = () => {
-    const events = map;
-    return new Proxy(events, {
-        get: (target, prop) => {
-            if (prop in target) {
-                return (transport: Transport<Record<string, any>>, data?: AppEvents[keyof AppEvents]) => {
-                    transport.emit(String(map[prop as keyof AppEvents]), (emitHandlerMap[prop as keyof AppEvents] as any)(data!) as any);
-                }
-            }
-            return undefined;
-        }
-    }) as unknown as {
-        /**
-         * @param transport
-         * @param data
-         * @description emit event to transport
-         */
-        [Key in keyof AppEvents]: (transport: Transport<Record<string, any>>, data?: AppEvents[Key]) => void;
-    }
+export interface DecompileTransport {
+  readonly on: <Key extends keyof AppEvents>(
+    event: Key,
+    handler: (data: AppEvents[Key]) => void
+  ) => (() => void) | undefined;
+  readonly emit: <Key extends keyof AppEvents>(
+    event: Key,
+    data?: AppEvents[Key]
+  ) => void;
 }
 
 /**
- * for usage in custom clients
+ * Wraps a raw transport (binary WebSocket) to provide typed AppEvents access.
+ *
+ * - emit: encodes AppEvents to binary via typed-binary, sends through raw transport
+ * - on: receives binary from raw transport, decodes, dispatches to typed handlers
  */
-export const emit = emitFactory();
+export function decompileTransport<TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>): DecompileTransport {
+  // Collect handlers per app event name
+  const appHandlers = new Map<string, Set<(data: unknown) => void>>();
 
-export type DecompileTransport = ReturnType<typeof decompileTransport>;
+  // Single listener on the raw transport for binary messages
+  let rawListenerAttached = false;
+
+  function ensureRawListener(): void {
+    if (rawListenerAttached) return;
+    rawListenerAttached = true;
+
+    (transport.on as (event: string, handler: (data: unknown) => void) => void)("__bin__", (raw: unknown) => {
+      try {
+        const bytes = raw instanceof Uint8Array ? raw : new Uint8Array(raw as ArrayBuffer);
+        const { event, data } = decodeMessage(bytes);
+
+        // Apply branded types to decoded data
+        const branded = applyBrands(event, data);
+
+        const handlers = appHandlers.get(event);
+        if (handlers) {
+          for (const handler of handlers) {
+            handler(branded);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to decode binary message:", err);
+      }
+    });
+  }
+
+  const on = <Key extends keyof AppEvents>(
+    event: Key,
+    handler: (data: AppEvents[Key]) => void
+  ): (() => void) | undefined => {
+    ensureRawListener();
+
+    const eventName = event as string;
+    let handlerSet = appHandlers.get(eventName);
+    if (!handlerSet) {
+      handlerSet = new Set();
+      appHandlers.set(eventName, handlerSet);
+    }
+    handlerSet.add(handler as (data: unknown) => void);
+
+    return () => {
+      const set = appHandlers.get(eventName);
+      if (!set) return;
+      set.delete(handler as (data: unknown) => void);
+      if (set.size === 0) {
+        appHandlers.delete(eventName);
+      }
+    };
+  };
+
+  const emit = <Key extends keyof AppEvents>(event: Key, data?: AppEvents[Key]): void => {
+    const bytes = encodeMessage(event as string, data);
+    (transport.emit as (event: string, data: unknown) => void)("__bin__", bytes);
+  };
+
+  return { on, emit };
+}
+
+/**
+ * Apply branded types to decoded data.
+ * typed-binary decodes to plain strings; we wrap them in branded types.
+ */
+interface WireViewBase {
+  readonly uid: string;
+  readonly name: string;
+  readonly parentUid: string;
+  readonly childIndex: number;
+  readonly isRoot: boolean;
+}
+
+interface WireExistingView extends WireViewBase {
+  readonly props: ReadonlyArray<UnbrandedProp>;
+}
+
+interface WireShareableView extends WireViewBase {
+  readonly props: {
+    readonly create: ReadonlyArray<UnbrandedProp>;
+    readonly delete: ReadonlyArray<string>;
+  };
+}
+
+function brandExistingView(v: WireExistingView): AppEvents['update_views_tree']['views'][number] {
+  return {
+    ...v,
+    uid: createViewUid(v.uid),
+    parentUid: createViewUid(v.parentUid),
+    props: v.props.map(brandProp),
+  };
+}
+
+function brandShareableView(v: WireShareableView): AppEvents['update_view']['view'] {
+  return {
+    ...v,
+    uid: createViewUid(v.uid),
+    parentUid: createViewUid(v.parentUid),
+    props: {
+      create: v.props.create.map(brandProp),
+      delete: v.props.delete.map(createPropName),
+    },
+  };
+}
+
+function applyBrands(event: string, data: unknown): unknown {
+  if (!data || typeof data !== "object") return data;
+
+  switch (event) {
+    case "delete_view": {
+      const deletePayload = data as { readonly viewUid: string };
+      return { viewUid: createViewUid(deletePayload.viewUid) };
+    }
+    case "request_event": {
+      const requestPayload = data as { readonly eventArguments: ReadonlyArray<unknown>; readonly uid: string; readonly eventUid: string };
+      return {
+        eventArguments: requestPayload.eventArguments,
+        eventUid: createEventUid(requestPayload.eventUid),
+        uid: createRequestUid(requestPayload.uid),
+      };
+    }
+    case "respond_to_event": {
+      const responsePayload = data as { readonly data: unknown; readonly uid: string; readonly eventUid: string };
+      return {
+        data: responsePayload.data,
+        eventUid: createEventUid(responsePayload.eventUid),
+        uid: createRequestUid(responsePayload.uid),
+      };
+    }
+    case "update_view": {
+      const updatePayload = data as { readonly view: WireShareableView };
+      return { view: brandShareableView(updatePayload.view) };
+    }
+    case "update_views_tree": {
+      const treePayload = data as { readonly views: ReadonlyArray<WireExistingView> };
+      return { views: treePayload.views.map(brandExistingView) };
+    }
+    case "stream_chunk": {
+      const chunkPayload = data as { readonly streamUid: string; readonly chunk: unknown };
+      return { streamUid: createStreamUid(chunkPayload.streamUid), chunk: chunkPayload.chunk };
+    }
+    case "stream_end": {
+      const endPayload = data as { readonly streamUid: string };
+      return { streamUid: createStreamUid(endPayload.streamUid) };
+    }
+    default:
+      return data;
+  }
+}
+
+interface UnbrandedProp {
+  readonly name: string;
+  readonly type: "data" | "event" | "stream";
+  readonly data?: unknown;
+  readonly uid?: string;
+}
+
+function brandProp(prop: UnbrandedProp): import("./types").Prop {
+  if (prop.type === "data") {
+    return { name: createPropName(prop.name), type: "data", data: prop.data as import("./types").SerializableValue };
+  }
+  if (prop.type === "event") {
+    return { name: createPropName(prop.name), type: "event", uid: createEventUid(prop.uid ?? "") };
+  }
+  return { name: createPropName(prop.name), type: "stream", uid: createStreamUid(prop.uid ?? "") };
+}
+
+// ---- Convenience emit helpers ----
+
+type EmitFunctions = {
+  readonly [Key in keyof AppEvents]: <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[Key]) => void;
+};
+
+function emitFactory(): EmitFunctions {
+  const events: Array<keyof AppEvents> = [
+    "update_views_tree", "update_view", "delete_view", "request_views_tree",
+    "respond_to_event", "request_event", "stream_chunk", "stream_end",
+  ];
+
+  const result = {} as Record<string, <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[keyof AppEvents]) => void>;
+
+  for (const event of events) {
+    result[event as string] = <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[typeof event]): void => {
+      const decompiled = decompileTransport(transport);
+      decompiled.emit(event, data);
+    };
+  }
+
+  return result as EmitFunctions;
+}
+
+export const emit = emitFactory();

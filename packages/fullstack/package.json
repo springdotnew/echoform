@@ -1,72 +1,32 @@
 {
-  "name": "@react-fullstack/fullstack",
+  "name": "@playfast/echoform",
   "version": "0.3.1-alpha.8",
   "description": "run your react app logic on the server",
+  "type": "module",
   "exports": {
-    "./server": {
-      "import": "./dist/esm/server/index.js",
-      "node": "./dist/cjs/server/index.js",
-      "require": "./dist/cjs/server/index.js",
-      "browser": "./dist/esm/server/index.js"
-    },
-    "./client": {
-      "import": "./dist/esm/client/index.js",
-      "node": "./dist/cjs/client/index.js",
-      "require": "./dist/cjs/client/index.js",
-      "browser": "./dist/esm/client/index.js"
-    },
-    ".": {
-      "import": "./dist/esm/shared/index.js",
-      "node": "./dist/cjs/shared/index.js",
-      "require": "./dist/cjs/shared/index.js",
-      "browser": "./dist/esm/shared/index.js"
-    },
-    "./shared": {
-      "import": "./dist/esm/shared/index.js",
-      "node": "./dist/cjs/shared/index.js",
-      "require": "./dist/cjs/shared/index.js",
-      "browser": "./dist/esm/shared/index.js"
-    }
-  },
-  "typesVersions": {
-    "*": {
-      "server": [
-        "dist/esm/server/index.d.ts"
-      ],
-      "client": [
-        "dist/esm/client/index.d.ts"
-      ],
-      ".": [
-        "dist/esm/shared/index.d.ts"
-      ],
-      "shared": [
-        "dist/esm/shared/index.d.ts"
-      ]
-    }
+    "./server": "./src/server/index.ts",
+    "./client": "./src/client/index.ts",
+    ".": "./src/shared/index.ts",
+    "./shared": "./src/shared/index.ts"
   },
   "files": [
-    "dist"
+    "src"
   ],
   "scripts": {
-    "build:cjs": "tsc --outDir dist/cjs --module commonjs --target es2019 --declaration --declarationMap --sourceMap",
-    "build:esm": "tsc --outDir dist/esm --module esnext --target esnext",
-    "watch:cjs": "tsc --outDir dist/cjs --module commonjs --target es2019 --declaration --declarationMap --sourceMap --watch",
-    "watch:esm": "tsc --outDir dist/esm --module esnext --target esnext --watch",
-    "start": "concurrently \"npm run watch:cjs\" \"npm run watch:esm\"",
-    "build": "npm run build:cjs && npm run build:esm",
-    "prepare": "npm run build"
+    "typecheck": "tsgo -p .",
+    "build": "tsgo -p ."
   },
   "peerDependencies": {
-    "react": ">=18.0.0"
+    "react": ">=19.0.0"
   },
   "dependencies": {
-    "crypto-random-string": "5.0.0"
+    "crypto-random-string": "5.0.0",
+    "fossil-delta": "^2.0.0",
+    "typed-binary": "^4.3.3"
   },
   "devDependencies": {
-    "@types/react": "18.0.25",
-    "concurrently": "7.5.0",
-    "react": "18.2.0",
-    "typescript": "4.8.4"
+    "@types/react": "19.0.2",
+    "react": "19.0.0"
   },
   "keywords": [
     "react",
@@ -76,15 +36,12 @@
   ],
   "author": "shmuelhizmi",
   "license": "MIT",
-  "directories": {
-    "lib": "lib"
-  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shmuelhizmi/react-fullstack.git"
+    "url": "git+https://github.com/shmuelhizmi/echoform.git"
   },
   "bugs": {
-    "url": "https://github.com/shmuelhizmi/react-fullstack/issues"
+    "url": "https://github.com/shmuelhizmi/echoform/issues"
   },
-  "homepage": "https://github.com/shmuelhizmi/react-fullstack/tree/master/packages/fullstack#readme"
+  "homepage": "https://github.com/shmuelhizmi/echoform/tree/master/packages/fullstack#readme"
 }

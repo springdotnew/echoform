@@ -1,8 +1,5 @@
-import Component from "./Component"
-import Client from "./Client"
-export { TransformViewProps, ViewsToComponents } from "./types"
+import Client from "./Client";
 
-export {
-    Component,
-    Client,
-}
+export type { InferClientProps } from "../shared/view-inference";
+
+export { Client };

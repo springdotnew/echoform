@@ -1,0 +1,37 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [],
+      "project": ["*.{ts,tsx,js,jsx}"]
+    },
+    "packages/fullstack": {
+      "entry": [
+        "src/shared/index.ts",
+        "src/server/index.ts",
+        "src/client/index.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/react-render-null": {
+      "entry": ["src/render.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "plugins/fullstack/socket-server": {
+      "entry": ["src/index.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "plugins/fullstack/socket-client": {
+      "entry": ["src/index.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    }
+  },
+  "ignore": [
+    "node_modules/**",
+    "dist/**",
+    "lib/**"
+  ],
+  "ignoreDependencies": [
+    "@changesets/cli"
+  ]
+}

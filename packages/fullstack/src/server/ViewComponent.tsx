@@ -1,71 +1,73 @@
-import React from "react";
-import { randomId } from "../shared";
-import App from "./App";
+import React, { useContext, useRef, useState, useEffect, type ReactNode } from "react";
+import { randomId } from "../shared/id";
+import type { ViewUid } from "../shared/branded.types";
+import { createViewUid } from "../shared/branded.types";
+import type { ViewProps, SerializableViewProps } from "../shared/types";
 import { AppContext } from "./contexts";
 
-const ViewParentContext = React.createContext<
-  { uid: string; childIndex: number } | undefined
->(undefined);
+interface ViewParentContextValue {
+  readonly uid: ViewUid;
+  readonly childIndex: number;
+}
 
-class ViewComponent<
-  Props extends React.PropsWithChildren<{ name: string; props: any }>
-> extends React.Component<Props> {
-  static contextType = AppContext;
-  declare context: App;
-  private uid = randomId();
-  private mountState: "premounted" | "mounted" | "unmounted" = "premounted";
-  componentDidMount() {
-    this.mountState = "mounted";
-    this.forceUpdate();
+const ViewParentContext = React.createContext<ViewParentContextValue | undefined>(undefined);
+
+interface ViewComponentProps {
+  readonly name: string;
+  readonly props: ViewProps & { readonly children?: ReactNode };
+  readonly children?: ReactNode;
+}
+
+function ViewComponent({ name, props, children: _children }: ViewComponentProps): React.ReactElement {
+  const app = useContext(AppContext);
+  const parent = useContext(ViewParentContext);
+  const uidRef = useRef<ViewUid>(createViewUid(randomId()));
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => {
+      if (app) {
+        app.deleteRunningView(uidRef.current);
+      }
+    };
+  }, [app]);
+
+  if (!app || !mounted) {
+    return <> </>;
   }
-  componentWillUnmount() {
-    this.mountState = "unmounted";
-    this.context.deleteRunningView(this.uid);
-  }
-  render() {
+
+  app.updateRunningView({
+    parentUid: parent?.uid ?? ('' as ViewUid | ''),
+    isRoot: parent === undefined,
+    childIndex: parent?.childIndex ?? 0,
+    name: name,
+    props: props as SerializableViewProps,
+    uid: uidRef.current,
+  });
+
+  const childrenFromProps = props.children;
+
+  if (Array.isArray(childrenFromProps)) {
     return (
-      <AppContext.Consumer>
-        {(app) => {
-          if (!app || this.mountState !== "mounted") {
-            return <> </>;
-          }
-          return (
-            <ViewParentContext.Consumer>
-              {(parent) => {
-                app.updateRunningView({
-                  parentUid: parent?.uid || "",
-                  isRoot: parent === undefined,
-                  childIndex: parent?.childIndex || 0,
-                  name: this.props.name,
-                  props: this.props.props,
-                  uid: this.uid,
-                });
-                if (Array.isArray(this.props.children)) {
-                  return (this.props.props.children as JSX.Element[]).map(
-                    (child, index) => (
-                      <ViewParentContext.Provider
-                        key={index}
-                        value={{ uid: this.uid, childIndex: index }}
-                      >
-                        {child}
-                      </ViewParentContext.Provider>
-                    )
-                  );
-                } else {
-                  return (
-                    <ViewParentContext.Provider
-                      value={{ uid: this.uid, childIndex: 0 }}
-                    >
-                      {this.props.props.children}
-                    </ViewParentContext.Provider>
-                  );
-                }
-              }}
-            </ViewParentContext.Consumer>
-          );
-        }}
-      </AppContext.Consumer>
+      <>
+        {(childrenFromProps as ReadonlyArray<ReactNode>).map((child, index) => (
+          <ViewParentContext.Provider
+            key={index}
+            value={{ uid: uidRef.current, childIndex: index }}
+          >
+            {child}
+          </ViewParentContext.Provider>
+        ))}
+      </>
     );
   }
+
+  return (
+    <ViewParentContext.Provider value={{ uid: uidRef.current, childIndex: 0 }}>
+      {childrenFromProps}
+    </ViewParentContext.Provider>
+  );
 }
+
 export default ViewComponent;

@@ -1,54 +1,109 @@
-import React from "react";
-import { Views } from "../shared";
+import React, { useContext, useRef } from "react";
+import type { ViewProps } from "../shared/types";
 import { AppContext } from "./contexts";
-import { ViewsToServerComponents } from "./types";
+import type { ViewDef, ViewDefs, StreamDef } from "../shared/view-builder";
+import type { InferServerProps, StreamEmitter } from "../shared/view-inference";
+import { createStreamEmitter } from "../shared/view-inference";
+import { createStreamUid } from "../shared/branded.types";
+import { randomId } from "../shared/id";
+import type { StandardSchemaV1 } from "../shared/standard-schema";
 import ViewComponent from "./ViewComponent";
 
-export const viewProxy = new Proxy({} as Record<string, any>, {
-  get: (target, name) => {
+// ---- Module-level ViewDef registry ----
+
+const viewDefRegistry = new Map<string, ViewDef>();
+
+export function getViewDef(name: string): ViewDef | undefined {
+  return viewDefRegistry.get(name);
+}
+
+// ---- View component cache ----
+
+const viewComponentCache = new Map<string, React.ComponentType<ViewProps>>();
+
+function getOrCreateViewComponent(name: string): React.ComponentType<ViewProps> {
+  const existingComponent = viewComponentCache.get(name);
+  if (existingComponent) {
+    return existingComponent;
+  }
+
+  const NewViewComponent = (props: ViewProps): React.ReactElement => (
+    <ViewComponent name={name} props={props} />
+  );
+  NewViewComponent.displayName = `View(${name})`;
+
+  viewComponentCache.set(name, NewViewComponent);
+  return NewViewComponent;
+}
+
+const viewProxy = new Proxy({} as Record<string, React.ComponentType<ViewProps>>, {
+  get: (_target, name): React.ComponentType<ViewProps> => {
     if (typeof name !== 'string') {
       throw new Error('trying to access a view with a non string name');
     }
-    if (!target[name]) {
-      target[name] = (props: any) => {
-        return (
-          <ViewComponent name={name} props={props} />
-        )
-      }
-    }
-    return target[name];
+    return getOrCreateViewComponent(name);
   }
-}) as any;
+});
 
-export const ViewsProvider = <ViewsInterface extends Views>(props: {
-  children: (views: ViewsToServerComponents<ViewsInterface>) => JSX.Element;
-}) => {
-  return (
-    <AppContext.Consumer>
-      {(app) => {
-        if (!app) {
-          return;
-        }
-        return props.children(viewProxy);
-      }}
-    </AppContext.Consumer>
-  );
-};
+// ---- Hooks ----
 
-export function deeplyEqual(x: any, y: any) {
-  if (x === y) {
-    return true;
-  }
-  if (typeof x == "object" && x != null && typeof y == "object" && y != null) {
-    if (Object.keys(x).length != Object.keys(y).length) return false
-    for (var prop in x) {
-      if (y.hasOwnProperty(prop)) {
-        if (!deeplyEqual(x[prop], y[prop])) return false;
-      } else {
-        return false;
-      }
+/**
+ * Get typed view components for rendering on the server.
+ *
+ * ```ts
+ * const View = useViews(views);
+ * ```
+ */
+export function useViews<V extends ViewDefs>(_viewDefs?: V): ViewDefsToServerComponents<V> | null {
+  const app = useContext(AppContext);
+
+  if (_viewDefs) {
+    for (const [name, def] of Object.entries(_viewDefs)) {
+      viewDefRegistry.set(name, def);
     }
-    return true;
   }
-  return false;
+
+  if (!app) {
+    return null;
+  }
+
+  return viewProxy as unknown as ViewDefsToServerComponents<V>;
 }
+
+/**
+ * Create a StreamEmitter for a server-to-client stream prop.
+ *
+ * ```ts
+ * const output = useStream(TerminalDef, "output");
+ * output.emit({ data: "hello" });
+ * ```
+ */
+export function useStream<
+  V extends ViewDef,
+  K extends keyof V["streams"] & string,
+>(
+  _viewDef: V,
+  _streamName: K,
+): StreamEmitter<V["streams"][K] extends StreamDef<infer C> ? StandardSchemaV1.InferInput<C> : never> {
+  const app = useContext(AppContext);
+  const emitterRef = useRef<ReturnType<typeof createStreamEmitter> | null>(null);
+
+  if (!emitterRef.current) {
+    const uid = createStreamUid(randomId());
+    emitterRef.current = createStreamEmitter(
+      uid,
+      (streamUid, chunk) => app?.broadcastStreamChunk(streamUid, chunk),
+      (streamUid) => app?.broadcastStreamEnd(streamUid),
+    );
+  }
+
+  return emitterRef.current as StreamEmitter<V["streams"][K] extends StreamDef<infer C> ? StandardSchemaV1.InferInput<C> : never>;
+}
+
+// ---- Type helpers ----
+
+export type ViewDefsToServerComponents<V extends ViewDefs> = {
+  readonly [K in keyof V]: V[K] extends ViewDef
+    ? React.FunctionComponent<InferServerProps<V[K]>>
+    : never;
+};

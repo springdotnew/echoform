@@ -1,11 +1,2 @@
-import Reaxt from "react";
-import { TransformViewProps } from "./types";
-import { View as ViewType } from "../shared";
-
-abstract class Component<
-  View extends ViewType<any>,
-  State = {},
-  ExternalProps = {},
-> extends Reaxt.Component<TransformViewProps<View["props"]> & ExternalProps, State> { }
-
-export default Component;
+// Old ViewComponentProps type has been removed.
+// Use InferClientProps from the shared module instead.

@@ -1,7 +1,2 @@
-import { Views } from "../shared";
-
-export type ViewsToServerComponents<ViewsToTransform extends Views> = {
-    [ViewName in keyof ViewsToTransform]: React.FunctionComponent<
-      ViewsToTransform[ViewName]["props"]
-    >;
-  };        
+// Old ViewsToServerComponents type has been removed.
+// Use ViewDef, InferServerProps from the shared module instead.

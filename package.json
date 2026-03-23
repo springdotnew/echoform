@@ -1,24 +1,34 @@
 {
-  "name": "@react-fullstack/root",
+  "name": "@playfast/echoform-root",
   "private": true,
-  "packageManager": "bun@1.3.4",
+  "packageManager": "bun@1.3.11",
   "version": "1.0.0",
-  "main": "index.js",
-  "repository": "https://github.com/shmuelhizmi/react-fullstack.git",
+  "repository": "https://github.com/shmuelhizmi/echoform.git",
   "author": "shmuelhizmi <shmuelhizmi1@gmail.com>",
   "license": "MIT",
   "workspaces": [
     "packages/*",
     "plugins/*/*",
-    "apps/*/*"
+    "demo/*"
   ],
-  "nohoist": [
-    "**/react-native",
-    "**/react-native/**",
-    "**/expo",
-    "**/expo/**"
-  ],
+  "scripts": {
+    "typecheck": "bun run --filter '*' typecheck",
+    "build": "bun run --filter '*' build",
+    "clean": "rm -rf packages/*/dist packages/*/lib plugins/*/*/dist plugins/*/*/lib",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "lint:packages": "oxlint packages/",
+    "lint:plugins": "oxlint plugins/",
+    "knip": "knip",
+    "knip:fix": "knip --fix"
+  },
   "dependencies": {
     "@changesets/cli": "^2.25.2"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "^7.0.0-dev.20260323.1",
+    "knip": "^5.0.0",
+    "oxlint": "^0.13.0",
+    "typescript": "^6.0.0"
   }
 }

@@ -5,15 +5,15 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@react-fullstack/fullstack"><img alt="NPM Version" src="https://img.shields.io/npm/v/@react-fullstack/fullstack?style=for-the-badge"></a>
-  <a href="https://www.npmjs.com/package/@react-fullstack/fullstack"><img alt="NPM Downloads" src="https://img.shields.io/npm/dt/@react-fullstack/fullstack?style=for-the-badge"></a>
+  <a href="https://www.npmjs.com/package/@playfast/echoform"><img alt="NPM Version" src="https://img.shields.io/npm/v/@playfast/echoform?style=for-the-badge"></a>
+  <a href="https://www.npmjs.com/package/@playfast/echoform"><img alt="NPM Downloads" src="https://img.shields.io/npm/dt/@playfast/echoform?style=for-the-badge"></a>
 </p>
 
 React-Fullstack is a react framework for building React applications with their layout/UI components running on the client and with the connections between them and business logic running on the server.
 
 
 ## Server-side executing and not rendering
-"react-fullstack" is the exact opposite of server-side-rendering in "react-fullstack" instead of rendering your app in the server and running it in the client you actually render the app in the client ( plus manage user UI logic ) and run it ( manage the app business-logic ) in the server.   
+"echoform" is the exact opposite of server-side-rendering in "echoform" instead of rendering your app in the server and running it in the client you actually render the app in the client ( plus manage user UI logic ) and run it ( manage the app business-logic ) in the server.   
 for example, user UI interactions will run on the client while logic related stuff like layout changes and data fetching will run on the server
 
 ## All the benefits of React now in your server :)
@@ -21,16 +21,16 @@ using React in your server will make it much less static and much more reactive 
 React components will make your code much more reusable plus stuff like the [React context API](https://reactjs.org/docs/context.html) will make your code data flow much more organized. and the most important part of using React in your server - you could use the entire collection of React libraries ( at least the non-dom related part of them :} ) in your server!!!
 
 ## Speed advantages and limits over regular React apps
-"react-fullstack" can even have some speed advantages compare to regular React applications because pages do not need to fetch data using HTTP every load.  
+"echoform" can even have some speed advantages compare to regular React applications because pages do not need to fetch data using HTTP every load.  
 the regular data flow goes something like that  
 `user action` -> `layout-change` -> `new component data HTTP fetching` -> `layout-update`  
-now with "react-fullstack" the data flow should look more like that  
+now with "echoform" the data flow should look more like that  
 `user client action` -> `server socket action request` -> `server tells the client via socket to update itself with new data`  
-in cases where a new data is needed to update the view layout the "react-fullstack" way of updating the layout should be much faster but in places where a layout change occurs with no new data "react-fullstack" can actually be slower
+in cases where a new data is needed to update the view layout the "echoform" way of updating the layout should be much faster but in places where a layout change occurs with no new data "echoform" can actually be slower
 
 ## Use cases
-I recently moved a project of mine called ["web-desktop-environment"](https://github.com/shmuelhizmi/web-desktop-environment) to "react-fullstack".  
-["web-desktop-environment"](https://github.com/shmuelhizmi/web-desktop-environment) was a great example of a project that really benefited a lot from using "react-fullstack" since he needs a tight connection between the server and the client and apart from that moving his entire server logic to react components made the server codebase much more user-readable and organized.
+I recently moved a project of mine called ["web-desktop-environment"](https://github.com/shmuelhizmi/web-desktop-environment) to "echoform".  
+["web-desktop-environment"](https://github.com/shmuelhizmi/web-desktop-environment) was a great example of a project that really benefited a lot from using "echoform" since he needs a tight connection between the server and the client and apart from that moving his entire server logic to react components made the server codebase much more user-readable and organized.
 
 # Getting Started - TypeScript
 
@@ -47,7 +47,7 @@ Example:
 ```ts
 // shared/src/index.ts
 
-import { View } from "@react-fullstack/fullstack/shared";
+import { View } from "@playfast/echoform/shared";
 
 export const Views = {
   Home: {} as View<{ username: string; logout: () => void }>, // Home layout component and its props
@@ -62,10 +62,10 @@ next, after we finished declaring all of our client components in our shared pac
 ```tsx
 // server/src/index
 import React from "react";
-import { Render } from "@react-fullstack/render";
-import { ViewsProvider } from "@react-fullstack/fullstack/server";
+import { Render } from "@playfast/echoform-render";
+import { ViewsProvider } from "@playfast/echoform/server";
 import { Views } from "shared-package"; // import our shared package
-import { Server } from "@react-fullstack/fullstack-socket-server";
+import { Server } from "@playfast/echoform-socket-server";
 
 
 const App = () => {
@@ -127,8 +127,8 @@ after we finished adding all of our business logic to the server its now time to
 
 import React from "react";
 import ReactDOM from "react-dom";
-import { Component } from "@react-fullstack/fullstack/client";
-import { Client } from "@react-fullstack/fullstack-socket-client"
+import { Component } from "@playfast/echoform/client";
+import { Client } from "@playfast/echoform-socket-client"
 import { Views } from "shared-package";
 
 // home layout component
