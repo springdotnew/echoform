@@ -34,7 +34,7 @@ export function Terminal(props: InferClientProps<typeof TerminalDef>): React.Rea
     const xterm = new XTerm({
       cursorBlink: true,
       fontSize: 14,
-      fontFamily: "'Cascadia Code', 'Fira Code', Consolas, monospace",
+      fontFamily: "'JetBrainsMono Nerd Font Mono', 'CaskaydiaCove Nerd Font', 'FiraCode Nerd Font', monospace",
       theme: {
         background: "#1e1e1e",
         foreground: "#d4d4d4",
