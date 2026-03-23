@@ -1,5 +1,11 @@
 # @playfast/wmux
 
+## 0.2.1
+
+### Patch Changes
+
+- e654ca0: Fix workspace:\* dependencies not resolved in published packages.
+
 ## 0.2.0
 
 ### Minor Changes

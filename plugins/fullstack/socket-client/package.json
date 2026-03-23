@@ -1,6 +1,6 @@
 {
   "name": "@playfast/echoform-socket-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Socket.IO client transport for echoform",
   "type": "module",
   "exports": {

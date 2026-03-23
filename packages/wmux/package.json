@@ -1,6 +1,6 @@
 {
   "name": "@playfast/wmux",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Web terminal multiplexer for dev servers",
   "type": "module",
   "exports": {
