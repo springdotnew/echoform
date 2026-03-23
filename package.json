@@ -12,8 +12,8 @@
     "demo/*"
   ],
   "scripts": {
-    "typecheck": "tsgo -p packages/fullstack && tsgo -p packages/react-render-null && tsgo -p plugins/fullstack/bun-ws-client && tsgo -p plugins/fullstack/bun-ws-server && tsgo -p plugins/fullstack/socket-client && tsgo -p plugins/fullstack/socket-server",
-    "build": "bun run typecheck",
+    "typecheck": "bun run --filter '*' typecheck",
+    "build": "bun run --filter '*' build",
     "clean": "rm -rf packages/*/dist packages/*/lib plugins/*/*/dist plugins/*/*/lib",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",

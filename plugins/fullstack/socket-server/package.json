@@ -8,6 +8,7 @@
   },
   "files": ["src"],
   "scripts": {
+    "typecheck": "tsgo -p .",
     "build": "tsgo -p ."
   },
   "peerDependencies": {
