@@ -1,9 +1,18 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@2.2.0/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
-  "linked": [],
+  "linked": [
+    [
+      "@playfast/echoform",
+      "@playfast/echoform-render",
+      "@playfast/echoform-bun-ws-client",
+      "@playfast/echoform-bun-ws-server",
+      "@playfast/echoform-socket-client",
+      "@playfast/echoform-socket-server"
+    ]
+  ],
   "access": "public",
   "baseBranch": "master",
   "updateInternalDependencies": "patch",

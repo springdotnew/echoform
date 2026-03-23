@@ -20,12 +20,13 @@
     "lint:packages": "oxlint packages/",
     "lint:plugins": "oxlint plugins/",
     "knip": "knip",
-    "knip:fix": "knip --fix"
-  },
-  "dependencies": {
-    "@changesets/cli": "^2.25.2"
+    "knip:fix": "knip --fix",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.25.2",
     "@typescript/native-preview": "^7.0.0-dev.20260323.1",
     "knip": "^5.0.0",
     "oxlint": "^0.13.0",

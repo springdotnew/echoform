@@ -1,6 +1,6 @@
 {
   "name": "@playfast/echoform-bun-ws-server",
-  "version": "0.3.NaN",
+  "version": "0.4.0",
   "description": "Bun WebSocket server transport for echoform",
   "type": "module",
   "exports": {
