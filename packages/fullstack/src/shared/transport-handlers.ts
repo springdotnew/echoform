@@ -42,22 +42,14 @@ export function createHandlerRegistry(): {
 }
 
 /**
- * Parses a JSON message and dispatches to registered handlers.
+ * Dispatches a binary message to the "__bin__" event handlers.
  */
-export function parseAndDispatch(message: string, handlers: HandlerRegistry): void {
-  try {
-    const { event, data } = JSON.parse(message) as {
-      readonly event: string;
-      readonly data: unknown;
-    };
-    const eventHandlers = handlers.get(event);
-    if (eventHandlers) {
-      for (const handler of eventHandlers) {
-        handler(data);
-      }
+export function dispatchBinary(data: Uint8Array, handlers: HandlerRegistry): void {
+  const binHandlers = handlers.get("__bin__");
+  if (binHandlers) {
+    for (const handler of binHandlers) {
+      handler(data);
     }
-  } catch {
-    // Invalid message format
   }
 }
 
@@ -77,13 +69,14 @@ export function fireDisconnect(handlers: HandlerRegistry): void {
  * WebSocket-like interface for creating transports.
  */
 export interface WebSocketLike {
-  readonly send: (data: string) => void;
+  readonly send: (data: string | Uint8Array | ArrayBuffer) => void;
   readonly readyState?: number;
 }
 
 /**
- * Creates a Transport backed by a WebSocket-like connection with JSON serialization.
- * Eliminates duplicated handler registry + JSON marshal boilerplate across plugins.
+ * Creates a Transport backed by a WebSocket-like connection with binary serialization.
+ * The "__bin__" event carries Uint8Array payloads (typed-binary encoded).
+ * All other events use JSON for backward compatibility.
  */
 export function createWebSocketTransport<TEvents extends Record<string, unknown> = Record<string, unknown>>(
   ws: WebSocketLike,
@@ -91,25 +84,48 @@ export function createWebSocketTransport<TEvents extends Record<string, unknown>
 ): {
   readonly transport: import("./types").Transport<TEvents>;
   readonly handlers: HandlerRegistry;
-  readonly dispatch: (message: string) => void;
+  readonly dispatch: (message: string | ArrayBuffer | Uint8Array) => void;
   readonly disconnect: () => void;
 } {
-  const { handlers, on, off } = createHandlerRegistry();
+  const registry = createHandlerRegistry();
   const checkOpen = opts?.checkOpen ?? false;
 
   const transport: import("./types").Transport<TEvents> = {
-    on: on as import("./types").Transport<TEvents>['on'],
+    on: registry.on as import("./types").Transport<TEvents>['on'],
     emit: ((event: string, data?: unknown): void => {
       if (checkOpen && ws.readyState !== 1) return;
-      ws.send(JSON.stringify({ event, data }));
+      if (event === "__bin__" && data instanceof Uint8Array) {
+        ws.send(data);
+      } else {
+        ws.send(JSON.stringify({ event, data }));
+      }
     }) as import("./types").Transport<TEvents>['emit'],
-    off: off as import("./types").Transport<TEvents>['off'],
+    off: registry.off as import("./types").Transport<TEvents>['off'],
   };
 
   return {
     transport,
-    get handlers() { return handlers; },
-    dispatch: (message: string) => parseAndDispatch(message, handlers),
-    disconnect: () => fireDisconnect(handlers),
+    get handlers() { return registry.handlers; },
+    dispatch: (message: string | ArrayBuffer | Uint8Array) => {
+      if (typeof message === "string") {
+        // Legacy JSON message
+        try {
+          const { event, data } = JSON.parse(message) as { event: string; data: unknown };
+          const eventHandlers = registry.handlers.get(event);
+          if (eventHandlers) {
+            for (const handler of eventHandlers) {
+              handler(data);
+            }
+          }
+        } catch {
+          // Invalid JSON
+        }
+      } else {
+        // Binary message → dispatch to __bin__ handlers
+        const bytes = message instanceof Uint8Array ? message : new Uint8Array(message);
+        dispatchBinary(bytes, registry.handlers);
+      }
+    },
+    disconnect: () => fireDisconnect(registry.handlers),
   };
 }

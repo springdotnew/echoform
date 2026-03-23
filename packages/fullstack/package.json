@@ -60,7 +60,8 @@
     "react": ">=19.0.0"
   },
   "dependencies": {
-    "crypto-random-string": "5.0.0"
+    "crypto-random-string": "5.0.0",
+    "typed-binary": "^4.3.3"
   },
   "devDependencies": {
     "@types/react": "19.0.2",

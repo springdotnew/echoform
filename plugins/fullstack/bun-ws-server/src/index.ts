@@ -57,7 +57,7 @@ declare const Bun: {
 export function createBunWebSocketServer(options: BunWebSocketServerOptions): BunWebSocketServer {
   const { port, hostname = "0.0.0.0", path = "/ws" } = options;
 
-  const clients = new Map<string, { readonly dispatch: (msg: string) => void; readonly disconnect: () => void }>();
+  const clients = new Map<string, { readonly dispatch: (msg: string | ArrayBuffer | Uint8Array<ArrayBufferLike>) => void; readonly disconnect: () => void }>();
   let connectionHandler: ((client: Transport<SocketClientEvents> & { id: string }) => void) | null = null;
   let server: BunServer | null = null;
 
@@ -108,7 +108,7 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
         data: {} as ClientData,
         open(ws: ServerWebSocket<ClientData>) {
           const id = ws.data.id;
-          const { transport: clientTransport, dispatch, disconnect } = createWebSocketTransport<SocketClientEvents>(ws);
+          const { transport: clientTransport, dispatch, disconnect } = createWebSocketTransport<Record<string, unknown>>(ws);
           const clientWithId = Object.assign(clientTransport, { id });
           clients.set(id, { dispatch, disconnect });
           connectionHandler?.(clientWithId);
@@ -116,7 +116,7 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
         message(ws: ServerWebSocket<ClientData>, message: string | ArrayBuffer | Uint8Array) {
           const client = clients.get(ws.data.id);
           if (client) {
-            client.dispatch(typeof message === "string" ? message : new TextDecoder().decode(message));
+            client.dispatch(message instanceof ArrayBuffer ? message : typeof message === "string" ? message : message);
           }
         },
         close(ws: ServerWebSocket<ClientData>) {

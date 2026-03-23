@@ -35,9 +35,9 @@ function Client<ViewsInterface extends Record<string, unknown> = Record<string, 
   }
 
   return (
-    <ClientBase<ViewsInterface>
+    <ClientBase
       transport={socketRef.current as Transport<Record<string, unknown>>}
-      views={views}
+      views={views as Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>}
     />
   );
 }
