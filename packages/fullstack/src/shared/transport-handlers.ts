@@ -55,6 +55,17 @@ export function dispatchBinary(data: Uint8Array, handlers: HandlerRegistry): voi
 }
 
 /**
+ * Dispatches a parsed JSON event to its registered handlers.
+ */
+export function dispatchJsonEvent(event: string, data: unknown, handlers: HandlerRegistry): void {
+  const eventHandlers = handlers.get(event);
+  if (!eventHandlers) return;
+  for (const handler of eventHandlers) {
+    handler(data);
+  }
+}
+
+/**
  * Fires disconnect handlers in a handler registry.
  */
 export function fireDisconnect(handlers: HandlerRegistry): void {
@@ -108,23 +119,17 @@ export function createWebSocketTransport<TEvents extends Record<string, unknown>
     transport,
     get handlers() { return registry.handlers; },
     dispatch: (message: string | ArrayBuffer | Uint8Array) => {
-      if (typeof message === "string") {
-        // Legacy JSON message
-        try {
-          const { event, data } = JSON.parse(message) as { event: string; data: unknown };
-          const eventHandlers = registry.handlers.get(event);
-          if (eventHandlers) {
-            for (const handler of eventHandlers) {
-              handler(data);
-            }
-          }
-        } catch (err) {
-          console.warn("[echoform] Failed to parse JSON message:", err);
-        }
-      } else {
-        // Binary message → dispatch to __bin__ handlers
+      if (typeof message !== "string") {
         const bytes = message instanceof Uint8Array ? message : new Uint8Array(message);
         dispatchBinary(bytes, registry.handlers);
+        return;
+      }
+
+      try {
+        const { event, data } = JSON.parse(message) as { event: string; data: unknown };
+        dispatchJsonEvent(event, data, registry.handlers);
+      } catch (err) {
+        console.warn("[echoform] Failed to parse JSON message:", err);
       }
     },
     disconnect: () => fireDisconnect(registry.handlers),

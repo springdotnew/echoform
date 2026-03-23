@@ -96,11 +96,20 @@ function writeSerializableValue(output: ISerialOutput, value: SerializableValue)
     u8.write(output, TAG_OBJECT);
     const entries = Object.entries(value as Record<string, SerializableValue>);
     u32.write(output, entries.length);
-    for (const [key, val] of entries) {
+    for (const [key, entryValue] of entries) {
       binString.write(output, key);
-      writeSerializableValue(output, val);
+      writeSerializableValue(output, entryValue);
     }
   }
+}
+
+function readObjectValue(input: ISerialInput, length: number): Record<string, SerializableValue> {
+  const result: Record<string, SerializableValue> = {};
+  for (let i = 0; i < length; i++) {
+    const key = binString.read(input);
+    result[key] = readSerializableValue(input);
+  }
+  return result;
 }
 
 function readSerializableValue(input: ISerialInput): SerializableValue {
@@ -116,13 +125,7 @@ function readSerializableValue(input: ISerialInput): SerializableValue {
       return readArray(len, readSerializableValue, input);
     }
     case TAG_OBJECT: {
-      const len = u32.read(input);
-      const obj: Record<string, SerializableValue> = {};
-      for (let i = 0; i < len; i++) {
-        const key = binString.read(input);
-        obj[key] = readSerializableValue(input);
-      }
-      return obj;
+      return readObjectValue(input, u32.read(input));
     }
     default:
       return null;
@@ -150,9 +153,9 @@ function measureSerializableValue(value: SerializableValue | typeof MaxValue, me
   }
   const entries = Object.entries(value as Record<string, SerializableValue>);
   measurer.add(1 + 4);
-  for (const [key, val] of entries) {
+  for (const [key, entryValue] of entries) {
     binString.measure(key, measurer);
-    measureSerializableValue(val, measurer);
+    measureSerializableValue(entryValue, measurer);
   }
   return measurer;
 }

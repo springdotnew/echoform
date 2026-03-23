@@ -71,7 +71,7 @@ export interface ClientCallback<TInput, TOutput, TViewName extends string = stri
  * ```
  */
 export function toMutationOptions<TInput, TOutput>(
-  cb: ClientCallback<TInput, TOutput>,
+  callback: ClientCallback<TInput, TOutput>,
   viewName: string,
   propName: string,
 ): {
@@ -79,7 +79,7 @@ export function toMutationOptions<TInput, TOutput>(
   readonly mutationKey: readonly [string, string];
 } {
   return {
-    mutationFn: cb.mutate,
+    mutationFn: callback.mutate,
     mutationKey: [viewName, propName] as const,
   };
 }

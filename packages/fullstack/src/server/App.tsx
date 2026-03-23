@@ -149,12 +149,12 @@ function reconcileProps(
   return { currentProps: current, propsToAdd: toAdd };
 }
 
-function replaceAt<T>(arr: ReadonlyArray<T>, index: number, item: T): T[] {
-  return [...arr.slice(0, index), item, ...arr.slice(index + 1)];
+function replaceAt<T>(items: ReadonlyArray<T>, index: number, item: T): T[] {
+  return [...items.slice(0, index), item, ...items.slice(index + 1)];
 }
 
-function removeAt<T>(arr: ReadonlyArray<T>, index: number): T[] {
-  return [...arr.slice(0, index), ...arr.slice(index + 1)];
+function removeAt<T>(items: ReadonlyArray<T>, index: number): T[] {
+  return [...items.slice(0, index), ...items.slice(index + 1)];
 }
 
 // ── Component ──

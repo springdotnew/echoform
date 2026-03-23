@@ -46,7 +46,7 @@ const hostConfig = {
   scheduleMicrotask:
     typeof queueMicrotask === "function"
       ? queueMicrotask
-      : (fn: () => void) => { Promise.resolve().then(fn); },
+      : (task: () => void) => { Promise.resolve().then(task); },
   getCurrentEventPriority: () => DefaultEventPriority,
 
   setCurrentUpdatePriority: (priority: number) => {
@@ -83,8 +83,8 @@ export const Render = (element: ReactNode): { stop: () => void; continue: () => 
     null // transitionCallbacks
   );
 
-  const update = (el: ReactNode | null): void => {
-    reconciler.updateContainer(el, container, null, () => {});
+  const update = (element: ReactNode | null): void => {
+    reconciler.updateContainer(element, container, null, () => {});
   };
 
   update(element);
