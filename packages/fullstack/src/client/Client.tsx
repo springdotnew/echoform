@@ -59,7 +59,7 @@ interface ClientProps<ViewsInterface extends Record<string, unknown> = Record<st
 function Client<ViewsInterface extends Record<string, unknown> = Record<string, unknown>, TEvents extends Record<string | number, unknown> = Record<string, unknown>>({
   transport: rawTransport,
   views,
-  requestViewTreeOnMount,
+  requestViewTreeOnMount = true,
 }: ClientProps<ViewsInterface, TEvents>): React.ReactElement {
   const [runningViews, setRunningViews] = useState<ReadonlyArray<ExistingSharedViewData>>([]);
   const transportRef = useRef(decompileTransport(rawTransport));
