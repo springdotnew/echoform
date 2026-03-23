@@ -1,7 +1,7 @@
 import React, { useContext, useRef } from "react";
 import type { ViewProps } from "../shared/types";
 import { AppContext } from "./contexts";
-import type { ViewDef, ViewDefs } from "../shared/view-builder";
+import type { ViewDef, ViewDefs, StreamDef } from "../shared/view-builder";
 import type { InferServerProps, StreamEmitter } from "../shared/view-inference";
 import { createStreamEmitter } from "../shared/view-inference";
 import { createStreamUid } from "../shared/branded.types";
@@ -84,7 +84,7 @@ export function useStream<
 >(
   _viewDef: V,
   _streamName: K,
-): StreamEmitter<StandardSchemaV1.InferInput<V["streams"][K]["chunk"]>> {
+): StreamEmitter<V["streams"][K] extends StreamDef<infer C> ? StandardSchemaV1.InferInput<C> : never> {
   const app = useContext(AppContext);
   const emitterRef = useRef<ReturnType<typeof createStreamEmitter> | null>(null);
 
@@ -97,7 +97,7 @@ export function useStream<
     );
   }
 
-  return emitterRef.current as StreamEmitter<StandardSchemaV1.InferInput<V["streams"][K]["chunk"]>>;
+  return emitterRef.current as StreamEmitter<V["streams"][K] extends StreamDef<infer C> ? StandardSchemaV1.InferInput<C> : never>;
 }
 
 // ---- Type helpers ----

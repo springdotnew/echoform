@@ -22,9 +22,6 @@ export interface CallbackConfig<
   readonly output?: TOutput;
 }
 
-/** Widened CallbackDef that accepts any schema types (for use in constraints). */
-export type AnyCallbackDef = CallbackDef<StandardSchemaV1, StandardSchemaV1>;
-
 // ---- StreamDef ----
 
 export interface StreamDef<
@@ -41,11 +38,8 @@ export interface ViewDef<
     string,
     StandardSchemaV1
   >,
-  TCallbacks extends Record<string, AnyCallbackDef> = Record<
-    string,
-    AnyCallbackDef
-  >,
-  TStreams extends Record<string, StreamDef> = Record<string, StreamDef>,
+  TCallbacks extends Record<string, object> = Record<string, object>,
+  TStreams extends Record<string, object> = Record<string, object>,
 > {
   readonly [VIEW_DEF_BRAND]: true;
   readonly name: TName;
@@ -59,11 +53,8 @@ export interface ViewConfig<
     string,
     StandardSchemaV1
   >,
-  TCallbacks extends Record<string, AnyCallbackDef> = Record<
-    string,
-    AnyCallbackDef
-  >,
-  TStreams extends Record<string, StreamDef> = Record<string, StreamDef>,
+  TCallbacks extends Record<string, object> = Record<string, object>,
+  TStreams extends Record<string, object> = Record<string, object>,
 > {
   readonly input?: TInput;
   readonly callbacks?: TCallbacks;
@@ -156,9 +147,9 @@ export function stream<TChunk extends StandardSchemaV1>(
  */
 export function view<
   TName extends string,
-  TInput extends Record<string, StandardSchemaV1> = Record<string, never>,
-  TCallbacks extends Record<string, AnyCallbackDef> = Record<string, never>,
-  TStreams extends Record<string, StreamDef> = Record<string, never>,
+  TInput extends Record<string, StandardSchemaV1> = {},
+  TCallbacks extends Record<string, object> = {},
+  TStreams extends Record<string, object> = {},
 >(
   name: TName,
   config?: ViewConfig<TInput, TCallbacks, TStreams>,
