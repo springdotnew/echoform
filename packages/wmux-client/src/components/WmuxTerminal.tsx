@@ -26,7 +26,6 @@ export function WmuxTerminal(props: WmuxTerminalProps): React.ReactElement {
 
     const xterm = new XTerm({
       cursorBlink: true,
-      screenReaderMode: true,
       fontSize: 14,
       fontFamily: "'JetBrainsMono Nerd Font Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace",
       theme: {
@@ -53,14 +52,17 @@ export function WmuxTerminal(props: WmuxTerminalProps): React.ReactElement {
       return true;
     });
 
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     const ro = new ResizeObserver(() => {
       fitAddon.fit();
-      sendResize({ cols: xterm.cols, rows: xterm.rows });
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => sendResize({ cols: xterm.cols, rows: xterm.rows }), 100);
     });
     ro.observe(containerRef.current);
     sendResize({ cols: xterm.cols, rows: xterm.rows });
 
     return () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
       ro.disconnect();
       xterm.dispose();
       xtermRef.current = null;
