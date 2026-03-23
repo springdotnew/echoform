@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import * as os from "os";
+import si from "systeminformation";
 import { Render } from "@playfast/echoform-render";
 import { Server, useViews, useStream } from "@playfast/echoform/server";
 import { createBunWebSocketServer } from "@playfast/echoform-bun-ws-server";
@@ -14,48 +15,29 @@ interface ProcessSnapshot {
   readonly memory: number;
 }
 
-function getSystemStats(): { cpuUsage: number; memoryTotal: number; memoryUsed: number } {
-  const cpus = os.cpus();
-  const cpuUsage = cpus.reduce((sum, cpu) => {
-    const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
-    return sum + (1 - cpu.times.idle / total);
-  }, 0) / cpus.length;
+async function getSystemSnapshot(): Promise<{
+  readonly cpuUsage: number;
+  readonly memoryTotal: number;
+  readonly memoryUsed: number;
+  readonly processes: ReadonlyArray<ProcessSnapshot>;
+}> {
+  const [cpu, mem, procs] = await Promise.all([
+    si.currentLoad(),
+    si.mem(),
+    si.processes(),
+  ]);
 
-  const memoryTotal = os.totalmem();
-  const memoryUsed = memoryTotal - os.freemem();
-  return { cpuUsage: Math.round(cpuUsage * 1000) / 10, memoryTotal, memoryUsed };
-}
-
-function parseProcessLine(line: string): ProcessSnapshot | null {
-  const trimmed = line.trim();
-  if (!trimmed) return null;
-  const parts = trimmed.split(/\s+/);
-  if (parts.length < 4) return null;
-  const pid = parseInt(parts[0]!, 10);
-  const cpu = parseFloat(parts[1]!);
-  const memory = parseInt(parts[2]!, 10) * 1024;
-  const name = parts.slice(3).join(" ");
-  if (isNaN(pid) || isNaN(cpu)) return null;
-  return { pid, name, cpu, memory };
-}
-
-async function getProcessList(): Promise<ReadonlyArray<ProcessSnapshot>> {
-  const isDarwin = os.platform() === "darwin";
-  const args = isDarwin
-    ? ["ps", "-axo", "pid,pcpu,rss,comm"]
-    : ["ps", "-eo", "pid,pcpu,rss,comm", "--no-headers"];
-
-  const result = Bun.spawnSync(args);
-  const lines = result.stdout.toString().split("\n");
-  const startIndex = isDarwin ? 1 : 0;
-  const processes: ProcessSnapshot[] = [];
-
-  for (let i = startIndex; i < lines.length; i++) {
-    const snapshot = parseProcessLine(lines[i]!);
-    if (snapshot) processes.push(snapshot);
-  }
-
-  return processes;
+  return {
+    cpuUsage: Math.round(cpu.currentLoad * 10) / 10,
+    memoryTotal: mem.total,
+    memoryUsed: mem.used,
+    processes: procs.list.map((proc) => ({
+      pid: proc.pid,
+      name: proc.name,
+      cpu: Math.round(proc.cpu * 10) / 10,
+      memory: proc.memRss,
+    })),
+  };
 }
 
 function sortProcesses(
@@ -76,14 +58,18 @@ function MonitorApp(): React.ReactElement | null {
 
   const [processes, setProcesses] = useState<ReadonlyArray<ProcessSnapshot>>([]);
   const [sortBy, setSortBy] = useState<SortField>("cpu");
-  const [stats, setStats] = useState(getSystemStats);
+  const [cpuUsage, setCpuUsage] = useState(0);
+  const [memoryTotal, setMemoryTotal] = useState(os.totalmem());
+  const [memoryUsed, setMemoryUsed] = useState(os.totalmem() - os.freemem());
   const logRef = useRef(logLines);
   logRef.current = logLines;
 
   const refresh = useCallback(async () => {
-    const processList = await getProcessList();
-    setProcesses(processList);
-    setStats(getSystemStats());
+    const snapshot = await getSystemSnapshot();
+    setProcesses(snapshot.processes);
+    setCpuUsage(snapshot.cpuUsage);
+    setMemoryTotal(snapshot.memoryTotal);
+    setMemoryUsed(snapshot.memoryUsed);
   }, []);
 
   useEffect(() => {
@@ -101,10 +87,6 @@ function MonitorApp(): React.ReactElement | null {
     }
   }, []);
 
-  const handleSort = useCallback((field: SortField) => {
-    setSortBy(field);
-  }, []);
-
   if (!View) return null;
 
   const sorted = sortProcesses(processes, sortBy);
@@ -116,16 +98,16 @@ function MonitorApp(): React.ReactElement | null {
         hostname={os.hostname()}
         platform={`${os.type()} ${os.arch()}`}
         uptime={os.uptime()}
-        cpuUsage={stats.cpuUsage}
-        memoryTotal={stats.memoryTotal}
-        memoryUsed={stats.memoryUsed}
+        cpuUsage={cpuUsage}
+        memoryTotal={memoryTotal}
+        memoryUsed={memoryUsed}
         processCount={processes.length}
       />
       <View.ProcessTable
         processes={topProcesses}
         sortBy={sortBy}
         onKill={handleKill}
-        onSort={handleSort}
+        onSort={setSortBy}
         onRefresh={refresh}
       />
       <View.LogStream title="Activity Log" lines={logLines} />
