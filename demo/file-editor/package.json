@@ -4,17 +4,30 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "server": "bun server/index.tsx",
+    "dev:server": "bun server/index.tsx",
+    "dev:client": "vite",
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
     "start": "bun server/index.tsx",
-    "dev": "bun --watch server/index.tsx"
+    "build:client": "vite build",
+    "test": "playwright test"
   },
   "dependencies": {
     "@react-fullstack/fullstack": "workspace:*",
+    "@react-fullstack/fullstack-bun-ws-client": "workspace:*",
+    "@react-fullstack/fullstack-bun-ws-server": "workspace:*",
     "@react-fullstack/render": "workspace:*",
-    "react": "^19.0.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/bun": "latest",
     "@types/react": "^19.0.0",
-    "typescript": "^5.7.2"
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
   }
 }

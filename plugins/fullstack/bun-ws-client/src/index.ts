@@ -1,135 +1,87 @@
+import { useState, useEffect } from "react";
 import type { Transport } from "@react-fullstack/fullstack/shared";
 
-export interface WebSocketClientOptions {
-  readonly url: string;
-  readonly reconnect?: boolean;
-  readonly reconnectInterval?: number;
-  readonly maxReconnectAttempts?: number;
+export interface WebSocketTransportState {
+  readonly transport: Transport<Record<string, unknown>> | null;
+  readonly error: string | null;
+  readonly isConnected: boolean;
 }
 
-export interface WebSocketClientTransport {
-  readonly transport: Transport<Record<string, unknown>>;
-  readonly connect: () => Promise<void>;
-  readonly disconnect: () => void;
-  readonly isConnected: () => boolean;
-}
+export function useWebSocketTransport(url: string): WebSocketTransportState {
+  const [state, setState] = useState<WebSocketTransportState>({
+    transport: null,
+    error: null,
+    isConnected: false,
+  });
 
-export function createWebSocketTransport(options: WebSocketClientOptions): WebSocketClientTransport {
-  const {
-    url,
-    reconnect = false,
-    reconnectInterval = 1000,
-    maxReconnectAttempts = 5,
-  } = options;
+  useEffect(() => {
+    const handlers = new Map<string, Set<(data: unknown) => void>>();
+    let disposed = false;
 
-  const handlers = new Map<string, Set<(data: unknown) => void>>();
-  let ws: WebSocket | null = null;
-  let connected = false;
-  let reconnectAttempts = 0;
-  let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    const ws = new WebSocket(url);
 
-  const transport: Transport<Record<string, unknown>> = {
-    on: <T extends string>(event: T, handler: (data: unknown) => void): void => {
-      const eventHandlers = handlers.get(event) ?? new Set();
-      eventHandlers.add(handler);
-      handlers.set(event, eventHandlers);
-    },
-    emit: <T extends string>(event: T, data?: unknown): void => {
-      if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ event, data }));
+    const transport: Transport<Record<string, unknown>> = {
+      on: (event: string, handler: (data: unknown) => void): void => {
+        const set = handlers.get(event) ?? new Set();
+        set.add(handler);
+        handlers.set(event, set);
+      },
+      emit: (event: string, data?: unknown): void => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ event, data }));
+        }
+      },
+      off: (event: string, handler: (data: unknown) => void): void => {
+        handlers.get(event)?.delete(handler);
+      },
+    };
+
+    ws.onopen = () => {
+      if (!disposed) {
+        setState({ transport, error: null, isConnected: true });
       }
-    },
-    off: <T extends string>(event: T, handler: (data: unknown) => void): void => {
-      const eventHandlers = handlers.get(event);
-      if (eventHandlers) {
-        eventHandlers.delete(handler);
-      }
-    },
-  };
+    };
 
-  function notifyDisconnect(): void {
-    const disconnectHandlers = handlers.get("disconnect");
-    if (disconnectHandlers) {
-      for (const handler of disconnectHandlers) {
-        handler(undefined);
-      }
-    }
-  }
-
-  function attemptReconnect(): void {
-    if (!reconnect || reconnectAttempts >= maxReconnectAttempts) {
-      return;
-    }
-
-    reconnectAttempts++;
-    reconnectTimeout = setTimeout(() => {
-      connect().catch(() => {
-        attemptReconnect();
-      });
-    }, reconnectInterval);
-  }
-
-  function connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      ws = new WebSocket(url);
-
-      ws.onopen = () => {
-        connected = true;
-        reconnectAttempts = 0;
-        resolve();
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const { event: eventName, data } = JSON.parse(event.data as string) as {
-            event: string;
-            data: unknown;
-          };
-          const eventHandlers = handlers.get(eventName);
-          if (eventHandlers) {
-            for (const handler of eventHandlers) {
-              handler(data);
-            }
+    ws.onmessage = (messageEvent) => {
+      try {
+        const { event, data } = JSON.parse(messageEvent.data as string) as {
+          readonly event: string;
+          readonly data: unknown;
+        };
+        const eventHandlers = handlers.get(event);
+        if (eventHandlers) {
+          for (const handler of eventHandlers) {
+            handler(data);
           }
-        } catch {
-          // Invalid JSON, ignore
         }
-      };
+      } catch {
+        // Invalid message format
+      }
+    };
 
-      ws.onerror = () => {
-        if (!connected) {
-          reject(new Error("WebSocket connection error"));
+    ws.onerror = () => {
+      if (!disposed) {
+        setState({ transport: null, error: "WebSocket connection failed", isConnected: false });
+      }
+    };
+
+    ws.onclose = () => {
+      if (!disposed) {
+        const disconnectHandlers = handlers.get("disconnect");
+        if (disconnectHandlers) {
+          for (const handler of disconnectHandlers) {
+            handler(undefined);
+          }
         }
-      };
+        setState((prev) => (prev.isConnected ? { ...prev, isConnected: false } : prev));
+      }
+    };
 
-      ws.onclose = () => {
-        const wasConnected = connected;
-        connected = false;
+    return () => {
+      disposed = true;
+      ws.close();
+    };
+  }, [url]);
 
-        if (wasConnected) {
-          notifyDisconnect();
-          attemptReconnect();
-        }
-      };
-    });
-  }
-
-  function disconnect(): void {
-    if (reconnectTimeout) {
-      clearTimeout(reconnectTimeout);
-      reconnectTimeout = null;
-    }
-    ws?.close();
-    ws = null;
-    connected = false;
-  }
-
-  function isConnected(): boolean {
-    return connected && ws?.readyState === WebSocket.OPEN;
-  }
-
-  return { transport, connect, disconnect, isConnected };
+  return state;
 }
-
-// React hook for using the WebSocket transport
-export { createWebSocketTransport as createBunWebSocketClient };

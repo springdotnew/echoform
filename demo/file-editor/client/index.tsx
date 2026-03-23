@@ -4,18 +4,28 @@ import { Client } from "@react-fullstack/fullstack/client";
 import type { ViewsToComponents } from "@react-fullstack/fullstack/client";
 import { useWebSocketTransport } from "@react-fullstack/fullstack-bun-ws-client";
 import type { Views } from "../shared/views";
-import { TodoApp, TodoInput, TodoList, TodoItem, FilterButtons } from "./components";
+import {
+  App,
+  FileTree,
+  TabBar,
+  CodeEditor,
+  ExcalidrawEditor,
+  EmptyEditor,
+  ErrorDisplay,
+} from "./components";
 
 const views: ViewsToComponents<Views> = {
-  TodoApp,
-  TodoInput,
-  TodoList,
-  TodoItem,
-  FilterButtons,
+  App,
+  FileTree,
+  TabBar,
+  CodeEditor,
+  ExcalidrawEditor,
+  EmptyEditor,
+  ErrorDisplay,
 };
 
-function App(): React.ReactElement {
-  const { transport, error } = useWebSocketTransport("ws://localhost:4201/ws");
+function Root(): React.ReactElement {
+  const { transport, error } = useWebSocketTransport("ws://localhost:4210/ws");
 
   if (error) {
     return (
@@ -27,21 +37,17 @@ function App(): React.ReactElement {
 
   if (!transport) {
     return (
-      <div style={{ padding: "40px", textAlign: "center" }}>
+      <div style={{ padding: "40px", textAlign: "center", color: "#888" }}>
         Connecting...
       </div>
     );
   }
 
-  return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f0f0f0", padding: "20px" }}>
-      <Client transport={transport} views={views} requestViewTreeOnMount />
-    </div>
-  );
+  return <Client transport={transport} views={views} requestViewTreeOnMount />;
 }
 
 const container = document.getElementById("root");
 if (container) {
   const root = createRoot(container);
-  root.render(<App />);
+  root.render(<Root />);
 }

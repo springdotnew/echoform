@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import * as path from "path";
 import { Render } from "@react-fullstack/render";
 import { Server, useViews } from "@react-fullstack/fullstack/server";
-import { createFileEditorServer } from "./static-server";
+import { createBunWebSocketServer } from "@react-fullstack/fullstack-bun-ws-server";
 import {
   listDirectory,
   readFile,
@@ -170,14 +170,14 @@ function FileEditorApp(): React.ReactElement | null {
 
 const PORT = parseInt(process.env.PORT ?? "4210", 10);
 
-const { transport, start } = createFileEditorServer({
+const { transport, start } = createBunWebSocketServer({
   port: PORT,
   path: "/ws",
 });
 
 const server = start();
 
-console.log(`File Editor running at http://localhost:${PORT}`);
+console.log(`File Editor server running on ws://localhost:${PORT}/ws`);
 console.log(`Editing: ${rootPath}`);
 
 process.on("SIGINT", () => {
