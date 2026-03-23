@@ -2,9 +2,10 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { Client } from "@react-fullstack/fullstack/client";
 import { useWebSocketTransport } from "@react-fullstack/fullstack-bun-ws-client";
-import { Terminal } from "./components";
+import { TerminalApp, Terminal } from "./components";
 
 const components = {
+  TerminalApp,
   Terminal,
 };
 
@@ -27,9 +28,7 @@ function App(): React.ReactElement {
     );
   }
 
-  return (
-    <Client transport={transport} views={components} requestViewTreeOnMount />
-  );
+  return <Client transport={transport} views={components} requestViewTreeOnMount />;
 }
 
 const container = document.getElementById("root");

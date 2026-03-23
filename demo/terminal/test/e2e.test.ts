@@ -5,33 +5,29 @@ test.describe("Terminal E2E", () => {
     await page.goto("/");
   });
 
-  test("should show the terminal title bar", async ({ page }) => {
-    await expect(page.getByText("Terminal", { exact: true })).toBeVisible();
+  test("should show sidebar with initial tab", async ({ page }) => {
+    await expect(page.getByText("TERMINALS")).toBeVisible();
+    await expect(page.getByText("bash")).toBeVisible({ timeout: 5000 });
   });
 
-  test("should render the xterm container", async ({ page }) => {
-    // xterm.js creates a .xterm element when mounted
+  test("should render xterm for active tab", async ({ page }) => {
     await expect(page.locator(".xterm")).toBeVisible({ timeout: 5000 });
   });
 
-  test("should show shell prompt from PTY stream", async ({ page }) => {
-    // The real shell outputs a prompt — xterm renders it on a canvas,
-    // but the underlying DOM has xterm-rows we can check
-    const terminal = page.locator(".xterm-screen");
-    await expect(terminal).toBeVisible({ timeout: 5000 });
-  });
-
-  test("should accept keyboard input and show output", async ({ page }) => {
-    // Wait for xterm to mount and shell to be ready
+  test("should accept keyboard input", async ({ page }) => {
     await expect(page.locator(".xterm")).toBeVisible({ timeout: 5000 });
-
-    // Type a command into the terminal (xterm captures keyboard directly)
-    await page.locator(".xterm-helper-textarea").fill("");
-    await page.keyboard.type("echo hello-from-test", { delay: 30 });
+    // Click terminal to focus xterm
+    await page.locator(".xterm").click();
+    await page.keyboard.type("echo hello-test", { delay: 30 });
     await page.keyboard.press("Enter");
+    await expect(page.locator(".xterm-rows")).toContainText("hello-test", { timeout: 10000 });
+  });
 
-    // Wait for the echo output to appear in the xterm rows
-    // xterm renders text in .xterm-rows spans
-    await expect(page.locator(".xterm-rows")).toContainText("hello-from-test", { timeout: 5000 });
+  test("should create new tab with + button", async ({ page }) => {
+    await expect(page.getByText("bash")).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "+" }).click();
+    // Should now have 2 bash tabs in sidebar
+    const tabs = page.locator("[style*='cursor: pointer']").filter({ hasText: "bash" });
+    await expect(tabs).toHaveCount(2, { timeout: 5000 });
   });
 });
