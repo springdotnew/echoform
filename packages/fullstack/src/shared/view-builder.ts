@@ -71,7 +71,7 @@ export interface ViewConfig<
 
 export type ViewDefs = Readonly<Record<string, ViewDef>>;
 
-// ---- Void schema (default for callbacks with no input/output) ----
+// ---- Schema helpers ----
 
 const voidSchema: StandardSchemaV1<void> = {
   "~standard": {
@@ -84,6 +84,25 @@ const voidSchema: StandardSchemaV1<void> = {
     },
   },
 };
+
+/**
+ * Create a passthrough schema that accepts any value and casts it to type T.
+ * Useful for complex types that can't be expressed with zod/valibot alone.
+ *
+ * ```ts
+ * import { passthrough } from "@react-fullstack/fullstack";
+ * const MyView = view("MyView", { input: { data: passthrough<MyType>() } });
+ * ```
+ */
+export function passthrough<T>(): StandardSchemaV1<T> {
+  return {
+    "~standard": {
+      version: 1,
+      vendor: "passthrough",
+      validate: (value) => ({ value: value as T }),
+    },
+  };
+}
 
 // ---- Builder functions ----
 

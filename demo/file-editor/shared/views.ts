@@ -1,18 +1,6 @@
-import { view, callback, createViews } from "@react-fullstack/fullstack";
+import { view, callback, createViews, passthrough } from "@react-fullstack/fullstack";
 import { z } from "zod";
 import type { FileNode, OpenFile } from "./types";
-import type { StandardSchemaV1 } from "@react-fullstack/fullstack";
-
-/** Schema for complex types that can't be expressed with zod alone. */
-function s<T>(): StandardSchemaV1<T> {
-  return {
-    "~standard": {
-      version: 1,
-      vendor: "passthrough",
-      validate: (value) => ({ value: value as T }),
-    },
-  };
-}
 
 export const App = view("App", {
   input: {
@@ -23,8 +11,8 @@ export const App = view("App", {
 
 export const FileTree = view("FileTree", {
   input: {
-    files: s<FileNode | null>(),
-    selectedPath: s<string | null>(),
+    files: passthrough<FileNode | null>(),
+    selectedPath: passthrough<string | null>(),
   },
   callbacks: {
     onSelect: callback({ input: z.string() }),
@@ -34,8 +22,8 @@ export const FileTree = view("FileTree", {
 
 export const TabBar = view("TabBar", {
   input: {
-    openFiles: s<readonly OpenFile[]>(),
-    activeFilePath: s<string | null>(),
+    openFiles: passthrough<readonly OpenFile[]>(),
+    activeFilePath: passthrough<string | null>(),
   },
   callbacks: {
     onSelectTab: callback({ input: z.string() }),
