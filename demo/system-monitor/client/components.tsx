@@ -1,21 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  Card,
-  Table,
-  Progress,
-  Badge,
-  Button,
-  Text,
-  ScrollArea,
-  Divider,
-} from "reshaped/bundle";
 import type { InferClientProps } from "@playfast/echoform/client";
 import type {
   Dashboard as DashboardDef,
   ProcessTable as ProcessTableDef,
   LogStream as LogStreamDef,
 } from "../shared/views";
+
+// ── Formatting ──
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -28,147 +19,166 @@ function formatUptime(seconds: number): string {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 }
 
-function usageColor(percent: number): "positive" | "primary" | "warning" | "critical" {
-  if (percent < 50) return "positive";
-  if (percent < 70) return "primary";
-  if (percent < 90) return "warning";
-  return "critical";
+function cpuColor(percent: number): string {
+  if (percent > 50) return "#f85149";
+  if (percent > 10) return "#d29922";
+  return "#8b949e";
 }
 
-function StatCard({ label, value, subtext, percent }: {
-  readonly label: string;
+// ── Shared styles ──
+
+const card: React.CSSProperties = {
+  border: "1px solid #30363d",
+  borderRadius: 6,
+  background: "#0d1117",
+};
+
+const label: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  color: "#8b949e",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+};
+
+// ── Dashboard ──
+
+function StatCard({ icon, title, value, accent }: {
+  readonly icon: string;
+  readonly title: string;
   readonly value: string;
-  readonly subtext?: string;
-  readonly percent?: number;
+  readonly accent?: string;
 }): React.ReactElement {
   return (
-    <Card padding={4}>
-      <View gap={2}>
-        <Text variant="caption-1" color="neutral-faded">{label}</Text>
-        <Text variant="title-3">{value}</Text>
-        {percent !== undefined && (
-          <Progress value={percent} color={usageColor(percent)} size="small" />
-        )}
-        {subtext && <Text variant="caption-1" color="neutral-faded">{subtext}</Text>}
-      </View>
-    </Card>
+    <div style={{ ...card, padding: "12px 14px", flex: 1 }}>
+      <div style={{ ...label, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+        <span style={{ fontSize: 12 }}>{icon}</span> {title}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: accent ?? "#e6edf3", lineHeight: 1 }}>{value}</div>
+    </div>
   );
 }
 
 export function Dashboard({
   hostname, platform, uptime, cpuUsage, memoryTotal, memoryUsed, processCount,
 }: InferClientProps<typeof DashboardDef>): React.ReactElement {
-  const memoryPercent = Math.round((memoryUsed / memoryTotal) * 100);
+  const memPercent = Math.round((memoryUsed / memoryTotal) * 100);
 
   return (
-    <View padding={4} gap={4}>
-      <View direction="row" gap={4}>
-        <View.Item columns={3}>
-          <StatCard label="Host" value={hostname} subtext={`${platform} · up ${formatUptime(uptime)}`} />
-        </View.Item>
-        <View.Item columns={3}>
-          <StatCard label="CPU" value={`${cpuUsage}%`} percent={cpuUsage} />
-        </View.Item>
-        <View.Item columns={3}>
-          <StatCard
-            label="Memory"
-            value={`${memoryPercent}%`}
-            percent={memoryPercent}
-            subtext={`${formatBytes(memoryUsed)} / ${formatBytes(memoryTotal)}`}
-          />
-        </View.Item>
-        <View.Item columns={3}>
-          <StatCard label="Processes" value={String(processCount)} />
-        </View.Item>
-      </View>
-    </View>
+    <div style={{ padding: 16 }}>
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#e6edf3" }}>{hostname}</div>
+        <div style={{ fontSize: 12, color: "#484f58" }}>{platform} · up {formatUptime(uptime)}</div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <StatCard icon="◎" title="CPU" value={`${cpuUsage}%`} accent={cpuUsage > 80 ? "#f85149" : undefined} />
+        <StatCard icon="▦" title="Memory" value={`${memPercent}%`} accent={memPercent > 90 ? "#f85149" : undefined} />
+        <StatCard icon="⬡" title="Processes" value={String(processCount)} />
+        <div style={{ ...card, padding: "12px 14px", flex: 1 }}>
+          <div style={{ ...label, marginBottom: 6 }}>⧖ Memory Detail</div>
+          <div style={{ fontSize: 12, color: "#8b949e", lineHeight: 1.6 }}>
+            <span style={{ color: "#e6edf3" }}>{formatBytes(memoryUsed)}</span> / {formatBytes(memoryTotal)}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
+
+// ── Process Table ──
 
 export function ProcessTable({ processes, sortBy, onKill, onSort, onRefresh }: InferClientProps<typeof ProcessTableDef>): React.ReactElement {
   const killProcess = onKill.mutate;
   const sortProcesses = onSort.mutate;
   const refreshProcesses = onRefresh.mutate;
 
-  type SortKey = "pid" | "name" | "cpu" | "memory";
-  const columns: ReadonlyArray<{ key: SortKey; label: string; align?: "start" | "end" }> = [
-    { key: "pid", label: "PID", align: "end" },
-    { key: "name", label: "Name" },
-    { key: "cpu", label: "CPU %", align: "end" },
-    { key: "memory", label: "Memory", align: "end" },
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "0 16px 8px" }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+        <span style={{ ...label, flex: 1 }}>⧉ Processes · top {processes.length} by {sortBy}</span>
+        <button onClick={() => refreshProcesses()} style={{
+          background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", borderRadius: 6,
+          padding: "3px 10px", fontSize: 11, cursor: "pointer",
+        }}>
+          Refresh
+        </button>
+      </div>
+
+      <div style={{ ...card, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <ProcessHeader sortBy={sortBy} onSort={sortProcesses} />
+        <div style={{ flex: 1, overflow: "auto" }}>
+          {processes.map((proc) => (
+            <ProcessRow key={proc.pid} process={proc} onKill={killProcess} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProcessHeader({ sortBy, onSort }: {
+  readonly sortBy: string;
+  readonly onSort: (field: "pid" | "name" | "cpu" | "memory") => void;
+}): React.ReactElement {
+  const cols: ReadonlyArray<{ key: "pid" | "name" | "cpu" | "memory"; label: string; width: string; align: "left" | "right" }> = [
+    { key: "pid", label: "PID", width: "64px", align: "right" },
+    { key: "name", label: "Command", width: "1fr", align: "left" },
+    { key: "cpu", label: "CPU", width: "56px", align: "right" },
+    { key: "memory", label: "Mem", width: "72px", align: "right" },
   ];
 
   return (
-    <View paddingInline={4} paddingBlock={2} gap={3}>
-      <View direction="row" align="center" gap={3}>
-        <View.Item grow>
-          <Text variant="body-2" color="neutral-faded">
-            Top {processes.length} processes by {sortBy}
-          </Text>
-        </View.Item>
-        <Button variant="outline" size="small" onClick={() => refreshProcesses()}>
-          Refresh
-        </Button>
-      </View>
-
-      <Card padding={0}>
-        <ScrollArea maxHeight="60vh" scrollbarDisplay="hover">
-          <Table>
-            <Table.Row highlighted>
-              {columns.map((col) => (
-                <Table.Heading
-                  key={col.key}
-                  align={col.align}
-                  attributes={{ onClick: () => sortProcesses(col.key), style: { cursor: "pointer" } }}
-                >
-                  {col.label} {sortBy === col.key ? "▼" : ""}
-                </Table.Heading>
-              ))}
-              <Table.Heading align="end">Action</Table.Heading>
-            </Table.Row>
-            {processes.map((proc) => (
-              <Table.Row key={proc.pid}>
-                <Table.Cell align="end">
-                  <Text variant="caption-1" color="neutral-faded" monospace>{proc.pid}</Text>
-                </Table.Cell>
-                <Table.Cell>
-                  <Text variant="body-2" maxLines={1}>{proc.name}</Text>
-                </Table.Cell>
-                <Table.Cell align="end">
-                  <Badge
-                    color={proc.cpu > 50 ? "critical" : proc.cpu > 10 ? "warning" : "neutral"}
-                    variant="faded"
-                    size="small"
-                  >
-                    {proc.cpu.toFixed(1)}
-                  </Badge>
-                </Table.Cell>
-                <Table.Cell align="end">
-                  <Text variant="caption-1" monospace>{formatBytes(proc.memory)}</Text>
-                </Table.Cell>
-                <Table.Cell align="end">
-                  <Button
-                    variant="ghost"
-                    color="critical"
-                    size="small"
-                    onClick={() => killProcess(proc.pid)}
-                  >
-                    Kill
-                  </Button>
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table>
-        </ScrollArea>
-      </Card>
-    </View>
+    <div style={{
+      display: "grid", gridTemplateColumns: cols.map((col) => col.width).join(" ") + " 32px",
+      padding: "6px 10px", borderBottom: "1px solid #21262d", fontSize: 11, color: "#484f58",
+    }}>
+      {cols.map((col) => (
+        <div
+          key={col.key}
+          onClick={() => onSort(col.key)}
+          style={{ textAlign: col.align, cursor: "pointer", fontWeight: sortBy === col.key ? 600 : 400, color: sortBy === col.key ? "#8b949e" : undefined }}
+        >
+          {col.label}{sortBy === col.key ? " ▾" : ""}
+        </div>
+      ))}
+      <div />
+    </div>
   );
 }
+
+function ProcessRow({ process: proc, onKill }: {
+  readonly process: { readonly pid: number; readonly name: string; readonly cpu: number; readonly memory: number };
+  readonly onKill: (pid: number) => void;
+}): React.ReactElement {
+  return (
+    <div style={{
+      display: "grid", gridTemplateColumns: "64px 1fr 56px 72px 32px",
+      padding: "4px 10px", borderBottom: "1px solid #161b22", fontSize: 12, alignItems: "center",
+    }}>
+      <div style={{ textAlign: "right", color: "#484f58", fontFamily: "monospace", fontSize: 11 }}>{proc.pid}</div>
+      <div style={{ color: "#c9d1d9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 8 }}>{proc.name}</div>
+      <div style={{ textAlign: "right", fontFamily: "monospace", fontSize: 11, color: cpuColor(proc.cpu) }}>{proc.cpu.toFixed(1)}</div>
+      <div style={{ textAlign: "right", color: "#8b949e", fontFamily: "monospace", fontSize: 11 }}>{formatBytes(proc.memory)}</div>
+      <div style={{ textAlign: "center" }}>
+        <span
+          onClick={() => onKill(proc.pid)}
+          style={{ color: "#f8514944", cursor: "pointer", fontSize: 13, lineHeight: 1 }}
+          onMouseEnter={(event) => { (event.target as HTMLElement).style.color = "#f85149"; }}
+          onMouseLeave={(event) => { (event.target as HTMLElement).style.color = "#f8514944"; }}
+        >
+          ×
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Log Stream ──
 
 export function LogStream({ title, lines }: InferClientProps<typeof LogStreamDef>): React.ReactElement {
   const [logLines, setLogLines] = useState<ReadonlyArray<string>>([]);
@@ -176,7 +186,7 @@ export function LogStream({ title, lines }: InferClientProps<typeof LogStreamDef
 
   useEffect(() => {
     return lines.subscribe((line: string) => {
-      setLogLines((prev) => [...prev.slice(-100), `${new Date().toLocaleTimeString()} ${line}`]);
+      setLogLines((prev) => [...prev.slice(-200), `${new Date().toLocaleTimeString()} ${line}`]);
     });
   }, [lines]);
 
@@ -187,23 +197,18 @@ export function LogStream({ title, lines }: InferClientProps<typeof LogStreamDef
   }, [logLines]);
 
   return (
-    <View paddingInline={4} paddingBlock={2}>
-      <Card padding={0}>
-        <View padding={4} paddingBlock={3}>
-          <Text variant="body-2" weight="medium">{title}</Text>
-        </View>
-        <Divider />
-        <ScrollArea maxHeight="120px" scrollbarDisplay="hover">
-          <View padding={4} gap={1}>
-            {logLines.length === 0 && (
-              <Text variant="caption-1" color="disabled">No activity yet</Text>
-            )}
-            {logLines.map((line, index) => (
-              <Text key={index} variant="caption-1" monospace color="neutral-faded">{line}</Text>
-            ))}
-          </View>
-        </ScrollArea>
-      </Card>
-    </View>
+    <div style={{ padding: "0 16px 12px", flexShrink: 0 }}>
+      <div style={{ ...card, overflow: "hidden" }}>
+        <div style={{ padding: "6px 10px", borderBottom: "1px solid #21262d" }}>
+          <span style={label}>{title}</span>
+        </div>
+        <div ref={containerRef} style={{ height: 80, overflow: "auto", padding: "4px 10px" }}>
+          {logLines.length === 0 && <div style={{ fontSize: 11, color: "#30363d" }}>No activity</div>}
+          {logLines.map((line, index) => (
+            <div key={index} style={{ fontSize: 11, fontFamily: "monospace", color: "#484f58", lineHeight: "17px", whiteSpace: "nowrap" }}>{line}</div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
