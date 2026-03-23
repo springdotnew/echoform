@@ -1,131 +1,96 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
+import { Terminal as XTerm } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 import type { InferClientProps } from "@react-fullstack/fullstack/client";
 import type { Terminal as TerminalDef } from "../shared/views";
 
-export function Terminal({
-  title,
-  output,
-  onInput,
-}: InferClientProps<typeof TerminalDef>): React.ReactElement {
-  const [lines, setLines] = useState<string[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const outputRef = useRef<HTMLDivElement>(null);
+// Base64 helpers — matches server encoding
+function toBase64(data: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < data.length; i++) {
+    binary += String.fromCharCode(data[i]!);
+  }
+  return btoa(binary);
+}
+
+function fromBase64(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+export function Terminal(props: InferClientProps<typeof TerminalDef>): React.ReactElement {
+  const { title, output, onInput, onResize } = props;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<XTerm | null>(null);
 
   useEffect(() => {
-    const unsubscribe = output.subscribe((chunk: string) => {
-      if (chunk === "\x1b[CLEAR]") {
-        setLines([]);
-        return;
-      }
-      setLines((prev) => {
-        // Append chunk to the last line or add a new line
-        const updated = [...prev];
-        const parts = chunk.split("\n");
-        for (let i = 0; i < parts.length; i++) {
-          const part = parts[i]!;
-          if (i === 0 && updated.length > 0) {
-            updated[updated.length - 1] = updated[updated.length - 1]! + part;
-          } else {
-            updated.push(part);
-          }
-        }
-        return updated;
-      });
+    if (!containerRef.current) return;
+
+    const xterm = new XTerm({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: "'Cascadia Code', 'Fira Code', Consolas, monospace",
+      theme: {
+        background: "#1e1e1e",
+        foreground: "#d4d4d4",
+        cursor: "#d4d4d4",
+      },
     });
-    return unsubscribe;
+
+    const fitAddon = new FitAddon();
+    xterm.loadAddon(fitAddon);
+    xterm.open(containerRef.current);
+    fitAddon.fit();
+    xtermRef.current = xterm;
+
+    // Keystrokes → base64 encode → send to server PTY
+    xterm.onData((data: string) => {
+      onInput.mutate(toBase64(new TextEncoder().encode(data)));
+    });
+
+    // Handle resize
+    const resizeObserver = new ResizeObserver(() => {
+      fitAddon.fit();
+      const { cols, rows } = xterm;
+      onResize.mutate({ cols, rows });
+    });
+    resizeObserver.observe(containerRef.current);
+
+    // Send initial size
+    onResize.mutate({ cols: xterm.cols, rows: xterm.rows });
+
+    return () => {
+      resizeObserver.disconnect();
+      xterm.dispose();
+      xtermRef.current = null;
+    };
+  }, []);
+
+  // Subscribe to PTY output stream
+  useEffect(() => {
+    return output.subscribe((b64Chunk: string) => {
+      // Decode base64 → raw bytes → write to xterm
+      xtermRef.current?.write(fromBase64(b64Chunk));
+    });
   }, [output]);
 
-  useEffect(() => {
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
-    }
-  }, [lines]);
-
-  const handleSubmit = (e: React.FormEvent): void => {
-    e.preventDefault();
-    onInput.mutate(inputValue);
-    setInputValue("");
-  };
-
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>{title}</h1>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#1e1e1e" }}>
+      <div style={{
+        padding: "6px 16px",
+        background: "#252526",
+        borderBottom: "1px solid #3c3c3c",
+        fontSize: "13px",
+        color: "#888",
+      }}>
+        {title}
       </div>
-      <div ref={outputRef} style={styles.output} data-testid="terminal-output">
-        {lines.map((line, i) => (
-          <div key={i} style={styles.line}>
-            {line || "\u00A0"}
-          </div>
-        ))}
-      </div>
-      <form onSubmit={handleSubmit} style={styles.inputRow}>
-        <span style={styles.prompt}>&gt;</span>
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          style={styles.input}
-          placeholder="Type a command..."
-          autoFocus
-          data-testid="terminal-input"
-        />
-      </form>
+      <div ref={containerRef} style={{ flex: 1 }} data-testid="terminal-output" />
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: "flex",
-    flexDirection: "column",
-    height: "100vh",
-    backgroundColor: "#1e1e1e",
-    color: "#d4d4d4",
-    fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
-    fontSize: "14px",
-  },
-  header: {
-    padding: "8px 16px",
-    backgroundColor: "#252526",
-    borderBottom: "1px solid #3c3c3c",
-  },
-  title: {
-    margin: 0,
-    fontSize: "16px",
-    fontWeight: 600,
-    color: "#cccccc",
-  },
-  output: {
-    flex: 1,
-    overflow: "auto",
-    padding: "12px 16px",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-all",
-  },
-  line: {
-    lineHeight: "1.5",
-    minHeight: "21px",
-  },
-  inputRow: {
-    display: "flex",
-    alignItems: "center",
-    padding: "8px 16px",
-    borderTop: "1px solid #3c3c3c",
-    backgroundColor: "#252526",
-  },
-  prompt: {
-    color: "#569cd6",
-    marginRight: "8px",
-    fontWeight: "bold",
-  },
-  input: {
-    flex: 1,
-    backgroundColor: "transparent",
-    border: "none",
-    outline: "none",
-    color: "#d4d4d4",
-    fontFamily: "inherit",
-    fontSize: "inherit",
-  },
-};

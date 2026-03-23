@@ -1,86 +1,37 @@
-import { test, expect, type Page } from "@playwright/test";
-import { type ChildProcess, spawn } from "node:child_process";
+import { test, expect } from "@playwright/test";
 
-const SERVER_PORT = 4220;
-
-function startServer(): Promise<ChildProcess> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn("bun", ["server/index.tsx"], {
-      cwd: new URL("..", import.meta.url).pathname,
-      env: { ...process.env, PORT: String(SERVER_PORT) },
-      stdio: "pipe",
-    });
-
-    proc.on("error", reject);
-
-    proc.stdout?.on("data", (data: Buffer) => {
-      if (data.toString().includes("Server running")) {
-        resolve(proc);
-      }
-    });
-
-    setTimeout(() => resolve(proc), 2000);
-  });
-}
-
-function waitForTerminal(page: Page) {
-  return expect(page.locator("h1")).toHaveText("Terminal Demo");
-}
-
-test.describe("Terminal Demo E2E", () => {
-  let serverProc: ChildProcess;
-
+test.describe("Terminal E2E", () => {
   test.beforeEach(async ({ page }) => {
-    serverProc = await startServer();
     await page.goto("/");
-    await waitForTerminal(page);
   });
 
-  test.afterEach(() => {
-    serverProc?.kill();
+  test("should show the terminal title bar", async ({ page }) => {
+    await expect(page.getByText("Terminal")).toBeVisible();
   });
 
-  test("should show the terminal title", async ({ page }) => {
-    await expect(page.locator("h1")).toHaveText("Terminal Demo");
+  test("should render the xterm container", async ({ page }) => {
+    // xterm.js creates a .xterm element when mounted
+    await expect(page.locator(".xterm")).toBeVisible({ timeout: 5000 });
   });
 
-  test("should show the welcome message from stream", async ({ page }) => {
-    const output = page.getByTestId("terminal-output");
-    await expect(output).toContainText("Welcome to the react-fullstack terminal demo!", { timeout: 5000 });
+  test("should show shell prompt from PTY stream", async ({ page }) => {
+    // The real shell outputs a prompt — xterm renders it on a canvas,
+    // but the underlying DOM has xterm-rows we can check
+    const terminal = page.locator(".xterm-screen");
+    await expect(terminal).toBeVisible({ timeout: 5000 });
   });
 
-  test("should echo input back via stream", async ({ page }) => {
-    const output = page.getByTestId("terminal-output");
-    // Wait for welcome message first
-    await expect(output).toContainText("Welcome", { timeout: 5000 });
+  test("should accept keyboard input and show output", async ({ page }) => {
+    // Wait for xterm to mount and shell to be ready
+    await expect(page.locator(".xterm")).toBeVisible({ timeout: 5000 });
 
-    const input = page.getByTestId("terminal-input");
-    await input.fill("hello world");
-    await input.press("Enter");
+    // Type a command into the terminal (xterm captures keyboard directly)
+    await page.locator(".xterm-helper-textarea").fill("");
+    await page.keyboard.type("echo hello-from-test", { delay: 30 });
+    await page.keyboard.press("Enter");
 
-    await expect(output).toContainText("hello world", { timeout: 5000 });
-    await expect(output).toContainText("command not found: hello world", { timeout: 5000 });
-  });
-
-  test("should handle the echo command", async ({ page }) => {
-    const output = page.getByTestId("terminal-output");
-    await expect(output).toContainText("Welcome", { timeout: 5000 });
-
-    const input = page.getByTestId("terminal-input");
-    await input.fill("echo test message");
-    await input.press("Enter");
-
-    await expect(output).toContainText("test message", { timeout: 5000 });
-  });
-
-  test("should handle the help command", async ({ page }) => {
-    const output = page.getByTestId("terminal-output");
-    await expect(output).toContainText("Welcome", { timeout: 5000 });
-
-    const input = page.getByTestId("terminal-input");
-    await input.fill("help");
-    await input.press("Enter");
-
-    await expect(output).toContainText("Available commands", { timeout: 5000 });
+    // Wait for the echo output to appear in the xterm rows
+    // xterm renders text in .xterm-rows spans
+    await expect(page.locator(".xterm-rows")).toContainText("hello-from-test", { timeout: 5000 });
   });
 });

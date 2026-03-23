@@ -8,7 +8,6 @@
     "dev:server": "bun server/index.tsx",
     "dev:client": "vite",
     "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
-    "build:client": "vite build",
     "test": "playwright test"
   },
   "dependencies": {
@@ -16,6 +15,8 @@
     "@react-fullstack/fullstack-bun-ws-client": "workspace:*",
     "@react-fullstack/fullstack-bun-ws-server": "workspace:*",
     "@react-fullstack/render": "workspace:*",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.3.6"

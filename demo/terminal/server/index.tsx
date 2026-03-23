@@ -1,65 +1,63 @@
-import React, { useCallback } from "react";
+import React, { useEffect, useRef } from "react";
 import { Render } from "@react-fullstack/render";
 import { Server, useViews, useStream } from "@react-fullstack/fullstack/server";
 import { createBunWebSocketServer } from "@react-fullstack/fullstack-bun-ws-server";
 import { views, Terminal } from "../shared/views";
 
+// Base64 helpers for binary-safe transport over JSON
+function toBase64(data: Uint8Array): string {
+  return Buffer.from(data).toString("base64");
+}
+
+function fromBase64(data: string): Uint8Array {
+  return Buffer.from(data, "base64");
+}
+
 function TerminalApp(): React.ReactElement | null {
   const View = useViews(views);
   const output = useStream(Terminal, "output");
 
-  // Emit a welcome message once the stream is available
-  const welcomeSent = React.useRef(false);
-  if (!welcomeSent.current) {
-    welcomeSent.current = true;
-    // Use setTimeout to ensure the stream is wired up on the client side
-    setTimeout(() => {
-      output.emit("Welcome to the react-fullstack terminal demo!\n");
-      output.emit("Type a command and press Enter.\n");
-      output.emit("$ ");
-    }, 100);
-  }
+  const terminalRef = useRef<{
+    write: (data: string | Uint8Array) => void;
+    resize: (cols: number, rows: number) => void;
+    close: () => void;
+  } | null>(null);
 
-  const handleInput = useCallback(
-    (input: string) => {
-      // Echo the command, then produce a response
-      output.emit(input + "\n");
+  useEffect(() => {
+    const shell = process.env.SHELL ?? "/bin/bash";
 
-      const trimmed = input.trim();
-      if (trimmed === "") {
-        output.emit("$ ");
-        return;
-      }
+    const proc = Bun.spawn([shell], {
+      terminal: {
+        cols: 80,
+        rows: 24,
+        data(_terminal, data: Uint8Array) {
+          // PTY output → base64 encode → stream to client
+          output.emit(toBase64(data));
+        },
+      },
+    });
 
-      if (trimmed === "help") {
-        output.emit("Available commands: help, echo <text>, date, clear, whoami\n");
-      } else if (trimmed === "date") {
-        output.emit(new Date().toISOString() + "\n");
-      } else if (trimmed === "whoami") {
-        output.emit("react-fullstack-user\n");
-      } else if (trimmed === "clear") {
-        // Send a special clear marker
-        output.emit("\x1b[CLEAR]");
-      } else if (trimmed.startsWith("echo ")) {
-        output.emit(trimmed.slice(5) + "\n");
-      } else {
-        output.emit(`command not found: ${trimmed}\n`);
-      }
+    terminalRef.current = proc.terminal!;
 
-      output.emit("$ ");
-    },
-    [output],
-  );
+    return () => {
+      terminalRef.current?.close();
+      terminalRef.current = null;
+    };
+  }, [output]);
 
-  if (!View) {
-    return null;
-  }
+  if (!View) return null;
 
   return (
     <View.Terminal
-      title="Terminal Demo"
-      onInput={handleInput}
+      title="Terminal"
       output={output}
+      onInput={(b64Input) => {
+        // Client sends base64-encoded keystrokes → decode → write to PTY
+        terminalRef.current?.write(fromBase64(b64Input));
+      }}
+      onResize={({ cols, rows }) => {
+        terminalRef.current?.resize(cols, rows);
+      }}
     />
   );
 }
@@ -73,8 +71,7 @@ const { transport, start } = createBunWebSocketServer({
 
 const server = start();
 
-console.log(`Server running on http://localhost:${PORT}`);
-console.log(`WebSocket endpoint: ws://localhost:${PORT}/ws`);
+console.log(`Terminal server running on ws://localhost:${PORT}/ws`);
 
 process.on("SIGINT", () => {
   server.stop();
