@@ -28,6 +28,7 @@
   "devDependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260323.1",
     "knip": "^5.0.0",
-    "oxlint": "^0.13.0"
+    "oxlint": "^0.13.0",
+    "typescript": "^6.0.0"
   }
 }
