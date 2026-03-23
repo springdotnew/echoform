@@ -1,5 +1,5 @@
 import type React from "react";
-import type { EventUid, RequestUid, ViewUid, PropName } from "./branded.types";
+import type { EventUid, RequestUid, ViewUid, PropName, StreamUid } from "./branded.types";
 
 export type SerializableValue =
   | string
@@ -47,6 +47,13 @@ export interface AppEvents {
   readonly request_views_tree: void;
   readonly respond_to_event: EventResponseData;
   readonly request_event: EventRequestData;
+  readonly stream_chunk: {
+    readonly streamUid: StreamUid;
+    readonly chunk: SerializableValue;
+  };
+  readonly stream_end: {
+    readonly streamUid: StreamUid;
+  };
 }
 
 export interface ViewDataBase {
@@ -77,7 +84,13 @@ export interface EventProp {
   readonly uid: EventUid;
 }
 
-export type Prop = DataProp | EventProp;
+export interface StreamProp {
+  readonly name: PropName;
+  readonly type: 'stream';
+  readonly uid: StreamUid;
+}
+
+export type Prop = DataProp | EventProp | StreamProp;
 
 export interface ShareableViewData extends ViewDataBase {
   readonly props: {

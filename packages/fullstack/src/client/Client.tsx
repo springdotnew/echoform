@@ -8,7 +8,7 @@ import type {
   Prop,
   AppEvents,
 } from "../shared/types";
-import type { EventUid } from "../shared/branded.types";
+import type { EventUid, StreamUid } from "../shared/branded.types";
 import { createRequestUid } from "../shared/branded.types";
 import { decompileTransport } from "../shared/decompiled-transport";
 import { randomId } from "../shared/id";
@@ -28,6 +28,7 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
 }: ClientProps<ViewsInterface, TEvents>): React.ReactElement {
   const [runningViews, setRunningViews] = useState<ReadonlyArray<ExistingSharedViewData>>([]);
   const transportRef = useRef(decompileTransport(rawTransport));
+  const streamListenersRef = useRef<Map<StreamUid, Set<(chunk: SerializableValue) => void>>>(new Map());
 
   const createEvent = useCallback((eventUid: EventUid, ...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
     return new Promise((resolve) => {
@@ -49,7 +50,7 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
 
       unsubscribe = transport.on("respond_to_event", handler) ?? undefined;
 
-      stringifyWithoutCircular(args); // validate (throws if prohibited events are passed)
+      stringifyWithoutCircular(args); // validate
 
       transport.emit("request_event", {
         eventArguments: args,
@@ -57,6 +58,19 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
         uid: requestUid,
       });
     });
+  }, []);
+
+  const streamSubscribe = useCallback((streamUid: StreamUid, listener: (chunk: SerializableValue) => void): (() => void) => {
+    const listeners = streamListenersRef.current.get(streamUid) ?? new Set();
+    listeners.add(listener);
+    streamListenersRef.current.set(streamUid, listeners);
+
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        streamListenersRef.current.delete(streamUid);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -78,16 +92,13 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
             return state;
           }
 
-          // Collect names to remove: deleted props + props being replaced by create
           const deletedNames = new Set(view.props.delete);
           const createNames = new Set(view.props.create.map((prop) => prop.name));
 
-          // Filter out deleted props and props being replaced
           const filteredProps = existingView.props.filter(
             (prop) => !deletedNames.has(prop.name) && !createNames.has(prop.name)
           );
 
-          // Add new/updated props
           const updatedProps: ReadonlyArray<Prop> = [...filteredProps, ...view.props.create];
 
           const updatedView: ExistingSharedViewData = {
@@ -102,7 +113,6 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
           ];
         }
 
-        // New view
         const newView: ExistingSharedViewData = {
           uid: view.uid,
           name: view.name,
@@ -130,9 +140,24 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
       });
     };
 
+    const streamChunkHandler = ({ streamUid, chunk }: AppEvents['stream_chunk']): void => {
+      const listeners = streamListenersRef.current.get(streamUid);
+      if (listeners) {
+        for (const listener of listeners) {
+          listener(chunk);
+        }
+      }
+    };
+
+    const streamEndHandler = ({ streamUid }: AppEvents['stream_end']): void => {
+      streamListenersRef.current.delete(streamUid);
+    };
+
     const unsubscribeViewsTree = transport.on("update_views_tree", updateViewsTreeHandler);
     const unsubscribeUpdateView = transport.on("update_view", updateViewHandler);
     const unsubscribeDeleteView = transport.on("delete_view", deleteViewHandler);
+    const unsubscribeStreamChunk = transport.on("stream_chunk", streamChunkHandler);
+    const unsubscribeStreamEnd = transport.on("stream_end", streamEndHandler);
 
     if (requestViewTreeOnMount) {
       transport.emit("request_views_tree");
@@ -142,6 +167,9 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
       unsubscribeViewsTree?.();
       unsubscribeUpdateView?.();
       unsubscribeDeleteView?.();
+      unsubscribeStreamChunk?.();
+      unsubscribeStreamEnd?.();
+      streamListenersRef.current.clear();
     };
   }, [requestViewTreeOnMount]);
 
@@ -150,6 +178,7 @@ function Client<ViewsInterface extends Views, TEvents extends Record<string | nu
       views={views as Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>}
       viewsData={runningViews}
       createEvent={createEvent}
+      streamSubscribe={streamSubscribe}
     />
   );
 }

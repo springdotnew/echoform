@@ -1,8 +1,8 @@
 import type { CompiledAppEvents, Prop as CompiledProp, ShareableViewData as CompiledShareableViewData } from "./compiledTypes";
 import { EventContent, Events } from "./enum";
 import type { AppEvents, Prop, Transport, SerializableValue, ExistingSharedViewData } from "./types";
-import type { ViewUid } from "./branded.types";
-import { createEventUid, createViewUid, createRequestUid, createPropName } from "./branded.types";
+import type { ViewUid, StreamUid } from "./branded.types";
+import { createEventUid, createViewUid, createRequestUid, createPropName, createStreamUid } from "./branded.types";
 import { nullIfEmpty } from "./collection.utils";
 
 function propToCompiled(prop: Prop): CompiledProp {
@@ -11,6 +11,13 @@ function propToCompiled(prop: Prop): CompiledProp {
       [EventContent.Name]: prop.name,
       [EventContent.Type]: EventContent.Data,
       [EventContent.Data]: prop.data,
+    };
+  }
+  if (prop.type === "stream") {
+    return {
+      [EventContent.Name]: prop.name,
+      [EventContent.Type]: EventContent.Stream,
+      [EventContent.StreamUid]: prop.uid,
     };
   }
   return {
@@ -32,6 +39,14 @@ function compiledToProp(compiled: CompiledProp): Prop {
       data: dataProp[EventContent.Data],
     };
   }
+  if (propType === EventContent.Stream) {
+    const streamProp = compiled as { readonly [EventContent.StreamUid]?: string };
+    return {
+      name: createPropName(propName),
+      type: "stream",
+      uid: createStreamUid(streamProp[EventContent.StreamUid] ?? ''),
+    };
+  }
   const eventProp = compiled as { readonly [EventContent.Uid]?: string };
   return {
     name: createPropName(propName),
@@ -47,6 +62,8 @@ const map = {
   respond_to_event: Events.RespondToEvent,
   update_view: Events.UpdateView,
   update_views_tree: Events.UpdateViewsTree,
+  stream_chunk: Events.StreamChunk,
+  stream_end: Events.StreamEnd,
 } as const;
 
 export interface DecompileTransport {
@@ -126,6 +143,21 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
           };
           break;
         }
+        case Events.StreamChunk: {
+          const chunkData = data as CompiledAppEvents[Events.StreamChunk];
+          decompiled = {
+            streamUid: createStreamUid(chunkData[EventContent.StreamUid]),
+            chunk: chunkData[EventContent.Chunk],
+          };
+          break;
+        }
+        case Events.StreamEnd: {
+          const endData = data as CompiledAppEvents[Events.StreamEnd];
+          decompiled = {
+            streamUid: createStreamUid(endData[EventContent.StreamUid]),
+          };
+          break;
+        }
         default:
           return;
       }
@@ -194,6 +226,21 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
             [EventContent.isRoot]: view.isRoot,
             [EventContent.Props]: view.props.map(propToCompiled),
           })),
+        };
+        break;
+      }
+      case 'stream_chunk': {
+        const chunkData = data as AppEvents['stream_chunk'];
+        compiled = {
+          [EventContent.StreamUid]: chunkData.streamUid,
+          [EventContent.Chunk]: chunkData.chunk,
+        };
+        break;
+      }
+      case 'stream_end': {
+        const endData = data as AppEvents['stream_end'];
+        compiled = {
+          [EventContent.StreamUid]: endData.streamUid,
         };
         break;
       }

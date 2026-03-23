@@ -9,8 +9,9 @@ import type {
   SerializableValue,
   DataProp,
 } from "../shared/types";
-import type { EventUid, ViewUid } from "../shared/branded.types";
+import type { EventUid, ViewUid, StreamUid } from "../shared/branded.types";
 import { createEventUid, createPropName } from "../shared/branded.types";
+import { isStreamEmitter } from "../shared/view-inference";
 import type { DecompileTransport } from "../shared/decompiled-transport";
 import { decompileTransport } from "../shared/decompiled-transport";
 import { randomId } from "../shared/id";
@@ -57,6 +58,26 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
     const eventUid = createEventUid(randomId());
     viewEventsRef.current = new Map([...viewEventsRef.current, [eventUid, event]]);
     return eventUid;
+  }, []);
+
+  const broadcastStreamChunk = useCallback((streamUid: StreamUid, chunk: SerializableValue): void => {
+    const server = serverRef.current;
+    if (!server) return;
+    const payload = { streamUid, chunk };
+    server.emit("stream_chunk", payload);
+    for (const client of clientsRef.current) {
+      client.emit("stream_chunk", payload);
+    }
+  }, []);
+
+  const broadcastStreamEnd = useCallback((streamUid: StreamUid): void => {
+    const server = serverRef.current;
+    if (!server) return;
+    const payload = { streamUid };
+    server.emit("stream_end", payload);
+    for (const client of clientsRef.current) {
+      client.emit("stream_end", payload);
+    }
   }, []);
 
   const registerSocketListener = useCallback((client: DecompileTransport) => {
@@ -117,6 +138,13 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
 
     const mapProps = (name: string): Prop => {
       const prop = viewData.props[name];
+      if (isStreamEmitter(prop)) {
+        return {
+          name: createPropName(name),
+          type: "stream" as const,
+          uid: prop.uid,
+        };
+      }
       if (typeof prop === "function") {
         return {
           name: createPropName(name),
@@ -210,6 +238,11 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
           ];
           propsToAdd.push(updatedProp);
         }
+        continue;
+      }
+
+      if (existingProp.type === "stream") {
+        // Stream props keep the same UID — no update needed
         continue;
       }
 
@@ -326,7 +359,9 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
     removeClient,
     updateRunningView,
     deleteRunningView,
-  }), [addClient, removeClient, updateRunningView, deleteRunningView]);
+    broadcastStreamChunk,
+    broadcastStreamEnd,
+  }), [addClient, removeClient, updateRunningView, deleteRunningView, broadcastStreamChunk, broadcastStreamEnd]);
 
   if (paused) {
     return null;

@@ -9,6 +9,7 @@ export type {
   Prop,
   DataProp,
   EventProp,
+  StreamProp,
   ShareableViewData,
   Transport,
   View,
@@ -21,6 +22,12 @@ export type {
   EventResponseData,
   EventRequestData,
 } from "./types";
+
+// View builder API
+export { view, callback, stream, createViews } from "./view-builder";
+export type { ViewDef, CallbackDef, StreamDef, ViewDefs, ViewConfig, CallbackConfig } from "./view-builder";
+export type { InferServerProps, InferClientProps, StreamEmitter, StreamReceiver } from "./view-inference";
+export type { StandardSchemaV1 } from "./standard-schema";
 export { randomId } from "./id";
 export { ViewsRenderer } from "./ViewsRenderer";
 export type { RenderProps } from "./ViewsRenderer";

@@ -5,6 +5,8 @@ export enum Events {
     RequestViewsTree = 3,
     RespondToEvent = 4,
     RequestEvent = 5,
+    StreamChunk = 6,
+    StreamEnd = 7,
 }
 
 export enum EventContent {
@@ -22,4 +24,7 @@ export enum EventContent {
     Name = 13,
     Type = 14,
     Event = 15,
+    StreamUid = 16,
+    Chunk = 17,
+    Stream = 18,
 }

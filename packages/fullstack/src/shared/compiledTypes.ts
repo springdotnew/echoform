@@ -36,6 +36,13 @@ export interface CompiledAppEvents {
     readonly [EventContent.Uid]: string;
     readonly [EventContent.EventUid]: string;
   };
+  readonly [Events.StreamChunk]: {
+    readonly [EventContent.StreamUid]: string;
+    readonly [EventContent.Chunk]: SerializableValue;
+  };
+  readonly [Events.StreamEnd]: {
+    readonly [EventContent.StreamUid]: string;
+  };
 }
 
 /**
@@ -75,9 +82,18 @@ export interface EventProp {
 }
 
 /**
+ * Stream prop with compiled keys.
+ */
+export interface StreamProp {
+  readonly [EventContent.Name]: string;
+  readonly [EventContent.Type]: typeof EventContent.Stream;
+  readonly [EventContent.StreamUid]: string;
+}
+
+/**
  * Prop discriminated union with compiled keys.
  */
-export type Prop = DataProp | EventProp;
+export type Prop = DataProp | EventProp | StreamProp;
 
 /**
  * Shareable view data with compiled keys.
