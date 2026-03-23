@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "server": "bun server/index.tsx",
-    "dev:server": "bun server/index.tsx",
+    "server": "PATH=/usr/sbin:/sbin:$PATH bun server/index.tsx",
+    "dev:server": "PATH=/usr/sbin:/sbin:$PATH bun server/index.tsx",
     "dev:client": "vite",
     "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\""
   },
@@ -18,7 +18,6 @@
     "@tailwindcss/vite": "^4.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "reshaped": "^3.10.2",
     "systeminformation": "^5.31.5",
     "tailwindcss": "4",
     "zod": "^3.24.4"
