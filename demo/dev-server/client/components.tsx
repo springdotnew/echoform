@@ -257,6 +257,7 @@ export function ProcessTerminal(props: InferClientProps<typeof ProcessTerminalDe
 
     const xterm = new XTerm({
       cursorBlink: true,
+      screenReaderMode: true,
       fontSize: 14,
       fontFamily: "'JetBrainsMono Nerd Font Mono', 'CaskaydiaCove Nerd Font', 'FiraCode Nerd Font', monospace",
       theme: { background: "#0e0e0e", foreground: "#d4d4d4", cursor: "#d4d4d4", selectionBackground: "#264f78" },
