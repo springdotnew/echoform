@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { ViewsToComponents } from "./types";
 import type {
   ExistingSharedViewData,
   Transport,
-  Views,
   SerializableValue,
   Prop,
   AppEvents,
@@ -15,13 +13,13 @@ import { randomId } from "../shared/id";
 import { ViewsRenderer } from "../shared/ViewsRenderer";
 import { stringifyWithoutCircular } from "../shared/serialization.utils";
 
-interface ClientProps<ViewsInterface extends Views, TEvents extends Record<string | number, unknown> = Record<string, unknown>> {
+interface ClientProps<ViewsInterface extends Record<string, unknown> = Record<string, unknown>, TEvents extends Record<string | number, unknown> = Record<string, unknown>> {
   readonly transport: Transport<TEvents>;
-  readonly views: ViewsToComponents<ViewsInterface>;
+  readonly views: Readonly<Record<string, React.ComponentType<ViewsInterface[keyof ViewsInterface] & Record<string, unknown>>>>;
   readonly requestViewTreeOnMount?: boolean;
 }
 
-function Client<ViewsInterface extends Views, TEvents extends Record<string | number, unknown> = Record<string, unknown>>({
+function Client<ViewsInterface extends Record<string, unknown> = Record<string, unknown>, TEvents extends Record<string | number, unknown> = Record<string, unknown>>({
   transport: rawTransport,
   views,
   requestViewTreeOnMount,

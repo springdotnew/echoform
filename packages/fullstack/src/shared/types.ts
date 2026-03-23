@@ -1,4 +1,3 @@
-import type React from "react";
 import type { EventUid, RequestUid, ViewUid, PropName, StreamUid } from "./branded.types";
 
 export type SerializableValue =
@@ -104,11 +103,3 @@ export interface ExistingSharedViewData extends ViewDataBase {
 }
 
 export type AppTransport = Transport<AppEvents>;
-
-export interface View<Props> {
-  readonly props: React.PropsWithChildren<Props>;
-}
-
-export interface Views {
-  readonly [key: string]: View<ViewProps>;
-}

@@ -17,11 +17,22 @@ import type { DecompileTransport } from "../shared/decompiled-transport";
 import { decompileTransport } from "../shared/decompiled-transport";
 import { randomId } from "../shared/id";
 import { deeplyEqual } from "../shared/comparison.utils";
+import { validateSchema } from "../shared/validation";
+import type { CallbackDef } from "../shared/view-builder";
+import type { StandardSchemaV1 } from "../shared/standard-schema";
 
 /**
  * Event handler type for registered view events.
  */
 type EventHandler = (...args: ReadonlyArray<SerializableValue>) => SerializableValue | Promise<SerializableValue>;
+
+/**
+ * Registered event entry: handler + optional callback definition for validation.
+ */
+interface RegisteredEvent {
+  readonly handler: EventHandler;
+  readonly callbackDef?: CallbackDef;
+}
 
 interface AppProps<TEvents extends Record<string | number, unknown> = Record<string, unknown>> {
   readonly children: () => ReactNode;
@@ -52,12 +63,12 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
   const clientsRef = useRef<ReadonlyArray<DecompileTransport>>([]);
   const clientsMapRef = useRef<Map<Transport<Record<string | number, unknown>>, DecompileTransport>>(new Map());
   const existingSharedViewsRef = useRef<ReadonlyArray<ExistingSharedViewData>>([]);
-  const viewEventsRef = useRef<ReadonlyMap<EventUid, EventHandler>>(new Map());
+  const viewEventsRef = useRef<ReadonlyMap<EventUid, RegisteredEvent>>(new Map());
   const cleanUpFunctionsRef = useRef<ReadonlyArray<() => void>>([]);
 
-  const registerViewEvent = useCallback((event: EventHandler): EventUid => {
+  const registerViewEvent = useCallback((event: EventHandler, callbackDef?: CallbackDef): EventUid => {
     const eventUid = createEventUid(randomId());
-    viewEventsRef.current = new Map([...viewEventsRef.current, [eventUid, event]]);
+    viewEventsRef.current = new Map([...viewEventsRef.current, [eventUid, { handler: event, callbackDef }]]);
     return eventUid;
   }, []);
 
@@ -92,13 +103,26 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
       eventUid: requestedEventUid,
       uid: currentEventUid,
     }: AppEvents['request_event']): void => {
-      const handler = viewEventsRef.current.get(requestedEventUid);
-      if (!handler) {
+      const registered = viewEventsRef.current.get(requestedEventUid);
+      if (!registered) {
         throw new Error(
           "the client is trying to access an event that does not exist"
         );
       }
-      Promise.resolve(handler(...eventArguments)).then((result) => {
+
+      // Validate callback input arguments against the schema if available
+      if (registered.callbackDef?.input) {
+        const inputSchema = registered.callbackDef.input;
+        // Callbacks receive a single argument; validate the first one
+        const argValue = eventArguments.length === 1 ? eventArguments[0] : eventArguments;
+        validateSchema(
+          inputSchema as StandardSchemaV1,
+          argValue,
+          `callback input for event ${requestedEventUid as string}`,
+        );
+      }
+
+      Promise.resolve(registered.handler(...eventArguments)).then((result) => {
         client.emit("respond_to_event", {
           data: result,
           uid: currentEventUid,
@@ -151,11 +175,21 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
       }
 
       if (viewDef?.callbacks[name] || typeof prop === "function") {
+        const cbDef = viewDef?.callbacks[name] as CallbackDef | undefined;
         return {
           name: createPropName(name),
           type: "event" as const,
-          uid: registerViewEvent(prop as EventHandler),
+          uid: registerViewEvent(prop as EventHandler, cbDef),
         };
+      }
+
+      // Validate data prop against its schema if available
+      if (viewDef?.input[name]) {
+        validateSchema(
+          viewDef.input[name] as StandardSchemaV1,
+          prop,
+          `data prop "${name}" of view "${viewData.name}"`,
+        );
       }
 
       return {
@@ -255,10 +289,12 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
       if (existingProp.type === "event") {
         const propValue = viewData.props[name];
         if (typeof propValue === "function") {
-          // Update the event handler in the registry
+          // Update the event handler in the registry, preserving the callback definition
+          const existingRegistered = viewEventsRef.current.get(existingProp.uid);
+          const cbDef = (viewDef?.callbacks[name] as CallbackDef | undefined) ?? existingRegistered?.callbackDef;
           viewEventsRef.current = new Map([
             ...viewEventsRef.current,
-            [existingProp.uid, propValue as EventHandler],
+            [existingProp.uid, { handler: propValue as EventHandler, callbackDef: cbDef }],
           ]);
         } else {
           // Event changed to data prop
