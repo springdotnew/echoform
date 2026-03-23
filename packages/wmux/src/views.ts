@@ -11,19 +11,27 @@ const tabInfo = z.object({
   status: processStatus,
 });
 
-const categoryInfo = z.object({
-  name: z.string(),
-  color: z.string(),
-  icon: z.string().optional(),
-  tabs: z.array(tabInfo),
-});
-
 const fileEntry = z.object({
   path: z.string(),
   name: z.string(),
   isDir: z.boolean(),
   depth: z.number(),
   isExpanded: z.boolean(),
+});
+
+const openFileInfo = z.object({
+  path: z.string(),
+  name: z.string(),
+});
+
+const categoryInfo = z.object({
+  name: z.string(),
+  color: z.string(),
+  icon: z.string().optional(),
+  type: z.enum(["process", "files"]),
+  tabs: z.array(tabInfo),
+  fileEntries: z.array(fileEntry).optional(),
+  openFiles: z.array(openFileInfo).optional(),
 });
 
 export const WmuxApp = view("WmuxApp", {
@@ -38,6 +46,9 @@ export const WmuxApp = view("WmuxApp", {
     onStartProcess: callback({ input: z.string() }),
     onStopProcess: callback({ input: z.string() }),
     onRestartProcess: callback({ input: z.string() }),
+    onToggleDir: callback({ input: z.string() }),
+    onOpenFile: callback({ input: z.string() }),
+    onCloseFile: callback({ input: z.string() }),
   },
 });
 
@@ -56,17 +67,21 @@ export const WmuxTerminal = view("WmuxTerminal", {
   },
 });
 
-export const WmuxFileViewer = view("WmuxFileViewer", {
+export const WmuxFileContent = view("WmuxFileContent", {
   input: {
     id: z.string(),
-    entries: z.array(fileEntry),
-    selectedPath: z.string(),
-    selectedContent: z.string(),
-  },
-  callbacks: {
-    onToggleDir: callback({ input: z.string() }),
-    onSelectFile: callback({ input: z.string() }),
+    path: z.string(),
+    name: z.string(),
+    content: z.string(),
   },
 });
 
-export const views = createViews({ WmuxApp, WmuxTerminal, WmuxFileViewer });
+export const WmuxIframe = view("WmuxIframe", {
+  input: {
+    id: z.string(),
+    name: z.string(),
+    url: z.string(),
+  },
+});
+
+export const views = createViews({ WmuxApp, WmuxTerminal, WmuxFileContent, WmuxIframe });

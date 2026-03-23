@@ -5,7 +5,7 @@ import { createManagedProcess, type ManagedProcess } from "./process";
 import { createWmuxServer } from "./server";
 import { generateToken } from "./token";
 import { WmuxRoot } from "./components/WmuxRoot";
-import type { WmuxConfig, WmuxHandle } from "./types";
+import type { WmuxConfig, WmuxHandle, TabConfig } from "./types";
 
 const BUILT_IN_CLIENT_URL = "__WMUX_CLIENT_URL__";
 
@@ -24,6 +24,22 @@ function openBrowser(url: string): void {
   }
 }
 
+interface TabDef {
+  readonly id: string;
+  readonly description?: string;
+  readonly icon?: string;
+  readonly tabType: "process" | "iframe";
+  readonly url?: string;
+}
+
+interface CategoryDef {
+  readonly name: string;
+  readonly icon?: string;
+  readonly type: "process" | "files";
+  readonly tabs: readonly TabDef[];
+  readonly fileRoot?: string;
+}
+
 export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
   const port = config.port ?? 0;
   const hostname = config.hostname ?? "127.0.0.1";
@@ -32,24 +48,25 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
     ?? process.env.WMUX_CLIENT_URL
     ?? (BUILT_IN_CLIENT_URL.startsWith("__") ? "http://localhost:5173" : BUILT_IN_CLIENT_URL);
 
-  const fileRoot = config.files;
-
-  // Create managed processes from sidebarItems
   const processes = new Map<string, ManagedProcess>();
-  const categoryDefs: Array<{
-    name: string;
-    icon?: string;
-    tabs: Array<{ id: string; description?: string; icon?: string }>;
-  }> = [];
+  const categoryDefs: CategoryDef[] = [];
 
   for (const item of config.sidebarItems) {
-    const tabs: Array<{ id: string; description?: string; icon?: string }> = [];
-    for (const tab of item.tabs) {
-      const id = `${item.category}/${tab.name}`;
-      processes.set(id, createManagedProcess(id, tab.name, tab.process, () => {}));
-      tabs.push({ id, description: tab.description, icon: tab.icon });
+    if (item.files) {
+      categoryDefs.push({ name: item.category, icon: item.icon, type: "files", tabs: [], fileRoot: item.files });
+    } else {
+      const tabs: TabDef[] = [];
+      for (const tab of item.tabs ?? []) {
+        const id = `${item.category}/${tab.name}`;
+        if (tab.url) {
+          tabs.push({ id, description: tab.description, icon: tab.icon, tabType: "iframe", url: tab.url });
+        } else if (tab.process) {
+          processes.set(id, createManagedProcess(id, tab.name, tab.process, () => {}));
+          tabs.push({ id, description: tab.description, icon: tab.icon, tabType: "process" });
+        }
+      }
+      categoryDefs.push({ name: item.category, icon: item.icon, type: "process", tabs });
     }
-    categoryDefs.push({ name: item.category, icon: item.icon, tabs });
   }
 
   // Start server
@@ -72,8 +89,8 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
   }
 
   Render(
-    <Server transport={transport}>
-      {() => <WmuxRoot processes={processes} categoryDefs={categoryDefs} fileRoot={fileRoot} />}
+    <Server transport={transport} singleInstance>
+      {() => <WmuxRoot processes={processes} categoryDefs={categoryDefs} />}
     </Server>,
   );
 

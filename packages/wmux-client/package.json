@@ -9,14 +9,15 @@
     "typecheck": "tsgo -p ."
   },
   "dependencies": {
+    "@dnd-kit/react": "^0.3.2",
     "@heroui/react": "^3.0.0",
     "@heroui/styles": "^3.0.0",
+    "@monaco-editor/react": "^4.7.0",
     "@playfast/echoform": "workspace:*",
     "@playfast/wmux": "workspace:*",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "cmdk": "^1.1.1",
-    "dockview-react": "^5.1.0",
     "lucide-react": "^0.577.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

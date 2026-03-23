@@ -53,95 +53,28 @@ body {
 }
 
 /* Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
-/* Dockview overrides — tab bg colors set dynamically per category via inline styles */
-.dockview-theme-dark {
-  --dv-background-color: var(--color-background);
-  --dv-paneview-header-border-color: var(--color-border);
-  --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-card);
-  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--color-card);
-  --dv-tab-divider-color: transparent;
-  --dv-activegroup-visiblepanel-tab-color: var(--color-foreground);
-  --dv-activegroup-hiddenpanel-tab-color: var(--color-muted-foreground);
-  --dv-inactivegroup-visiblepanel-tab-color: var(--color-muted-foreground);
-  --dv-inactivegroup-hiddenpanel-tab-color: var(--color-muted-foreground);
-  --dv-separator-border: var(--color-border);
-}
-
-/* Hide dockview close buttons on tabs */
-.dockview-theme-dark .dv-default-tab-action {
-  display: none !important;
-}
-
-/* Smoother tab transitions */
-.dockview-theme-dark .dv-tab {
-  transition: background-color 100ms ease, color 100ms ease;
-  font-size: 12px;
-  padding: 0 12px;
-}
-
-/* Subtle tab bar bottom border */
-.dockview-theme-dark .tabs-and-actions-container {
-  border-bottom: 1px solid #1a1a1e;
-}
-
-/* cmdk dialog styles */
-[cmdk-root] {
-  background: transparent;
-}
-
-[cmdk-input] {
-  caret-color: var(--color-foreground);
-}
-
-[cmdk-item] {
-  transition: background-color 100ms ease;
-}
-
-[cmdk-group] + [cmdk-group] {
-  margin-top: 4px;
-}
+/* cmdk */
+[cmdk-root] { background: transparent; }
+[cmdk-input] { caret-color: var(--color-foreground); }
+[cmdk-item] { transition: background-color 100ms ease; }
+[cmdk-group] + [cmdk-group] { margin-top: 4px; }
 
 /* Splash screen animations */
-.wmux-fade-in {
-  animation: wmux-fade-in 0.5s ease-out both;
-}
+.wmux-fade-in { animation: wmux-fade-in 0.5s ease-out both; }
 
 @keyframes wmux-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.wmux-pulse-border {
-  animation: wmux-pulse-border 2s ease-in-out infinite;
-}
+.wmux-pulse-border { animation: wmux-pulse-border 2s ease-in-out infinite; }
 
 @keyframes wmux-pulse-border {
-  0%, 100% {
-    border-color: #27272a;
-    box-shadow: 0 0 0 0 rgba(250, 250, 250, 0);
-  }
-  50% {
-    border-color: #3f3f46;
-    box-shadow: 0 0 8px 0 rgba(250, 250, 250, 0.03);
-  }
+  0%, 100% { border-color: #27272a; box-shadow: 0 0 0 0 rgba(250, 250, 250, 0); }
+  50% { border-color: #3f3f46; box-shadow: 0 0 8px 0 rgba(250, 250, 250, 0.03); }
 }

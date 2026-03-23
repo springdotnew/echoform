@@ -6,12 +6,14 @@ import { parseHashParams } from "./utils/params";
 import { useAuthenticatedTransport } from "./utils/transport";
 import { WmuxApp } from "./components/WmuxApp";
 import { WmuxTerminal } from "./components/WmuxTerminal";
-import { FileViewer as WmuxFileViewer } from "./components/FileViewer";
+import { WmuxFileContent } from "./components/WmuxFileContent";
+import { WmuxIframe } from "./components/WmuxIframe";
 
 const viewComponents = {
   WmuxApp,
   WmuxTerminal,
-  WmuxFileViewer,
+  WmuxFileContent,
+  WmuxIframe,
 };
 
 // ── Splash screens ──

@@ -166,6 +166,7 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
   const existingSharedViewsRef = useRef<ReadonlyArray<ExistingSharedViewData>>([]);
   const viewEventsRef = useRef<ReadonlyMap<EventUid, RegisteredEvent>>(new Map());
   const cleanUpFunctionsRef = useRef<ReadonlyArray<() => void>>([]);
+  const eventChainRef = useRef(Promise.resolve());
 
   const registerViewEvent = useCallback((event: EventHandler, callbackDef?: CallbackDef): EventUid => {
     const eventUid = createEventUid(randomId());
@@ -198,18 +199,22 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     const cleanReqEvent = client.on("request_event", ({
       eventArguments, eventUid: requestedEventUid, uid: currentEventUid,
     }: AppEvents['request_event']) => {
-      const registered = viewEventsRef.current.get(requestedEventUid);
-      if (!registered) {
-        throw new Error("the client is trying to access an event that does not exist");
-      }
+      eventChainRef.current = eventChainRef.current.then(() => {
+        const registered = viewEventsRef.current.get(requestedEventUid);
+        if (!registered) {
+          throw new Error("the client is trying to access an event that does not exist");
+        }
 
-      if (registered.callbackDef?.input) {
-        const argValue = eventArguments.length === 1 ? eventArguments[0] : eventArguments;
-        validateSchema(registered.callbackDef.input as StandardSchemaV1, argValue, `callback ${requestedEventUid as string}`);
-      }
+        if (registered.callbackDef?.input) {
+          const argValue = eventArguments.length === 1 ? eventArguments[0] : eventArguments;
+          validateSchema(registered.callbackDef.input as StandardSchemaV1, argValue, `callback ${requestedEventUid as string}`);
+        }
 
-      Promise.resolve(registered.handler(...eventArguments)).then((result) => {
-        client.emit("respond_to_event", { data: result, uid: currentEventUid, eventUid: requestedEventUid });
+        return Promise.resolve(registered.handler(...eventArguments)).then((result) => {
+          client.emit("respond_to_event", { data: result, uid: currentEventUid, eventUid: requestedEventUid });
+        });
+      }).catch((error) => {
+        console.error("echoform: event handler error", error);
       });
     });
 

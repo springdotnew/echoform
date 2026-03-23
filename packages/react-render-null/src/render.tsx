@@ -74,7 +74,7 @@ const reconciler = Reconciler(hostConfig);
 export const Render = (element: ReactNode): { stop: () => void; continue: () => void } => {
   const container = reconciler.createContainer(
     {},
-    0, // ConcurrentRoot
+    0, // LegacyRoot
     null, // hydrationCallbacks
     false, // isStrictMode
     null, // concurrentUpdatesByDefaultOverride

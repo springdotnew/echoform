@@ -39,7 +39,8 @@ export interface TabConfig {
   readonly name: string;
   readonly description?: string;
   readonly icon?: string;
-  readonly process: ProcessConfig;
+  readonly process?: ProcessConfig;
+  readonly url?: string;
 }
 
 // ── Sidebar category ──
@@ -47,14 +48,14 @@ export interface TabConfig {
 export interface SidebarItem {
   readonly category: string;
   readonly icon?: string;
-  readonly tabs: readonly TabConfig[];
+  readonly tabs?: readonly TabConfig[];
+  readonly files?: string;
 }
 
 // ── Top-level config ──
 
 export interface WmuxConfig {
   readonly sidebarItems: readonly SidebarItem[];
-  readonly files?: string;
   readonly port?: number;
   readonly hostname?: string;
   readonly clientUrl?: string;

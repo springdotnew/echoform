@@ -23,10 +23,15 @@ await wmux({
       tabs: [
         { name: "failing", icon: "Bug", description: "auto-restarts", process: { command: `bash -c 'echo "starting..."; sleep 3; echo "crash!"; exit 1'`, autoRestart: true } },
         { name: "manual", icon: "Wrench", description: "manual start", process: { command: `bash -c 'echo "manual process running"; sleep infinity'`, autoStart: false } },
+        { name: "example.com", icon: "Globe", description: "iframe preview", url: "https://example.com" },
       ],
     },
+    {
+      category: "project",
+      icon: "Folder",
+      files: ".",
+    },
   ],
-  files: ".",
   port: 4220,
   clientUrl: "http://localhost:5173",
   token: "test-token",
