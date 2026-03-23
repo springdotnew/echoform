@@ -53,7 +53,10 @@ jobs:
             node -e "
               const fs = require('fs');
               const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-              const [major, minor, patch] = pkg.version.split('.').map(Number);
+              const parts = pkg.version.split('.');
+              const major = parseInt(parts[0], 10) || 0;
+              const minor = parseInt(parts[1], 10) || 0;
+              const patch = parseInt(parts[2], 10) || 0;
               const bump = '$BUMP';
               if (bump === 'major') pkg.version = (major+1)+'.0.0';
               else if (bump === 'minor') pkg.version = major+'.'+(minor+1)+'.0';
