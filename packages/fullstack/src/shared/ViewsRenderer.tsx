@@ -41,7 +41,7 @@ export function ViewsRenderer(props: RenderProps): ReactElement {
       return <React.Fragment key={view.uid} />;
     }
 
-    const builtProps: Record<string, unknown> = { key: view.uid };
+    const builtProps: Record<string, unknown> = {};
 
     for (const prop of view.props) {
       if (prop.type === "data") {
@@ -58,7 +58,7 @@ export function ViewsRenderer(props: RenderProps): ReactElement {
       .sort((a, b) => a.childIndex - b.childIndex)
       .map((runningView) => renderView(runningView));
 
-    return <ComponentToRender {...builtProps}>{children}</ComponentToRender>;
+    return <ComponentToRender key={view.uid} {...builtProps}>{children}</ComponentToRender>;
   };
 
   const roots = viewsData.filter((view) => view.isRoot);
