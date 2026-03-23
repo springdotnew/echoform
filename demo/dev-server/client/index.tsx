@@ -2,12 +2,11 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { Client } from "@react-fullstack/fullstack/client";
 import { useWebSocketTransport } from "@react-fullstack/fullstack-bun-ws-client";
-import { TerminalApp, Workspace, Terminal } from "./components";
+import { DevServerApp, ProcessTerminal } from "./components";
 
 const components = {
-  TerminalApp,
-  Workspace,
-  Terminal,
+  DevServerApp,
+  ProcessTerminal,
 };
 
 function App(): React.ReactElement {
