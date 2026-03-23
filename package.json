@@ -23,7 +23,7 @@
     "knip:fix": "knip --fix",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "changeset publish"
+    "release": "node scripts/resolve-workspace-deps.js && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.25.2",
