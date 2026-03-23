@@ -175,10 +175,19 @@ const { transport, start } = createFileEditorServer({
   path: "/ws",
 });
 
-start();
+const server = start();
 
 console.log(`File Editor running at http://localhost:${PORT}`);
 console.log(`Editing: ${rootPath}`);
+
+process.on("SIGINT", () => {
+  server.stop();
+  process.exit(0);
+});
+process.on("SIGTERM", () => {
+  server.stop();
+  process.exit(0);
+});
 
 Render(
   <Server transport={transport} singleInstance>

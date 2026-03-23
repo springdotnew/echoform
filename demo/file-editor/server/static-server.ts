@@ -79,11 +79,11 @@ function generateClientHtml(wsPort: number): string {
   <div id="root"></div>
 
   <!-- React from CDN -->
-  <script crossorigin src="https://unpkg.com/react@19/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@19/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react@19.0.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@19.0.0/umd/react-dom.production.min.js"></script>
 
   <!-- Monaco Editor Loader -->
-  <script src="https://unpkg.com/monaco-editor@0.52.0/min/vs/loader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs/loader.js"></script>
 
   <script>
     // Event name mapping (compiled format)
@@ -277,7 +277,7 @@ function generateClientHtml(wsPort: number): string {
           if (!window.require) return;
 
           window.require.config({
-            paths: { vs: 'https://unpkg.com/monaco-editor@0.52.0/min/vs' }
+            paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs' }
           });
 
           window.require(['vs/editor/editor.main'], function() {

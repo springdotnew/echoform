@@ -89,10 +89,19 @@ const { transport, start } = createBunWebSocketServer({
   path: "/ws",
 });
 
-start();
+const server = start();
 
 console.log(`Server running on http://localhost:${PORT}`);
 console.log(`WebSocket endpoint: ws://localhost:${PORT}/ws`);
+
+process.on("SIGINT", () => {
+  server.stop();
+  process.exit(0);
+});
+process.on("SIGTERM", () => {
+  server.stop();
+  process.exit(0);
+});
 
 Render(
   <Server transport={transport}>
