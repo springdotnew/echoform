@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { StandardSchemaV1 } from "./standard-schema";
-import type { ViewDef, CallbackDef, StreamDef } from "./view-builder";
+import type { ViewDef, CallbackDef, AnyCallbackDef, StreamDef } from "./view-builder";
 import type { StreamUid } from "./branded.types";
 import type { SerializableValue } from "./types";
 
@@ -43,7 +43,7 @@ export function createStreamEmitter<T>(
 
 // ---- Callback inference ----
 
-type InferServerCallback<C extends CallbackDef> =
+type InferServerCallback<C extends AnyCallbackDef> =
   C extends CallbackDef<infer TInput, infer TOutput>
     ? StandardSchemaV1.InferInput<TInput> extends void
       ? () =>
@@ -84,7 +84,7 @@ export function toMutationOptions<TInput, TOutput>(
   };
 }
 
-type InferClientCallback<C extends CallbackDef, TViewName extends string = string, TCallbackName extends string = string> =
+type InferClientCallback<C extends AnyCallbackDef, TViewName extends string = string, TCallbackName extends string = string> =
   C extends CallbackDef<infer TInput, infer TOutput>
     ? ClientCallback<
         StandardSchemaV1.InferInput<TInput>,

@@ -22,7 +22,7 @@ export type {
 
 // View builder API
 export { view, callback, stream, createViews, passthrough } from "./view-builder";
-export type { ViewDef, CallbackDef, StreamDef, ViewDefs, ViewConfig, CallbackConfig } from "./view-builder";
+export type { ViewDef, CallbackDef, AnyCallbackDef, StreamDef, ViewDefs, ViewConfig, CallbackConfig } from "./view-builder";
 export type { InferServerProps, InferClientProps, StreamEmitter, StreamReceiver, StreamEmitterHandle, ClientCallback } from "./view-inference";
 export { createStreamEmitter, toMutationOptions } from "./view-inference";
 export type { StandardSchemaV1 } from "./standard-schema";

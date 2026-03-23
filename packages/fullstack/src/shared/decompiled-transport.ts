@@ -140,40 +140,40 @@ function applyBrands(event: string, data: unknown): unknown {
 
   switch (event) {
     case "delete_view": {
-      const d = data as { readonly viewUid: string };
-      return { viewUid: createViewUid(d.viewUid) };
+      const deletePayload = data as { readonly viewUid: string };
+      return { viewUid: createViewUid(deletePayload.viewUid) };
     }
     case "request_event": {
-      const d = data as { readonly eventArguments: ReadonlyArray<unknown>; readonly uid: string; readonly eventUid: string };
+      const requestPayload = data as { readonly eventArguments: ReadonlyArray<unknown>; readonly uid: string; readonly eventUid: string };
       return {
-        eventArguments: d.eventArguments,
-        eventUid: createEventUid(d.eventUid),
-        uid: createRequestUid(d.uid),
+        eventArguments: requestPayload.eventArguments,
+        eventUid: createEventUid(requestPayload.eventUid),
+        uid: createRequestUid(requestPayload.uid),
       };
     }
     case "respond_to_event": {
-      const d = data as { readonly data: unknown; readonly uid: string; readonly eventUid: string };
+      const responsePayload = data as { readonly data: unknown; readonly uid: string; readonly eventUid: string };
       return {
-        data: d.data,
-        eventUid: createEventUid(d.eventUid),
-        uid: createRequestUid(d.uid),
+        data: responsePayload.data,
+        eventUid: createEventUid(responsePayload.eventUid),
+        uid: createRequestUid(responsePayload.uid),
       };
     }
     case "update_view": {
-      const d = data as { readonly view: WireShareableView };
-      return { view: brandShareableView(d.view) };
+      const updatePayload = data as { readonly view: WireShareableView };
+      return { view: brandShareableView(updatePayload.view) };
     }
     case "update_views_tree": {
-      const d = data as { readonly views: ReadonlyArray<WireExistingView> };
-      return { views: d.views.map(brandExistingView) };
+      const treePayload = data as { readonly views: ReadonlyArray<WireExistingView> };
+      return { views: treePayload.views.map(brandExistingView) };
     }
     case "stream_chunk": {
-      const d = data as { readonly streamUid: string; readonly chunk: unknown };
-      return { streamUid: createStreamUid(d.streamUid), chunk: d.chunk };
+      const chunkPayload = data as { readonly streamUid: string; readonly chunk: unknown };
+      return { streamUid: createStreamUid(chunkPayload.streamUid), chunk: chunkPayload.chunk };
     }
     case "stream_end": {
-      const d = data as { readonly streamUid: string };
-      return { streamUid: createStreamUid(d.streamUid) };
+      const endPayload = data as { readonly streamUid: string };
+      return { streamUid: createStreamUid(endPayload.streamUid) };
     }
     default:
       return data;

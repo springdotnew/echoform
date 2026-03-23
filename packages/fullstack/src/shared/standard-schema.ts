@@ -14,8 +14,13 @@ export namespace StandardSchemaV1 {
     readonly vendor: string;
     readonly validate: (
       value: unknown,
+      options?: Options | undefined,
     ) => Result<Output> | Promise<Result<Output>>;
     readonly types?: Types<Input, Output> | undefined;
+  }
+
+  export interface Options {
+    readonly libraryOptions?: Record<string, unknown> | undefined;
   }
 
   export interface Types<Input = unknown, Output = Input> {
@@ -23,13 +28,24 @@ export namespace StandardSchemaV1 {
     readonly output: Output;
   }
 
-  export type Result<Output> =
-    | { readonly value: Output }
-    | { readonly issues: ReadonlyArray<Issue> };
+  export type Result<Output> = SuccessResult<Output> | FailureResult;
+
+  export interface SuccessResult<Output> {
+    readonly value: Output;
+    readonly issues?: undefined;
+  }
+
+  export interface FailureResult {
+    readonly issues: ReadonlyArray<Issue>;
+  }
 
   export interface Issue {
     readonly message: string;
-    readonly path?: ReadonlyArray<PropertyKey> | undefined;
+    readonly path?: ReadonlyArray<PropertyKey | PathSegment> | undefined;
+  }
+
+  export interface PathSegment {
+    readonly key: PropertyKey;
   }
 
   /** Infer the input type from a Standard Schema. */

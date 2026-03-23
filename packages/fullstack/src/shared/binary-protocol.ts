@@ -19,6 +19,15 @@ import {
 import type { ISerialInput, ISerialOutput, IMeasurer } from "typed-binary";
 import type { SerializableValue } from "./types";
 
+/** Read `count` items from a binary stream. Mutation is scoped: the array never escapes until complete. */
+function readArray<T>(count: number, readItem: (input: ISerialInput) => T, input: ISerialInput): T[] {
+  const items: T[] = [];
+  for (let i = 0; i < count; i++) {
+    items.push(readItem(input));
+  }
+  return items;
+}
+
 // For numbers, use JSON string encoding to preserve full f64 precision
 // (typed-binary only has f32 which loses precision)
 class NumberSchema extends Schema<number> {
@@ -90,11 +99,7 @@ class SerializableValueSchema extends Schema<SerializableValue> {
       case TAG_STRING: return binString.read(input);
       case TAG_ARRAY: {
         const len = u32.read(input);
-        const arr: SerializableValue[] = [];
-        for (let i = 0; i < len; i++) {
-          arr.push(this.read(input));
-        }
-        return arr;
+        return readArray(len, (r) => this.read(r), input);
       }
       case TAG_OBJECT: {
         const len = u32.read(input);
@@ -363,11 +368,7 @@ const updateViewsTreeCodec: EventCodec<WireUpdateViewsTree> = {
   },
   read(r) {
     const len = u32.read(r);
-    const views: BinaryExistingViewData[] = [];
-    for (let i = 0; i < len; i++) {
-      views.push(readExistingViewData(r));
-    }
-    return { views };
+    return { views: readArray(len, readExistingViewData, r) };
   },
   measure(data, m) {
     m.add(4);
@@ -425,10 +426,7 @@ const requestEventCodec: EventCodec<WireRequestEvent> = {
   },
   read(r) {
     const argLen = u32.read(r);
-    const eventArguments: SerializableValue[] = [];
-    for (let i = 0; i < argLen; i++) {
-      eventArguments.push(serializableValue.read(r));
-    }
+    const eventArguments = readArray(argLen, (r) => serializableValue.read(r), r);
     const uid = binString.read(r);
     const eventUid = binString.read(r);
     return { eventArguments, uid, eventUid };
@@ -527,11 +525,7 @@ function writeExistingViewData(view: BinaryExistingViewData, w: ISerialOutput): 
 function readExistingViewData(r: ISerialInput): BinaryExistingViewData {
   const base = readViewBase(r);
   const propLen = u32.read(r);
-  const props: BinaryProp[] = [];
-  for (let i = 0; i < propLen; i++) {
-    props.push(propBinary.read(r));
-  }
-  return { ...base, props };
+  return { ...base, props: readArray(propLen, (r) => propBinary.read(r), r) };
 }
 
 function measureExistingViewData(view: BinaryExistingViewData, m: IMeasurer): void {
@@ -557,15 +551,9 @@ function writeShareableViewData(view: BinaryShareableViewData, w: ISerialOutput)
 function readShareableViewData(r: ISerialInput): BinaryShareableViewData {
   const base = readViewBase(r);
   const createLen = u32.read(r);
-  const create: BinaryProp[] = [];
-  for (let i = 0; i < createLen; i++) {
-    create.push(propBinary.read(r));
-  }
+  const create = readArray(createLen, (r) => propBinary.read(r), r);
   const deleteLen = u32.read(r);
-  const del: string[] = [];
-  for (let i = 0; i < deleteLen; i++) {
-    del.push(binString.read(r));
-  }
+  const del = readArray(deleteLen, (r) => binString.read(r), r);
   return { ...base, props: { create, delete: del } };
 }
 

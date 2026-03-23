@@ -12,6 +12,14 @@ function formatIssues(issues: ReadonlyArray<StandardSchemaV1.Issue>): string {
     .join("\n");
 }
 
+function reportValidationResult(result: StandardSchemaV1.Result<unknown>, context: string): void {
+  if ("issues" in result && result.issues) {
+    console.warn(
+      `[echoform] Schema validation failed (${context}):\n${formatIssues(result.issues)}`,
+    );
+  }
+}
+
 /**
  * Validate a value against a Standard Schema v1 schema.
  *
@@ -39,23 +47,15 @@ export function validateSchema(
   }
 
   if (result instanceof Promise) {
-    result.then((resolved) => {
-      if ("issues" in resolved && resolved.issues) {
+    result
+      .then((resolved) => reportValidationResult(resolved, context))
+      .catch((err) => {
         console.warn(
-          `[echoform] Schema validation failed (${context}):\n${formatIssues(resolved.issues)}`,
+          `[echoform] Async schema validation threw an error (${context}):`,
+          err,
         );
-      }
-    }).catch((err) => {
-      console.warn(
-        `[echoform] Async schema validation threw an error (${context}):`,
-        err,
-      );
-    });
+      });
   } else {
-    if ("issues" in result && result.issues) {
-      console.warn(
-        `[echoform] Schema validation failed (${context}):\n${formatIssues(result.issues)}`,
-      );
-    }
+    reportValidationResult(result, context);
   }
 }

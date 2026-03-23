@@ -25,6 +25,13 @@ export function App({ rootPath, title, children }: InferClientProps<typeof AppDe
 
 // --- FileTree ---
 
+interface FileTreeNodeData {
+  readonly path: string;
+  readonly name: string;
+  readonly isDirectory: boolean;
+  readonly children?: readonly FileTreeNodeData[];
+}
+
 function FileTreeNode({
   node,
   depth,
@@ -33,7 +40,7 @@ function FileTreeNode({
   onToggleExpand,
   onSelect,
 }: {
-  readonly node: { path: string; name: string; isDirectory: boolean; children?: readonly any[] };
+  readonly node: { path: string; name: string; isDirectory: boolean; children?: readonly FileTreeNodeData[] };
   readonly depth: number;
   readonly selectedPath: string | null;
   readonly expanded: ReadonlySet<string>;
@@ -200,6 +207,23 @@ interface MonacoEditor {
 
 const MONACO_CDN = "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs";
 
+function loadMonaco(onReady: () => void): void {
+  const initMonaco = (): void => {
+    window.require.config({ paths: { vs: MONACO_CDN } });
+    window.require(["vs/editor/editor.main"], onReady);
+  };
+
+  if (window.require) {
+    initMonaco();
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.src = `${MONACO_CDN}/loader.js`;
+  script.onload = initMonaco;
+  document.head.appendChild(script);
+}
+
 export function CodeEditor(props: InferClientProps<typeof CodeEditorDef>): React.ReactElement {
   const { path, content, language } = props;
   const change = props.onChange.mutate;
@@ -210,18 +234,7 @@ export function CodeEditor(props: InferClientProps<typeof CodeEditorDef>): React
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!window.require) {
-      const script = document.createElement("script");
-      script.src = `${MONACO_CDN}/loader.js`;
-      script.onload = () => {
-        window.require.config({ paths: { vs: MONACO_CDN } });
-        window.require(["vs/editor/editor.main"], () => setReady(true));
-      };
-      document.head.appendChild(script);
-    } else {
-      window.require.config({ paths: { vs: MONACO_CDN } });
-      window.require(["vs/editor/editor.main"], () => setReady(true));
-    }
+    loadMonaco(() => setReady(true));
   }, []);
 
   useEffect(() => {

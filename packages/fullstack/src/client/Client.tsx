@@ -3,7 +3,6 @@ import type {
   ExistingSharedViewData,
   Transport,
   SerializableValue,
-  Prop,
   AppEvents,
 } from "../shared/types";
 import type { EventUid, StreamUid } from "../shared/branded.types";
@@ -12,6 +11,44 @@ import { decompileTransport } from "../shared/decompiled-transport";
 import { randomId } from "../shared/id";
 import { ViewsRenderer } from "../shared/ViewsRenderer";
 import { stringifyWithoutCircular } from "../shared/serialization.utils";
+
+function applyViewUpdate(
+  state: ReadonlyArray<ExistingSharedViewData>,
+  view: AppEvents['update_view']['view'],
+): ReadonlyArray<ExistingSharedViewData> {
+  const existingIndex = state.findIndex((currentView) => currentView.uid === view.uid);
+
+  if (existingIndex < 0) {
+    const newView: ExistingSharedViewData = {
+      uid: view.uid, name: view.name, parentUid: view.parentUid,
+      childIndex: view.childIndex, isRoot: view.isRoot, props: view.props.create,
+    };
+    return [...state, newView];
+  }
+
+  const existingView = state[existingIndex];
+  if (!existingView) return state;
+
+  const deletedNames = new Set(view.props.delete);
+  const createNames = new Set(view.props.create.map((prop) => prop.name));
+  const filteredProps = existingView.props.filter(
+    (prop) => !deletedNames.has(prop.name) && !createNames.has(prop.name),
+  );
+  const updatedView: ExistingSharedViewData = {
+    ...existingView,
+    props: [...filteredProps, ...view.props.create],
+  };
+  return [...state.slice(0, existingIndex), updatedView, ...state.slice(existingIndex + 1)];
+}
+
+function applyViewDeletion(
+  state: ReadonlyArray<ExistingSharedViewData>,
+  viewUid: AppEvents['delete_view']['viewUid'],
+): ReadonlyArray<ExistingSharedViewData> {
+  const runningViewIndex = state.findIndex((view) => view.uid === viewUid);
+  if (runningViewIndex === -1) return state;
+  return [...state.slice(0, runningViewIndex), ...state.slice(runningViewIndex + 1)];
+}
 
 interface ClientProps<ViewsInterface extends Record<string, unknown> = Record<string, unknown>, TEvents extends Record<string | number, unknown> = Record<string, unknown>> {
   readonly transport: Transport<TEvents>;
@@ -87,63 +124,11 @@ function Client<ViewsInterface extends Record<string, unknown> = Record<string, 
     };
 
     const updateViewHandler = ({ view }: AppEvents['update_view']): void => {
-      setRunningViews((state): ReadonlyArray<ExistingSharedViewData> => {
-        const existingIndex = state.findIndex(
-          (currentView) => currentView.uid === view.uid
-        );
-
-        if (existingIndex >= 0) {
-          const existingView = state[existingIndex];
-          if (!existingView) {
-            return state;
-          }
-
-          const deletedNames = new Set(view.props.delete);
-          const createNames = new Set(view.props.create.map((prop) => prop.name));
-
-          const filteredProps = existingView.props.filter(
-            (prop) => !deletedNames.has(prop.name) && !createNames.has(prop.name)
-          );
-
-          const updatedProps: ReadonlyArray<Prop> = [...filteredProps, ...view.props.create];
-
-          const updatedView: ExistingSharedViewData = {
-            ...existingView,
-            props: updatedProps,
-          };
-
-          return [
-            ...state.slice(0, existingIndex),
-            updatedView,
-            ...state.slice(existingIndex + 1),
-          ];
-        }
-
-        const newView: ExistingSharedViewData = {
-          uid: view.uid,
-          name: view.name,
-          parentUid: view.parentUid,
-          childIndex: view.childIndex,
-          isRoot: view.isRoot,
-          props: view.props.create,
-        };
-        return [...state, newView];
-      });
+      setRunningViews((state) => applyViewUpdate(state, view));
     };
 
     const deleteViewHandler = ({ viewUid }: AppEvents['delete_view']): void => {
-      setRunningViews((state): ReadonlyArray<ExistingSharedViewData> => {
-        const runningViewIndex = state.findIndex(
-          (view) => view.uid === viewUid
-        );
-        if (runningViewIndex !== -1) {
-          return [
-            ...state.slice(0, runningViewIndex),
-            ...state.slice(runningViewIndex + 1),
-          ];
-        }
-        return state;
-      });
+      setRunningViews((state) => applyViewDeletion(state, viewUid));
     };
 
     const streamChunkHandler = ({ streamUid, chunk }: AppEvents['stream_chunk']): void => {

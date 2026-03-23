@@ -23,7 +23,8 @@ export class ManagedProcess {
   readonly name: string;
   readonly config: ProcessConfig;
 
-  status: ProcessStatus = "idle";
+  private _status: ProcessStatus = "idle";
+  get status(): ProcessStatus { return this._status; }
 
   private terminal: Terminal | null = null;
   private outputEmitter: OutputEmitter | null = null;
@@ -122,7 +123,7 @@ export class ManagedProcess {
   }
 
   private setStatus(status: ProcessStatus): void {
-    this.status = status;
+    this._status = status;
     this.onStatusChange(status);
   }
 

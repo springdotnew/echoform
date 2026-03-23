@@ -14,16 +14,16 @@ import type {
 // ── Base64 ──
 
 function toBase64(data: Uint8Array): string {
-  let b = "";
-  for (let i = 0; i < data.length; i++) b += String.fromCharCode(data[i]!);
-  return btoa(b);
+  let binaryString = "";
+  for (let i = 0; i < data.length; i++) binaryString += String.fromCharCode(data[i]!);
+  return btoa(binaryString);
 }
 
 function fromBase64(b64: string): Uint8Array {
-  const b = atob(b64);
-  const a = new Uint8Array(b.length);
-  for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
-  return a;
+  const decoded = atob(b64);
+  const bytes = new Uint8Array(decoded.length);
+  for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
+  return bytes;
 }
 
 // ── Contexts ──

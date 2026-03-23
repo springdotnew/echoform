@@ -117,6 +117,38 @@ function reconcileExistingProp(
   return { updated: null };
 }
 
+function reconcileProps(
+  existingProps: ReadonlyArray<Prop>,
+  propNames: ReadonlyArray<string>,
+  viewData: ViewData,
+  viewDef: ViewDef | undefined,
+  registerEvent: (handler: EventHandler, cbDef?: CallbackDef) => EventUid,
+  viewEventsRef: React.RefObject<ReadonlyMap<EventUid, RegisteredEvent>>,
+): { readonly currentProps: ReadonlyArray<Prop>; readonly propsToAdd: ReadonlyArray<Prop> } {
+  let current = existingProps.filter((p) => viewData.props[p.name as string] !== undefined);
+  const toAdd: Prop[] = [];
+
+  for (const name of propNames) {
+    const propName = createPropName(name);
+    const existingPropIndex = current.findIndex((p) => p.name === propName);
+
+    if (existingPropIndex < 0) {
+      const newProp = classifyProp(name, viewData.props[name], viewDef, registerEvent);
+      current = [...current, newProp];
+      toAdd.push(newProp);
+      continue;
+    }
+
+    const { updated } = reconcileExistingProp(current[existingPropIndex]!, name, propName, viewData.props[name], viewDef, viewEventsRef);
+    if (updated) {
+      current = replaceAt(current, existingPropIndex, updated);
+      toAdd.push(updated);
+    }
+  }
+
+  return { currentProps: current, propsToAdd: toAdd };
+}
+
 function replaceAt<T>(arr: ReadonlyArray<T>, index: number, item: T): T[] {
   return [...arr.slice(0, index), item, ...arr.slice(index + 1)];
 }
@@ -223,26 +255,9 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
 
     // Existing view — reconcile props
     const propsToDelete = existingView.props.filter((p) => viewData.props[p.name as string] === undefined);
-    let currentProps = existingView.props.filter((p) => viewData.props[p.name as string] !== undefined);
-    const propsToAdd: Array<Prop> = [];
-
-    for (const name of propNames) {
-      const propName = createPropName(name);
-      const idx = currentProps.findIndex((p) => p.name === propName);
-
-      if (idx < 0) {
-        const newProp = classifyProp(name, viewData.props[name], viewDef, registerViewEvent);
-        currentProps = [...currentProps, newProp];
-        propsToAdd.push(newProp);
-        continue;
-      }
-
-      const { updated } = reconcileExistingProp(currentProps[idx]!, name, propName, viewData.props[name], viewDef, viewEventsRef);
-      if (updated) {
-        currentProps = replaceAt(currentProps, idx, updated);
-        propsToAdd.push(updated);
-      }
-    }
+    const { currentProps, propsToAdd } = reconcileProps(
+      existingView.props, propNames, viewData, viewDef, registerViewEvent, viewEventsRef,
+    );
 
     existingSharedViewsRef.current = replaceAt(existingSharedViewsRef.current, existingViewIndex, { ...existingView, props: currentProps });
 
@@ -252,13 +267,13 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
   }, [registerViewEvent, broadcast]);
 
   const deleteRunningView = useCallback((uid: ViewUid) => {
-    const idx = existingSharedViewsRef.current.findIndex((v) => v.uid === uid);
-    if (idx === -1) return;
+    const viewIndex = existingSharedViewsRef.current.findIndex((v) => v.uid === uid);
+    if (viewIndex === -1) return;
 
-    const deletedView = existingSharedViewsRef.current[idx];
+    const deletedView = existingSharedViewsRef.current[viewIndex];
     if (!deletedView) return;
 
-    existingSharedViewsRef.current = removeAt(existingSharedViewsRef.current, idx);
+    existingSharedViewsRef.current = removeAt(existingSharedViewsRef.current, viewIndex);
 
     const deleteSet = new Set(
       deletedView.props.filter((p): p is Prop & { type: 'event' } => p.type === "event").map((p) => p.uid),

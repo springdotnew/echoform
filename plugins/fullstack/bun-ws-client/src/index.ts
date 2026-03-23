@@ -6,6 +6,7 @@ export interface WebSocketTransportState {
   readonly transport: Transport<Record<string, unknown>> | null;
   readonly error: string | null;
   readonly isConnected: boolean;
+  readonly status: "connecting" | "connected" | "error" | "disconnected";
 }
 
 export function useWebSocketTransport(url: string): WebSocketTransportState {
@@ -13,6 +14,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
     transport: null,
     error: null,
     isConnected: false,
+    status: "connecting",
   });
 
   useEffect(() => {
@@ -25,7 +27,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
 
     ws.onopen = () => {
       if (!disposed) {
-        setState({ transport, error: null, isConnected: true });
+        setState({ transport, error: null, isConnected: true, status: "connected" });
       }
     };
 
@@ -35,14 +37,14 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
 
     ws.onerror = () => {
       if (!disposed) {
-        setState({ transport: null, error: "WebSocket connection failed", isConnected: false });
+        setState({ transport: null, error: "WebSocket connection failed", isConnected: false, status: "error" });
       }
     };
 
     ws.onclose = () => {
       if (!disposed) {
         disconnect();
-        setState((prev) => (prev.isConnected ? { ...prev, isConnected: false } : prev));
+        setState((prev) => (prev.isConnected ? { ...prev, isConnected: false, status: "disconnected" as const } : prev));
       }
     };
 
