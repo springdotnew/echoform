@@ -30,6 +30,45 @@ function cpuColor(percent: number): string {
   return "#8b949e";
 }
 
+// ── Process icons ──
+
+const PROCESS_ICONS: ReadonlyArray<readonly [ReadonlyArray<string>, string]> = [
+  [["chrome", "chromium", "google chrome"], "\uD83C\uDF10"],
+  [["firefox", "librewolf"], "\uD83E\uDD8A"],
+  [["safari", "webkit"], "\uD83E\uDDED"],
+  [["edge", "msedge"], "\uD83C\uDF10"],
+  [["node", "bun", "deno"], "\u2B22"],
+  [["python", "python3"], "\uD83D\uDC0D"],
+  [["ruby", "irb"], "\uD83D\uDC8E"],
+  [["java", "kotlin"], "\u2615"],
+  [["go", "gopls"], "\uD83D\uDC39"],
+  [["rust", "cargo", "rustc"], "\uD83E\uDD80"],
+  [["postgres", "psql", "mysql", "mariadb", "mongod", "redis"], "\uD83D\uDDC4"],
+  [["docker", "containerd", "dockerd"], "\uD83D\uDC33"],
+  [["code", "cursor", "zed", "vim", "nvim", "emacs", "sublime"], "\u270F\uFE0F"],
+  [["terminal", "iterm", "alacritty", "kitty", "wezterm", "tmux"], "\u25A0"],
+  [["git", "gh"], "\uD83D\uDD00"],
+  [["ssh", "sshd"], "\uD83D\uDD10"],
+  [["nginx", "apache", "caddy", "httpd"], "\uD83C\uDF10"],
+  [["slack", "discord", "telegram", "teams"], "\uD83D\uDCAC"],
+  [["spotify", "music"], "\u266B"],
+  [["finder", "explorer"], "\uD83D\uDCC2"],
+  [["launchd", "systemd", "init"], "\u2699\uFE0F"],
+  [["kernel_task", "kworker", "ksoftirqd"], "\u2699\uFE0F"],
+  [["windowserver", "dwm", "xorg", "wayland"], "\uD83D\uDDA5"],
+  [["spotlight", "mds", "mdworker"], "\uD83D\uDD0D"],
+];
+
+function getProcessIcon(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [keywords, icon] of PROCESS_ICONS) {
+    for (const keyword of keywords) {
+      if (lower.includes(keyword)) return icon;
+    }
+  }
+  return "\u25CB";
+}
+
 // ── Shared styles ──
 
 const card: React.CSSProperties = {
@@ -161,7 +200,10 @@ function ProcessRow({ process: proc, onKill }: {
       padding: "4px 10px", borderBottom: "1px solid #161b22", fontSize: 12, alignItems: "center",
     }}>
       <div style={{ textAlign: "right", color: "#484f58", fontFamily: "monospace", fontSize: 11 }}>{proc.pid}</div>
-      <div style={{ color: "#c9d1d9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 8 }}>{proc.name}</div>
+      <div style={{ color: "#c9d1d9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 8, display: "flex", alignItems: "center", gap: 5 }}>
+        <span style={{ fontSize: 11, width: 14, textAlign: "center", flexShrink: 0 }}>{getProcessIcon(proc.name)}</span>
+        {proc.name}
+      </div>
       <div style={{ textAlign: "right", fontFamily: "monospace", fontSize: 11, color: cpuColor(proc.cpu) }}>{proc.cpu.toFixed(1)}</div>
       <div style={{ textAlign: "right", color: "#8b949e", fontFamily: "monospace", fontSize: 11 }}>{formatBytes(proc.memory)}</div>
       <div style={{ textAlign: "center" }}>
