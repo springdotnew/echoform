@@ -53,7 +53,16 @@ jobs:
           for pkg in packages/fullstack packages/react-render-null packages/wmux plugins/fullstack/bun-ws-client plugins/fullstack/bun-ws-server plugins/fullstack/socket-client plugins/fullstack/socket-server; do
             cd "$pkg"
             CURRENT=$(node -p "require('./package.json').version")
-            npm version "$BUMP" --no-git-tag-version
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+              const [major, minor, patch] = pkg.version.split('.').map(Number);
+              const bump = '$BUMP';
+              if (bump === 'major') pkg.version = (major+1)+'.0.0';
+              else if (bump === 'minor') pkg.version = major+'.'+(minor+1)+'.0';
+              else pkg.version = major+'.'+minor+'.'+(patch+1);
+              fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            "
             NEW=$(node -p "require('./package.json').version")
             echo "  $pkg: $CURRENT → $NEW"
             cd "$GITHUB_WORKSPACE"
@@ -63,6 +72,37 @@ jobs:
         run: |
           WMUX_CLIENT_URL="${{ vars.WMUX_CLIENT_URL || 'https://wmux.playfast.dev' }}"
           sed -i "s|__WMUX_CLIENT_URL__|$WMUX_CLIENT_URL|g" packages/wmux/src/wmux.tsx
+
+      - name: Replace workspace protocol with real versions
+        run: |
+          ECHOFORM_VERSION=$(node -p "require('./packages/fullstack/package.json').version")
+          RENDER_VERSION=$(node -p "require('./packages/react-render-null/package.json').version")
+          for pkg in packages/fullstack packages/react-render-null packages/wmux plugins/fullstack/bun-ws-client plugins/fullstack/bun-ws-server plugins/fullstack/socket-client plugins/fullstack/socket-server; do
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('$pkg/package.json', 'utf8'));
+              const replace = (deps) => {
+                if (!deps) return;
+                for (const [k, v] of Object.entries(deps)) {
+                  if (v === 'workspace:*') {
+                    if (k === '@playfast/echoform') deps[k] = '^$ECHOFORM_VERSION';
+                    else if (k === '@playfast/echoform-render') deps[k] = '^$RENDER_VERSION';
+                    else {
+                      const depPkg = ['packages/fullstack','packages/react-render-null','packages/wmux',
+                        'plugins/fullstack/bun-ws-client','plugins/fullstack/bun-ws-server',
+                        'plugins/fullstack/socket-client','plugins/fullstack/socket-server']
+                        .find(p => JSON.parse(fs.readFileSync(p+'/package.json','utf8')).name === k);
+                      if (depPkg) deps[k] = '^' + JSON.parse(fs.readFileSync(depPkg+'/package.json','utf8')).version;
+                    }
+                  }
+                }
+              };
+              replace(pkg.dependencies);
+              replace(pkg.devDependencies);
+              replace(pkg.peerDependencies);
+              fs.writeFileSync('$pkg/package.json', JSON.stringify(pkg, null, 2) + '\n');
+            "
+          done
 
       - name: Publish with provenance
         run: |
