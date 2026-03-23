@@ -1,12 +1,5 @@
 export type ProcessStatus = "idle" | "running" | "stopped" | "failed";
 
-// ── Process entry (config + metadata) ──
-
-export interface ProcessEntry {
-  readonly config: ProcessConfig;
-  readonly category?: string;
-}
-
 // ── Command mode: wmux spawns the process ──
 
 export interface CommandProcessConfig {
@@ -40,27 +33,27 @@ export const isCommandConfig = (c: ProcessConfig): c is CommandProcessConfig =>
 export const isTerminalConfig = (c: ProcessConfig): c is TerminalProcessConfig =>
   "terminal" in c;
 
-// ── Layout ──
+// ── Tab within a sidebar category ──
 
-export type LayoutPreset = "tabs" | "split-horizontal" | "split-vertical" | "grid";
-
-export interface PanelPosition {
-  readonly referencePanel?: string;
-  readonly direction?: "left" | "right" | "above" | "below" | "within";
+export interface TabConfig {
+  readonly name: string;
+  readonly description?: string;
+  readonly process: ProcessConfig;
 }
 
-export interface LayoutConfig {
-  readonly preset?: LayoutPreset;
-  readonly panels?: Record<string, PanelPosition>;
+// ── Sidebar category ──
+
+export interface SidebarItem {
+  readonly category: string;
+  readonly tabs: readonly TabConfig[];
 }
 
 // ── Top-level config ──
 
 export interface WmuxConfig {
-  readonly processes: Record<string, ProcessConfig | ProcessEntry>;
+  readonly sidebarItems: readonly SidebarItem[];
   readonly port?: number;
   readonly hostname?: string;
-  readonly layout?: LayoutConfig;
   readonly clientUrl?: string;
   readonly token?: string;
   readonly open?: boolean;
@@ -74,11 +67,3 @@ export interface WmuxHandle {
   readonly port: number;
   readonly stop: () => void;
 }
-
-// ── Helpers ──
-
-export const isProcessEntry = (v: ProcessConfig | ProcessEntry): v is ProcessEntry =>
-  "config" in v;
-
-export const toProcessEntry = (v: ProcessConfig | ProcessEntry): ProcessEntry =>
-  isProcessEntry(v) ? v : { config: v };

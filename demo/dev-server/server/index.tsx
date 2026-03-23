@@ -1,42 +1,29 @@
 import { wmux } from "@playfast/wmux";
 
 await wmux({
-  processes: {
-    counter: {
-      config: {
-        command: `bash -c 'i=0; while true; do echo "tick $((i++))"; sleep 1; done'`,
-      },
+  sidebarItems: [
+    {
       category: "background",
+      tabs: [
+        { name: "counter", process: { command: `bash -c 'i=0; while true; do echo "tick $((i++))"; sleep 1; done'` } },
+        { name: "logger", process: { command: `bash -c 'while true; do echo "[$(date +%T)] log entry"; sleep 2; done'` } },
+      ],
     },
-    logger: {
-      config: {
-        command: `bash -c 'while true; do echo "[$(date +%T)] log entry"; sleep 2; done'`,
-      },
-      category: "background",
-    },
-    shell: {
-      config: {
-        command: process.env.SHELL ?? "/bin/bash",
-      },
+    {
       category: "interactive",
+      tabs: [
+        { name: "shell", process: { command: process.env.SHELL ?? "/bin/bash" } },
+      ],
     },
-    failing: {
-      config: {
-        command: `bash -c 'echo "starting..."; sleep 3; echo "crash!"; exit 1'`,
-        autoRestart: true,
-      },
+    {
       category: "services",
+      tabs: [
+        { name: "failing", description: "auto-restarts", process: { command: `bash -c 'echo "starting..."; sleep 3; echo "crash!"; exit 1'`, autoRestart: true } },
+        { name: "manual", description: "manual start", process: { command: `bash -c 'echo "manual process running"; sleep infinity'`, autoStart: false } },
+      ],
     },
-    manual: {
-      config: {
-        command: `bash -c 'echo "manual process running"; sleep infinity'`,
-        autoStart: false,
-      },
-      category: "services",
-    },
-  },
+  ],
   port: 4220,
-  layout: { preset: "tabs" },
   clientUrl: "http://localhost:5173",
   token: "test-token",
   open: false,

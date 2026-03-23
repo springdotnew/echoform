@@ -2,21 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useViews } from "@playfast/echoform/server";
 import { views } from "../views";
 import type { ManagedProcess } from "../process";
-import type { LayoutConfig, ProcessStatus } from "../types";
+import type { ProcessStatus } from "../types";
 import { TerminalSession } from "./TerminalSession";
 
-// Deterministic color assignment per category
+// Deterministic color per category
 const CATEGORY_COLORS = [
-  "#3b82f6", // blue
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#f97316", // orange
-  "#14b8a6", // teal
-  "#eab308", // yellow
-  "#06b6d4", // cyan
-  "#f43f5e", // rose
-  "#84cc16", // lime
-  "#a855f7", // purple
+  "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6",
+  "#eab308", "#06b6d4", "#f43f5e", "#84cc16", "#a855f7",
 ];
 
 function categoryColor(name: string): string {
@@ -27,19 +19,21 @@ function categoryColor(name: string): string {
   return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length]!;
 }
 
-interface WmuxRootProps {
-  readonly processes: ReadonlyMap<string, ManagedProcess>;
-  readonly categories: ReadonlyMap<string, string>; // processId → category
-  readonly layout?: LayoutConfig;
+interface CategoryDef {
+  readonly name: string;
+  readonly tabIds: readonly string[];
 }
 
-export function WmuxRoot({ processes, categories, layout }: WmuxRootProps): React.ReactElement | null {
+interface WmuxRootProps {
+  readonly processes: ReadonlyMap<string, ManagedProcess>;
+  readonly categoryDefs: readonly CategoryDef[];
+}
+
+export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.ReactElement | null {
   const View = useViews(views);
-  const keys = [...processes.keys()];
-  const [activeId, setActiveId] = useState(keys[0] ?? "");
-  const [statuses, setStatuses] = useState<Record<string, ProcessStatus>>(() =>
-    Object.fromEntries(keys.map((k) => [k, "idle"])),
-  );
+  const [activeCategory, setActiveCategory] = useState(categoryDefs[0]?.name ?? "");
+  const [activeTabId, setActiveTabId] = useState("");
+  const [statuses, setStatuses] = useState<Record<string, ProcessStatus>>({});
 
   const statusRef = useRef(statuses);
   useEffect(() => {
@@ -60,33 +54,38 @@ export function WmuxRoot({ processes, categories, layout }: WmuxRootProps): Reac
 
   if (!View) return null;
 
-  const processList = keys.map((id) => ({
-    id,
-    name: processes.get(id)!.name,
-    status: statuses[id] ?? ("idle" as const),
-    category: categories.get(id) ?? "default",
-  }));
-
-  // Derive unique categories
-  const uniqueCategories = [...new Set(processList.map((p) => p.category))];
-  const categoryList = uniqueCategories.map((name) => ({
-    name,
-    color: categoryColor(name),
-    processCount: processList.filter((p) => p.category === name).length,
+  const categories = categoryDefs.map((def) => ({
+    name: def.name,
+    color: categoryColor(def.name),
+    tabs: def.tabIds.map((id) => {
+      const proc = processes.get(id)!;
+      return {
+        id,
+        name: proc.name,
+        status: statuses[id] ?? ("idle" as const),
+      };
+    }),
   }));
 
   return (
     <View.WmuxApp
-      processes={processList}
-      categories={categoryList}
-      activeProcessId={activeId}
-      layout={layout}
-      onSelectProcess={setActiveId}
+      categories={categories}
+      activeCategory={activeCategory}
+      activeTabId={activeTabId}
+      onSelectCategory={(cat) => {
+        setActiveCategory(cat);
+        // Auto-select first tab of the new category
+        const catDef = categoryDefs.find((d) => d.name === cat);
+        if (catDef && catDef.tabIds.length > 0) {
+          setActiveTabId(catDef.tabIds[0]!);
+        }
+      }}
+      onSelectTab={setActiveTabId}
       onStartProcess={(id) => processes.get(id)?.start()}
       onStopProcess={(id) => processes.get(id)?.stop()}
       onRestartProcess={(id) => processes.get(id)?.restart()}
     >
-      {keys.map((id) => (
+      {[...processes.keys()].map((id) => (
         <TerminalSession key={id} proc={processes.get(id)!} />
       ))}
     </View.WmuxApp>

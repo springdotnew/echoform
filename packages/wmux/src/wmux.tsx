@@ -6,7 +6,6 @@ import { createWmuxServer } from "./server";
 import { generateToken } from "./token";
 import { WmuxRoot } from "./components/WmuxRoot";
 import type { WmuxConfig, WmuxHandle } from "./types";
-import { toProcessEntry } from "./types";
 
 const BUILT_IN_CLIENT_URL = "__WMUX_CLIENT_URL__";
 
@@ -33,16 +32,21 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
     ?? process.env.WMUX_CLIENT_URL
     ?? (BUILT_IN_CLIENT_URL.startsWith("__") ? "http://localhost:5173" : BUILT_IN_CLIENT_URL);
 
-  // Create managed processes and extract categories
+  // Create managed processes from sidebarItems
   const processes = new Map<string, ManagedProcess>();
-  const categories = new Map<string, string>();
-  for (const [name, rawConfig] of Object.entries(config.processes)) {
-    const entry = toProcessEntry(rawConfig);
-    processes.set(name, createManagedProcess(name, name, entry.config, () => {}));
-    categories.set(name, entry.category ?? "default");
+  const categoryDefs: Array<{ name: string; tabIds: string[] }> = [];
+
+  for (const item of config.sidebarItems) {
+    const tabIds: string[] = [];
+    for (const tab of item.tabs) {
+      const id = `${item.category}/${tab.name}`;
+      processes.set(id, createManagedProcess(id, tab.name, tab.process, () => {}));
+      tabIds.push(id);
+    }
+    categoryDefs.push({ name: item.category, tabIds });
   }
 
-  // Start server with LNA + token auth
+  // Start server
   const { transport, server, stop: stopServer } = createWmuxServer({
     port,
     hostname,
@@ -63,7 +67,7 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
 
   Render(
     <Server transport={transport}>
-      {() => <WmuxRoot processes={processes} categories={categories} layout={config.layout} />}
+      {() => <WmuxRoot processes={processes} categoryDefs={categoryDefs} />}
     </Server>,
   );
 
