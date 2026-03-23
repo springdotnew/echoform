@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "./test",
   timeout: 30_000,
   use: {
-    baseURL: "http://localhost:4219",
+    baseURL: "http://localhost:5173",
   },
   webServer: [
     {
@@ -14,7 +14,7 @@ export default defineConfig({
     },
     {
       command: "bun run dev:client",
-      port: 4219,
+      port: 5173,
       reuseExistingServer: !process.env.CI,
     },
   ],

@@ -1,8 +1,12 @@
 import { test, expect } from "@playwright/test";
 
+// The wmux server runs on :4220 and the wmux-client runs on :5173.
+// We navigate to the client with hash params to connect.
+const WMUX_URL = "/#token=test-token&ws=ws://localhost:4220/ws";
+
 test.describe("Terminal E2E", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto(WMUX_URL);
     // Wait for dockview and xterm to mount
     await expect(page.locator(".xterm")).toBeVisible({ timeout: 15000 });
   });

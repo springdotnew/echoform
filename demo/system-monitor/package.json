@@ -9,14 +9,18 @@
     "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\""
   },
   "dependencies": {
+    "@heroui/react": "^3.0.1",
+    "@heroui/styles": "^3.0.1",
     "@playfast/echoform": "workspace:*",
     "@playfast/echoform-bun-ws-client": "workspace:*",
     "@playfast/echoform-bun-ws-server": "workspace:*",
     "@playfast/echoform-render": "workspace:*",
+    "@tailwindcss/vite": "^4.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reshaped": "^3.10.2",
     "systeminformation": "^5.31.5",
+    "tailwindcss": "4",
     "zod": "^3.24.4"
   },
   "devDependencies": {

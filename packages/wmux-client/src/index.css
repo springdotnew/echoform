@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+/*
+ * Color theme adapted from better-hub by better-auth
+ * https://github.com/better-auth/better-hub/blob/main/apps/web/src/app/globals.css
+ * License: MIT
+ */
+
+@theme inline {
+  --color-background: #030304;
+  --color-foreground: #fafafa;
+  --color-card: #111113;
+  --color-card-foreground: #fafafa;
+  --color-primary: #e4e4e7;
+  --color-primary-foreground: #09090b;
+  --color-secondary: #1a1a1e;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #1a1a1e;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #1a1a1e;
+  --color-accent-foreground: #fafafa;
+  --color-border: #27272a;
+  --color-input: #27272a;
+  --color-ring: #3f3f46;
+  --color-destructive: oklch(0.704 0.191 22.216);
+  --color-success: oklch(0.627 0.194 149.214);
+  --color-warning: oklch(0.769 0.188 70.08);
+  --color-info: #58a6ff;
+
+  --font-mono: 'JetBrainsMono Nerd Font Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* Dockview overrides */
+.dockview-theme-dark {
+  --dv-background-color: var(--color-background);
+  --dv-paneview-header-border-color: var(--color-border);
+  --dv-tabs-and-actions-container-background-color: var(--color-card);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--color-background);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--color-card);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-card);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--color-card);
+  --dv-tab-divider-color: var(--color-border);
+  --dv-activegroup-visiblepanel-tab-color: var(--color-foreground);
+  --dv-activegroup-hiddenpanel-tab-color: var(--color-muted-foreground);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--color-muted-foreground);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--color-muted-foreground);
+  --dv-separator-border: var(--color-border);
+}

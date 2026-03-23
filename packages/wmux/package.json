@@ -1,0 +1,33 @@
+{
+  "name": "@playfast/wmux",
+  "version": "0.0.1",
+  "description": "Web terminal multiplexer for dev servers",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./views": "./src/views.ts"
+  },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsgo -p .",
+    "build": "tsgo -p ."
+  },
+  "dependencies": {
+    "@playfast/echoform": "workspace:*",
+    "@playfast/echoform-render": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.0.0"
+  },
+  "author": "shmuelhizmi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shmuelhizmi/echoform.git"
+  }
+}

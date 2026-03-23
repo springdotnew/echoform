@@ -7,12 +7,31 @@ const processInfo = z.object({
   id: z.string(),
   name: z.string(),
   status: processStatus,
+  category: z.string(),
 });
 
-export const DevServerApp = view("DevServerApp", {
+const categoryInfo = z.object({
+  name: z.string(),
+  color: z.string(),
+  processCount: z.number(),
+});
+
+const panelPosition = z.object({
+  referencePanel: z.string().optional(),
+  direction: z.enum(["left", "right", "above", "below", "within"]).optional(),
+});
+
+const layoutConfig = z.object({
+  preset: z.enum(["tabs", "split-horizontal", "split-vertical", "grid"]).optional(),
+  panels: z.record(z.string(), panelPosition).optional(),
+});
+
+export const WmuxApp = view("WmuxApp", {
   input: {
     processes: z.array(processInfo),
+    categories: z.array(categoryInfo),
     activeProcessId: z.string(),
+    layout: layoutConfig.optional(),
   },
   callbacks: {
     onSelectProcess: callback({ input: z.string() }),
@@ -22,7 +41,7 @@ export const DevServerApp = view("DevServerApp", {
   },
 });
 
-export const ProcessTerminal = view("ProcessTerminal", {
+export const WmuxTerminal = view("WmuxTerminal", {
   input: {
     id: z.string(),
     name: z.string(),
@@ -37,4 +56,4 @@ export const ProcessTerminal = view("ProcessTerminal", {
   },
 });
 
-export const views = createViews({ DevServerApp, ProcessTerminal });
+export const views = createViews({ WmuxApp, WmuxTerminal });
