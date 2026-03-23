@@ -102,7 +102,7 @@ export function useStream<
 
 // ---- Type helpers ----
 
-type ViewDefsToServerComponents<V extends ViewDefs> = {
+export type ViewDefsToServerComponents<V extends ViewDefs> = {
   readonly [K in keyof V]: V[K] extends ViewDef
     ? React.FunctionComponent<InferServerProps<V[K]>>
     : never;

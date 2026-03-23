@@ -4,15 +4,7 @@ import type { Transport } from "@react-fullstack/fullstack/shared";
 import type { Server as ServerBase, ServerProps } from "@react-fullstack/fullstack/server";
 import type { Server as HTTPServer } from "http";
 
-interface SocketClientEvents {
-  readonly disconnect: void;
-}
-
-interface SocketServerEvents {
-  readonly connection: Transport<SocketClientEvents> & { readonly id: string };
-}
-
-interface Props extends Pick<ServerProps<SocketClientEvents, SocketServerEvents>, 'children' | 'singleInstance' | 'instanceRenderHandler'> {
+interface Props extends Pick<ServerProps, 'children' | 'singleInstance' | 'instanceRenderHandler'> {
   readonly port?: number;
   readonly server?: HTTPServer;
   readonly socketOptions?: Partial<SocketIO.ServerOptions>;
@@ -55,31 +47,21 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
     };
   }, [server]);
 
-  const getProps = useCallback((): ServerProps<SocketClientEvents, SocketServerEvents> => {
+  const getProps = useCallback((): ServerProps => {
     const { children, singleInstance, instanceRenderHandler } = props;
 
-    const transport: Transport<SocketServerEvents> = {
-      on: <T extends keyof SocketServerEvents>(
-        event: T,
-        callback: (data: SocketServerEvents[T]) => void
-      ): void => {
+    const transport: Transport<{ readonly connection: Transport<{ readonly disconnect: void }> & { readonly id: string } }> = {
+      on: (event, callback) => {
         if (event === "connection") {
-          // Socket.IO's connection event passes a Socket, which we treat as Transport
           server.on("connection", (socket: SocketIO.Socket) => {
-            callback(socket as unknown as SocketServerEvents[T]);
+            (callback as (data: unknown) => void)(socket);
           });
         }
       },
-      emit: <T extends keyof SocketServerEvents>(
-        event: T,
-        data?: SocketServerEvents[T]
-      ): void => {
+      emit: (event, data) => {
         server.sockets.emit(event as string, data);
       },
-      off: <T extends keyof SocketServerEvents>(
-        event: T,
-        callback: (data: SocketServerEvents[T]) => void
-      ): void => {
+      off: (event, callback) => {
         server.sockets.removeListener(event as string, callback as (...args: unknown[]) => void);
         if (event === "connection") {
           server.removeAllListeners("connection");
@@ -88,7 +70,7 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
     };
 
     return {
-      transport,
+      transport: transport as ServerProps['transport'],
       singleInstance,
       children,
       instanceRenderHandler,

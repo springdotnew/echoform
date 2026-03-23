@@ -3,29 +3,21 @@ import type { ExistingSharedViewData, SerializableValue } from "./types";
 import type { EventUid, StreamUid } from "./branded.types";
 import type { StreamReceiver } from "./view-inference";
 
-export interface RenderProps<TViews extends Readonly<Record<string, React.ComponentType<Record<string, unknown>>>> = Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>> {
+export interface RenderProps {
   readonly viewsData: ReadonlyArray<ExistingSharedViewData>;
   readonly createEvent?: (eventUid: EventUid, ...args: ReadonlyArray<SerializableValue>) => Promise<SerializableValue>;
-  readonly views: TViews;
+  readonly views: Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>;
   readonly streamSubscribe?: (streamUid: StreamUid, listener: (chunk: SerializableValue) => void) => () => void;
 }
 
 function buildCallbackProp(
   eventUid: EventUid,
-  viewName: string,
-  propName: string,
   createEvent: (eventUid: EventUid, ...args: ReadonlyArray<SerializableValue>) => Promise<SerializableValue>,
 ) {
-  const mutate = (...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
-    return createEvent(eventUid, ...args);
-  };
-
   return {
-    mutate,
-    queryOptions: () => ({
-      mutationFn: mutate,
-      mutationKey: [viewName, propName] as const,
-    }),
+    mutate: (...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
+      return createEvent(eventUid, ...args);
+    },
   };
 }
 
@@ -55,7 +47,7 @@ export function ViewsRenderer(props: RenderProps): ReactElement {
       if (prop.type === "data") {
         builtProps[prop.name as string] = prop.data;
       } else if (prop.type === "event") {
-        builtProps[prop.name as string] = buildCallbackProp(prop.uid, view.name, prop.name as string, createEvent);
+        builtProps[prop.name as string] = buildCallbackProp(prop.uid, createEvent);
       } else if (prop.type === "stream" && streamSubscribe) {
         builtProps[prop.name as string] = buildStreamProp(prop.uid, streamSubscribe);
       }

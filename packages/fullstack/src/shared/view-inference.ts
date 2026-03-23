@@ -56,16 +56,31 @@ type InferServerCallback<C extends CallbackDef> =
           | Promise<StandardSchemaV1.InferOutput<TOutput>>
     : never;
 
-/** Client-side callback handle with mutate + queryOptions. */
+/** Client-side callback handle. */
 export interface ClientCallback<TInput, TOutput, TViewName extends string = string, TCallbackName extends string = string> {
   readonly mutate: [TInput] extends [void]
     ? () => Promise<TOutput>
     : (input: TInput) => Promise<TOutput>;
-  readonly queryOptions: () => {
-    readonly mutationFn: [TInput] extends [void]
-      ? () => Promise<TOutput>
-      : (input: TInput) => Promise<TOutput>;
-    readonly mutationKey: readonly [TViewName, TCallbackName];
+}
+
+/**
+ * Adapt a ClientCallback for TanStack Query integration.
+ *
+ * ```ts
+ * const mutation = useMutation(toMutationOptions(callback, "viewName", "propName"));
+ * ```
+ */
+export function toMutationOptions<TInput, TOutput>(
+  cb: ClientCallback<TInput, TOutput>,
+  viewName: string,
+  propName: string,
+): {
+  readonly mutationFn: ClientCallback<TInput, TOutput>['mutate'];
+  readonly mutationKey: readonly [string, string];
+} {
+  return {
+    mutationFn: cb.mutate,
+    mutationKey: [viewName, propName] as const,
   };
 }
 

@@ -1,8 +1,10 @@
 import type { CompiledAppEvents, Prop as CompiledProp, ShareableViewData as CompiledShareableViewData } from "./compiledTypes";
 import { EventContent, Events } from "./enum";
 import type { AppEvents, Prop, Transport, SerializableValue, ExistingSharedViewData } from "./types";
-import type { ViewUid, StreamUid } from "./branded.types";
+import type { ViewUid } from "./branded.types";
 import { createEventUid, createViewUid, createRequestUid, createPropName, createStreamUid } from "./branded.types";
+
+// ---- Prop codecs ----
 
 function propToCompiled(prop: Prop): CompiledProp {
   if (prop.type === "data") {
@@ -32,38 +34,151 @@ function compiledToProp(compiled: CompiledProp): Prop {
 
   if (propType === EventContent.Data) {
     const dataProp = compiled as { readonly [EventContent.Data]?: SerializableValue };
-    return {
-      name: createPropName(propName),
-      type: "data",
-      data: dataProp[EventContent.Data],
-    };
+    return { name: createPropName(propName), type: "data", data: dataProp[EventContent.Data] };
   }
   if (propType === EventContent.Stream) {
     const streamProp = compiled as { readonly [EventContent.StreamUid]?: string };
-    return {
-      name: createPropName(propName),
-      type: "stream",
-      uid: createStreamUid(streamProp[EventContent.StreamUid] ?? ''),
-    };
+    return { name: createPropName(propName), type: "stream", uid: createStreamUid(streamProp[EventContent.StreamUid] ?? '') };
   }
   const eventProp = compiled as { readonly [EventContent.Uid]?: string };
-  return {
-    name: createPropName(propName),
-    type: "event",
-    uid: createEventUid(eventProp[EventContent.Uid] ?? ''),
-  };
+  return { name: createPropName(propName), type: "event", uid: createEventUid(eventProp[EventContent.Uid] ?? '') };
 }
 
-const map = {
-  delete_view: Events.DeleteView,
-  request_event: Events.RequestEvent,
-  request_views_tree: Events.RequestViewsTree,
-  respond_to_event: Events.RespondToEvent,
-  update_view: Events.UpdateView,
-  update_views_tree: Events.UpdateViewsTree,
-  stream_chunk: Events.StreamChunk,
-  stream_end: Events.StreamEnd,
-} as const;
+// ---- Event codec registry ----
+// Each event defines compile (app → wire) and decompile (wire → app) in one place.
+
+interface EventCodec<K extends keyof AppEvents> {
+  readonly compiledEvent: Events;
+  readonly compile: (data: AppEvents[K]) => unknown;
+  readonly decompile: (data: unknown) => AppEvents[K];
+}
+
+function codec<K extends keyof AppEvents>(
+  compiledEvent: Events,
+  compile: (data: AppEvents[K]) => unknown,
+  decompile: (data: unknown) => AppEvents[K],
+): EventCodec<K> {
+  return { compiledEvent, compile, decompile };
+}
+
+const codecs = {
+  delete_view: codec<'delete_view'>(
+    Events.DeleteView,
+    (d) => d.viewUid,
+    (d) => ({ viewUid: createViewUid(d as string) }),
+  ),
+  request_event: codec<'request_event'>(
+    Events.RequestEvent,
+    (d) => ({
+      [EventContent.EventUid]: d.eventUid,
+      [EventContent.EventArgs]: d.eventArguments,
+      [EventContent.Uid]: d.uid,
+    }),
+    (d) => {
+      const r = d as CompiledAppEvents[Events.RequestEvent];
+      return {
+        eventArguments: r[EventContent.EventArgs] ?? [],
+        eventUid: createEventUid(r[EventContent.EventUid]),
+        uid: createRequestUid(r[EventContent.Uid]),
+      };
+    },
+  ),
+  request_views_tree: codec<'request_views_tree'>(
+    Events.RequestViewsTree,
+    () => undefined,
+    () => undefined as unknown as AppEvents['request_views_tree'],
+  ),
+  respond_to_event: codec<'respond_to_event'>(
+    Events.RespondToEvent,
+    (d) => ({
+      [EventContent.Data]: d.data,
+      [EventContent.EventUid]: d.eventUid,
+      [EventContent.Uid]: d.uid,
+    }),
+    (d) => {
+      const r = d as CompiledAppEvents[Events.RespondToEvent];
+      return {
+        data: r[EventContent.Data],
+        eventUid: createEventUid(r[EventContent.EventUid]),
+        uid: createRequestUid(r[EventContent.Uid]),
+      };
+    },
+  ),
+  update_view: codec<'update_view'>(
+    Events.UpdateView,
+    (d) => ({
+      [EventContent.Uid]: d.view.uid,
+      [EventContent.Name]: d.view.name,
+      [EventContent.ParentUid]: d.view.parentUid,
+      [EventContent.ChildIndex]: d.view.childIndex,
+      [EventContent.isRoot]: d.view.isRoot,
+      [EventContent.Props]: {
+        [EventContent.Create]: d.view.props.create.length > 0 ? d.view.props.create.map(propToCompiled) : undefined,
+        [EventContent.Delete]: d.view.props.delete.length > 0 ? d.view.props.delete : undefined,
+      },
+    }),
+    (d) => {
+      const v = d as CompiledShareableViewData;
+      return {
+        view: {
+          uid: createViewUid(v[EventContent.Uid]),
+          name: v[EventContent.Name],
+          parentUid: createViewUid(v[EventContent.ParentUid]) as ViewUid | '',
+          childIndex: v[EventContent.ChildIndex],
+          isRoot: v[EventContent.isRoot],
+          props: {
+            create: (v[EventContent.Props][EventContent.Create] ?? []).map(compiledToProp),
+            delete: (v[EventContent.Props][EventContent.Delete] ?? []).map(createPropName),
+          },
+        },
+      };
+    },
+  ),
+  update_views_tree: codec<'update_views_tree'>(
+    Events.UpdateViewsTree,
+    (d) => ({
+      [EventContent.Views]: d.views.map((view) => ({
+        [EventContent.Uid]: view.uid,
+        [EventContent.Name]: view.name,
+        [EventContent.ParentUid]: view.parentUid,
+        [EventContent.ChildIndex]: view.childIndex,
+        [EventContent.isRoot]: view.isRoot,
+        [EventContent.Props]: view.props.map(propToCompiled),
+      })),
+    }),
+    (d) => {
+      const t = d as CompiledAppEvents[Events.UpdateViewsTree];
+      return {
+        views: (t[EventContent.Views] ?? []).map((view): ExistingSharedViewData => ({
+          uid: createViewUid(view[EventContent.Uid]),
+          name: view[EventContent.Name],
+          parentUid: createViewUid(view[EventContent.ParentUid]) as ViewUid | '',
+          childIndex: view[EventContent.ChildIndex],
+          isRoot: view[EventContent.isRoot],
+          props: (view[EventContent.Props] ?? []).map(compiledToProp),
+        })),
+      };
+    },
+  ),
+  stream_chunk: codec<'stream_chunk'>(
+    Events.StreamChunk,
+    (d) => ({ [EventContent.StreamUid]: d.streamUid, [EventContent.Chunk]: d.chunk }),
+    (d) => {
+      const c = d as CompiledAppEvents[Events.StreamChunk];
+      return { streamUid: createStreamUid(c[EventContent.StreamUid]), chunk: c[EventContent.Chunk] };
+    },
+  ),
+  stream_end: codec<'stream_end'>(
+    Events.StreamEnd,
+    (d) => ({ [EventContent.StreamUid]: d.streamUid }),
+    (d) => {
+      const e = d as CompiledAppEvents[Events.StreamEnd];
+      return { streamUid: createStreamUid(e[EventContent.StreamUid]) };
+    },
+  ),
+} satisfies { readonly [K in keyof AppEvents]: EventCodec<K> };
+
+// ---- DecompileTransport ----
 
 export interface DecompileTransport {
   readonly on: <Key extends keyof AppEvents>(
@@ -81,175 +196,26 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
     event: Key,
     handler: (data: AppEvents[Key]) => void
   ): (() => void) | undefined => {
-    const compiledEvent = map[event];
+    const c = codecs[event] as EventCodec<Key>;
 
     const handlerExtended = (data: unknown): void => {
-      let decompiled: AppEvents[keyof AppEvents];
-
-      switch (compiledEvent) {
-        case Events.DeleteView:
-          decompiled = { viewUid: createViewUid(data as string) };
-          break;
-        case Events.RequestEvent: {
-          const reqData = data as CompiledAppEvents[Events.RequestEvent];
-          decompiled = {
-            eventArguments: reqData[EventContent.EventArgs] ?? [],
-            eventUid: createEventUid(reqData[EventContent.EventUid]),
-            uid: createRequestUid(reqData[EventContent.Uid]),
-          };
-          break;
-        }
-        case Events.RequestViewsTree:
-          decompiled = undefined as unknown as AppEvents['request_views_tree'];
-          break;
-        case Events.RespondToEvent: {
-          const respData = data as CompiledAppEvents[Events.RespondToEvent];
-          decompiled = {
-            data: respData[EventContent.Data],
-            eventUid: createEventUid(respData[EventContent.EventUid]),
-            uid: createRequestUid(respData[EventContent.Uid]),
-          };
-          break;
-        }
-        case Events.UpdateView: {
-          const viewData = data as CompiledShareableViewData;
-          decompiled = {
-            view: {
-              uid: createViewUid(viewData[EventContent.Uid]),
-              name: viewData[EventContent.Name],
-              parentUid: createViewUid(viewData[EventContent.ParentUid]) as ViewUid | '',
-              childIndex: viewData[EventContent.ChildIndex],
-              isRoot: viewData[EventContent.isRoot],
-              props: {
-                create: (viewData[EventContent.Props][EventContent.Create] ?? []).map(compiledToProp),
-                delete: (viewData[EventContent.Props][EventContent.Delete] ?? []).map(createPropName),
-              },
-            },
-          };
-          break;
-        }
-        case Events.UpdateViewsTree: {
-          const treeData = data as CompiledAppEvents[Events.UpdateViewsTree];
-          decompiled = {
-            views: (treeData[EventContent.Views] ?? []).map((view): ExistingSharedViewData => ({
-              uid: createViewUid(view[EventContent.Uid]),
-              name: view[EventContent.Name],
-              parentUid: createViewUid(view[EventContent.ParentUid]) as ViewUid | '',
-              childIndex: view[EventContent.ChildIndex],
-              isRoot: view[EventContent.isRoot],
-              props: (view[EventContent.Props] ?? []).map(compiledToProp),
-            })),
-          };
-          break;
-        }
-        case Events.StreamChunk: {
-          const chunkData = data as CompiledAppEvents[Events.StreamChunk];
-          decompiled = {
-            streamUid: createStreamUid(chunkData[EventContent.StreamUid]),
-            chunk: chunkData[EventContent.Chunk],
-          };
-          break;
-        }
-        case Events.StreamEnd: {
-          const endData = data as CompiledAppEvents[Events.StreamEnd];
-          decompiled = {
-            streamUid: createStreamUid(endData[EventContent.StreamUid]),
-          };
-          break;
-        }
-        default:
-          return;
-      }
-
-      handler(decompiled as AppEvents[Key]);
+      handler(c.decompile(data));
     };
 
-    (transport.on as (event: string, handler: (data: unknown) => void) => void)(String(compiledEvent), handlerExtended);
-    return () => (transport.off as ((event: string, handler: (data: unknown) => void) => void) | undefined)?.(String(compiledEvent), handlerExtended);
+    (transport.on as (event: string, handler: (data: unknown) => void) => void)(String(c.compiledEvent), handlerExtended);
+    return () => (transport.off as ((event: string, handler: (data: unknown) => void) => void) | undefined)?.(String(c.compiledEvent), handlerExtended);
   };
 
-  const emit = <Key extends keyof AppEvents>(event: Key, data?: AppEvents[Key]): void => {
-    const compiledEvent = map[event];
-    let compiled: unknown;
-
-    switch (event) {
-      case 'delete_view': {
-        const deleteData = data as AppEvents['delete_view'];
-        compiled = deleteData.viewUid;
-        break;
-      }
-      case 'request_event': {
-        const reqData = data as AppEvents['request_event'];
-        compiled = {
-          [EventContent.EventUid]: reqData.eventUid,
-          [EventContent.EventArgs]: reqData.eventArguments,
-          [EventContent.Uid]: reqData.uid,
-        };
-        break;
-      }
-      case 'request_views_tree':
-        compiled = undefined;
-        break;
-      case 'respond_to_event': {
-        const respData = data as AppEvents['respond_to_event'];
-        compiled = {
-          [EventContent.Data]: respData.data,
-          [EventContent.EventUid]: respData.eventUid,
-          [EventContent.Uid]: respData.uid,
-        };
-        break;
-      }
-      case 'update_view': {
-        const viewData = data as AppEvents['update_view'];
-        compiled = {
-          [EventContent.Uid]: viewData.view.uid,
-          [EventContent.Name]: viewData.view.name,
-          [EventContent.ParentUid]: viewData.view.parentUid,
-          [EventContent.ChildIndex]: viewData.view.childIndex,
-          [EventContent.isRoot]: viewData.view.isRoot,
-          [EventContent.Props]: {
-            [EventContent.Create]: viewData.view.props.create.length > 0 ? viewData.view.props.create.map(propToCompiled) : undefined,
-            [EventContent.Delete]: viewData.view.props.delete.length > 0 ? viewData.view.props.delete : undefined,
-          },
-        };
-        break;
-      }
-      case 'update_views_tree': {
-        const treeData = data as AppEvents['update_views_tree'];
-        compiled = {
-          [EventContent.Views]: treeData.views.map((view) => ({
-            [EventContent.Uid]: view.uid,
-            [EventContent.Name]: view.name,
-            [EventContent.ParentUid]: view.parentUid,
-            [EventContent.ChildIndex]: view.childIndex,
-            [EventContent.isRoot]: view.isRoot,
-            [EventContent.Props]: view.props.map(propToCompiled),
-          })),
-        };
-        break;
-      }
-      case 'stream_chunk': {
-        const chunkData = data as AppEvents['stream_chunk'];
-        compiled = {
-          [EventContent.StreamUid]: chunkData.streamUid,
-          [EventContent.Chunk]: chunkData.chunk,
-        };
-        break;
-      }
-      case 'stream_end': {
-        const endData = data as AppEvents['stream_end'];
-        compiled = {
-          [EventContent.StreamUid]: endData.streamUid,
-        };
-        break;
-      }
-    }
-
-    (transport.emit as (event: string, data: unknown) => void)(String(compiledEvent), compiled);
+  const emitFn = <Key extends keyof AppEvents>(event: Key, data?: AppEvents[Key]): void => {
+    const c = codecs[event] as EventCodec<Key>;
+    const compiled = data !== undefined ? c.compile(data) : undefined;
+    (transport.emit as (event: string, data: unknown) => void)(String(c.compiledEvent), compiled);
   };
 
-  return { on, emit };
+  return { on, emit: emitFn };
 }
+
+// ---- Convenience emit helpers ----
 
 type EmitFunctions = {
   readonly [Key in keyof AppEvents]: <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[Key]) => void;
@@ -258,7 +224,7 @@ type EmitFunctions = {
 function emitFactory(): EmitFunctions {
   const result = {} as Record<keyof AppEvents, <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[keyof AppEvents]) => void>;
 
-  for (const event of Object.keys(map) as Array<keyof AppEvents>) {
+  for (const event of Object.keys(codecs) as Array<keyof AppEvents>) {
     result[event] = <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[typeof event]): void => {
       const decompiled = decompileTransport(transport);
       decompiled.emit(event, data);

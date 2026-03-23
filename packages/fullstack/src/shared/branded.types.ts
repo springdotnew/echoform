@@ -14,23 +14,14 @@ export type ViewUid = Brand<string, 'ViewUid'>;
 export type PropName = Brand<string, 'PropName'>;
 export type StreamUid = Brand<string, 'StreamUid'>;
 
+// Generic branded type factory
+function brand<T extends string>(value: string): Brand<string, T> {
+  return value as Brand<string, T>;
+}
+
 // Factory functions to create branded types
-export function createEventUid(value: string): EventUid {
-  return value as EventUid;
-}
-
-export function createRequestUid(value: string): RequestUid {
-  return value as RequestUid;
-}
-
-export function createViewUid(value: string): ViewUid {
-  return value as ViewUid;
-}
-
-export function createPropName(value: string): PropName {
-  return value as PropName;
-}
-
-export function createStreamUid(value: string): StreamUid {
-  return value as StreamUid;
-}
+export const createEventUid = (value: string): EventUid => brand<'EventUid'>(value);
+export const createRequestUid = (value: string): RequestUid => brand<'RequestUid'>(value);
+export const createViewUid = (value: string): ViewUid => brand<'ViewUid'>(value);
+export const createPropName = (value: string): PropName => brand<'PropName'>(value);
+export const createStreamUid = (value: string): StreamUid => brand<'StreamUid'>(value);

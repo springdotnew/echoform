@@ -11,13 +11,12 @@ interface ConnectionEvent<TClientTransport> {
   readonly connection: TClientTransport & { readonly id: string };
 }
 
-export interface ServerProps<
-  TransportClientEvents extends DisconnectEvent,
-  TransportServerEvents extends ConnectionEvent<Transport<TransportClientEvents>>
-> {
+type ServerTransport = Transport<ConnectionEvent<Transport<DisconnectEvent>>>;
+
+export interface ServerProps {
   readonly children: () => ReactNode;
   readonly singleInstance?: boolean;
-  readonly transport: Transport<TransportServerEvents>;
+  readonly transport: ServerTransport;
   readonly instanceRenderHandler?: ServerInstanceRenderHandler;
 }
 
@@ -40,13 +39,10 @@ export interface ServerInstanceRenderHandler {
   readonly render: <TViews extends Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>>(views: TViews) => React.ReactElement;
 }
 
-export function Server<
-  TransportClientEvents extends DisconnectEvent,
-  TransportServerEvents extends ConnectionEvent<Transport<TransportClientEvents>>
->(props: ServerProps<TransportClientEvents, TransportServerEvents>): React.ReactElement {
+export function Server(props: ServerProps): React.ReactElement {
   const { children, singleInstance, transport } = props;
   const appRef = useRef<AppHandle>(null);
-  const [clients, setClients] = useState<Readonly<Record<string, Transport<TransportClientEvents>>>>({});
+  const [clients, setClients] = useState<Readonly<Record<string, Transport<DisconnectEvent>>>>({});
 
   useEffect(() => {
     transport.on("connection", (clientTransport) => {
