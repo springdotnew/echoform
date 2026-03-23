@@ -140,13 +140,17 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
 
   const addClient = useCallback(<TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => {
     const clientTransport = decompileTransport(client);
-    clientsMapRef.current.set(client as unknown as Transport<Record<string | number, unknown>>, clientTransport);
+    const key = client as unknown as Transport<Record<string | number, unknown>>;
+    clientsMapRef.current = new Map([...clientsMapRef.current, [key, clientTransport]]);
     clientsRef.current = Array.from(clientsMapRef.current.values());
     registerSocketListener(clientTransport);
   }, [registerSocketListener]);
 
   const removeClient = useCallback(<TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => {
-    clientsMapRef.current.delete(client as unknown as Transport<Record<string | number, unknown>>);
+    const key = client as unknown as Transport<Record<string | number, unknown>>;
+    const newMap = new Map(clientsMapRef.current);
+    newMap.delete(key);
+    clientsMapRef.current = newMap;
     clientsRef.current = Array.from(clientsMapRef.current.values());
   }, []);
 
@@ -356,11 +360,10 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
       .filter((prop): prop is Prop & { type: 'event' } => prop.type === "event")
       .map((prop) => prop.uid);
 
-    const newEventsMap = new Map(viewEventsRef.current);
-    for (const eventUid of eventUidsToDelete) {
-      newEventsMap.delete(eventUid);
-    }
-    viewEventsRef.current = newEventsMap;
+    const deleteSet = new Set(eventUidsToDelete);
+    viewEventsRef.current = new Map(
+      [...viewEventsRef.current].filter(([key]) => !deleteSet.has(key))
+    );
 
     const server = serverRef.current;
     if (!server) return;

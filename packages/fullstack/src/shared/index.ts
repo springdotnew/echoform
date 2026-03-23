@@ -1,4 +1,3 @@
-export * as CompiledTypes from "./compiledTypes";
 export type { DecompileTransport } from "./decompiled-transport";
 export { decompileTransport, emit } from "./decompiled-transport";
 export { EventContent, Events } from "./enum";
@@ -30,5 +29,5 @@ export type { StandardSchemaV1 } from "./standard-schema";
 export { randomId } from "./id";
 export { ViewsRenderer } from "./ViewsRenderer";
 export type { RenderProps } from "./ViewsRenderer";
-export { createHandlerRegistry, parseAndDispatch, fireDisconnect } from "./transport-handlers";
-export type { EventHandlerFn, HandlerRegistry } from "./transport-handlers";
+export { createHandlerRegistry, parseAndDispatch, fireDisconnect, createWebSocketTransport } from "./transport-handlers";
+export type { EventHandlerFn, HandlerRegistry, WebSocketLike } from "./transport-handlers";

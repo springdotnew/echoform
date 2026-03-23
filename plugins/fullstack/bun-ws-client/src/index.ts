@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Transport } from "@react-fullstack/fullstack/shared";
-import { createHandlerRegistry, parseAndDispatch, fireDisconnect } from "@react-fullstack/fullstack/shared";
+import { createWebSocketTransport } from "@react-fullstack/fullstack/shared";
 
 export interface WebSocketTransportState {
   readonly transport: Transport<Record<string, unknown>> | null;
@@ -16,20 +16,11 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
   });
 
   useEffect(() => {
-    const { handlers, on, off } = createHandlerRegistry();
     let disposed = false;
 
     const ws = new WebSocket(url);
 
-    const transport: Transport<Record<string, unknown>> = {
-      on: on as Transport<Record<string, unknown>>['on'],
-      emit: (event: string, data?: unknown): void => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ event, data }));
-        }
-      },
-      off: off as Transport<Record<string, unknown>>['off'],
-    };
+    const { transport, dispatch, disconnect } = createWebSocketTransport(ws, { checkOpen: true });
 
     ws.onopen = () => {
       if (!disposed) {
@@ -38,7 +29,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
     };
 
     ws.onmessage = (messageEvent) => {
-      parseAndDispatch(messageEvent.data as string, handlers);
+      dispatch(messageEvent.data as string);
     };
 
     ws.onerror = () => {
@@ -49,7 +40,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
 
     ws.onclose = () => {
       if (!disposed) {
-        fireDisconnect(handlers);
+        disconnect();
         setState((prev) => (prev.isConnected ? { ...prev, isConnected: false } : prev));
       }
     };

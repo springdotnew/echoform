@@ -1,28 +1,37 @@
-import React, { useEffect, useRef, useState, type ReactNode } from "react";
+import React, { useEffect, useRef, useCallback, createContext, useContext, useState, type ReactNode } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
+import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps, type DockviewApi } from "dockview-react";
+import "dockview-react/dist/styles/dockview.css";
+import { Plus } from "lucide-react";
 import type { InferClientProps } from "@react-fullstack/fullstack/client";
 import type { TerminalApp as TerminalAppDef, Terminal as TerminalDef } from "../shared/views";
 
+// ── Base64 ──
+
 function toBase64(data: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i]!);
-  }
-  return btoa(binary);
+  let b = "";
+  for (let i = 0; i < data.length; i++) b += String.fromCharCode(data[i]!);
+  return btoa(b);
 }
 
 function fromBase64(b64: string): Uint8Array {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
+  const b = atob(b64);
+  const a = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+  return a;
 }
 
-// ── TerminalApp (sidebar + tab content) ──
+// ── Bridge: react-fullstack Terminal children → dockview panels ──
+// Each Terminal child rendered by react-fullstack registers itself here.
+// The dockview panel component looks up and renders the registered element.
+
+type TerminalRegistry = Map<string, ReactNode>;
+const TerminalRegistryContext = createContext<React.RefObject<TerminalRegistry>>({ current: new Map() });
+const NewTabContext = createContext<() => void>(() => {});
+
+// ── TerminalApp ──
 
 export function TerminalApp(props: InferClientProps<typeof TerminalAppDef>): React.ReactElement {
   const { tabs, activeTabId, children } = props;
@@ -30,74 +39,149 @@ export function TerminalApp(props: InferClientProps<typeof TerminalAppDef>): Rea
   const closeTab = props.onCloseTab.mutate;
   const selectTab = props.onSelectTab.mutate;
 
-  // Ctrl+T to create new tab
+  const apiRef = useRef<DockviewApi | null>(null);
+  const registryRef = useRef<TerminalRegistry>(new Map());
+  const syncedRef = useRef<Set<string>>(new Set());
+  const [, forceUpdate] = useState(0);
+
+  // Collect Terminal children into registry by id
+  const childArray = React.Children.toArray(children) as React.ReactElement[];
+  registryRef.current.clear();
+  for (const child of childArray) {
+    const id = (child.props as { id?: string }).id;
+    if (id) registryRef.current.set(id, child);
+  }
+
+  // Sync tabs → dockview panels
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "t") {
+    const api = apiRef.current;
+    if (!api) return;
+
+    const serverIds = new Set(tabs.map((t) => t.id));
+
+    for (const tab of tabs) {
+      if (!syncedRef.current.has(tab.id)) {
+        api.addPanel({
+          id: tab.id,
+          title: tab.title,
+          component: "terminal",
+          params: { tabId: tab.id },
+        });
+        syncedRef.current.add(tab.id);
+      }
+    }
+
+    for (const id of syncedRef.current) {
+      if (!serverIds.has(id)) {
+        const panel = api.getPanel(id);
+        if (panel) api.removePanel(panel);
+        syncedRef.current.delete(id);
+      }
+    }
+
+    const activePanel = api.getPanel(activeTabId);
+    if (activePanel && api.activePanel?.id !== activeTabId) {
+      activePanel.api.setActive();
+    }
+
+    // Force re-render so dockview panels pick up new registry entries
+    forceUpdate((n) => n + 1);
+  }, [tabs, activeTabId]);
+
+  // Shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "t") { e.preventDefault(); newTab(); }
+      else if (mod && e.key === "w") { e.preventDefault(); if (activeTabId) closeTab(activeTabId); }
+      else if (mod && e.shiftKey && e.key === "[") {
+        // Cmd+Shift+[ = previous tab
         e.preventDefault();
-        newTab();
+        const idx = tabs.findIndex((t) => t.id === activeTabId);
+        const prev = tabs[(idx - 1 + tabs.length) % tabs.length];
+        if (prev) selectTab(prev.id);
+      }
+      else if (mod && e.shiftKey && e.key === "]") {
+        // Cmd+Shift+] = next tab
+        e.preventDefault();
+        const idx = tabs.findIndex((t) => t.id === activeTabId);
+        const next = tabs[(idx + 1) % tabs.length];
+        if (next) selectTab(next.id);
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [newTab]);
+    const onNewTabEvent = () => newTab();
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("terminal:new-tab", onNewTabEvent);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("terminal:new-tab", onNewTabEvent);
+    };
+  }, [newTab, closeTab, selectTab, activeTabId, tabs]);
 
-  // Find which child Terminal matches the active tab
-  const childArray = React.Children.toArray(children) as React.ReactElement[];
+  const onReady = useCallback((event: DockviewReadyEvent) => {
+    apiRef.current = event.api;
+
+    event.api.onDidActivePanelChange((e) => {
+      if (e?.id) selectTab(e.id);
+    });
+
+    for (const tab of tabs) {
+      event.api.addPanel({
+        id: tab.id,
+        title: tab.title,
+        component: "terminal",
+        params: { tabId: tab.id },
+      });
+      syncedRef.current.add(tab.id);
+    }
+  }, []);
 
   return (
-    <div style={styles.root}>
-      {/* Vertical sidebar */}
-      <div style={styles.sidebar}>
-        <div style={styles.sidebarHeader}>
-          <span style={styles.sidebarTitle}>TERMINALS</span>
-          <button onClick={() => newTab()} style={styles.newTabBtn} title="New Terminal (Ctrl+T)">
-            +
-          </button>
+    <TerminalRegistryContext.Provider value={registryRef}>
+      <NewTabContext.Provider value={newTab}>
+        <div style={{ height: "100vh", width: "100vw" }}>
+          <DockviewReact
+            className="dockview-theme-dark"
+            components={panelComponents}
+            onReady={onReady}
+            rightHeaderActionsComponent={HeaderActions}
+          />
         </div>
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            onClick={() => selectTab(tab.id)}
-            style={{
-              ...styles.tabItem,
-              ...(tab.id === activeTabId ? styles.tabItemActive : {}),
-            }}
-          >
-            <span style={styles.tabIcon}>&#xf120;</span>
-            <span style={styles.tabLabel}>{tab.title}</span>
-            {tabs.length > 1 && (
-              <span
-                onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-                style={styles.tabClose}
-              >
-                &times;
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Terminal content area */}
-      <div style={styles.content}>
-        {childArray.map((child) => {
-          const childProps = child.props as { id?: string };
-          const isActive = childProps.id === activeTabId;
-          return (
-            <div
-              key={childProps.id}
-              style={{ ...styles.terminalPane, display: isActive ? "flex" : "none" }}
-            >
-              {child}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+      </NewTabContext.Provider>
+    </TerminalRegistryContext.Provider>
   );
 }
 
-// ── Terminal (xterm.js instance) ──
+// ── Header + button ──
+
+function HeaderActions(): React.ReactElement {
+  return (
+    <button
+      onClick={() => window.dispatchEvent(new CustomEvent("terminal:new-tab"))}
+      style={{ background: "none", border: "none", color: "#888", cursor: "pointer", padding: "4px 8px", display: "flex", alignItems: "center" }}
+      title="New Terminal (Ctrl+T)"
+    >
+      <Plus size={14} />
+    </button>
+  );
+}
+
+// ── Dockview panel: renders the registered Terminal child ──
+
+function DockviewTerminalPanel({ params }: IDockviewPanelProps<{ tabId: string }>): React.ReactElement {
+  const registryRef = useContext(TerminalRegistryContext);
+  const child = registryRef.current?.get(params.tabId);
+
+  if (!child) {
+    return <div style={{ padding: 20, color: "#555" }}>Loading...</div>;
+  }
+
+  return <>{child}</>;
+}
+
+const panelComponents = { terminal: DockviewTerminalPanel };
+
+// ── Terminal (xterm.js) — exported for react-fullstack component mapping ──
 
 export function Terminal(props: InferClientProps<typeof TerminalDef>): React.ReactElement {
   const { output, id } = props;
@@ -114,12 +198,7 @@ export function Terminal(props: InferClientProps<typeof TerminalDef>): React.Rea
       cursorBlink: true,
       fontSize: 14,
       fontFamily: "'JetBrainsMono Nerd Font Mono', 'CaskaydiaCove Nerd Font', 'FiraCode Nerd Font', monospace",
-      theme: {
-        background: "#1e1e1e",
-        foreground: "#d4d4d4",
-        cursor: "#d4d4d4",
-        selectionBackground: "#264f78",
-      },
+      theme: { background: "#1e1e1e", foreground: "#d4d4d4", cursor: "#d4d4d4", selectionBackground: "#264f78" },
     });
 
     const fitAddon = new FitAddon();
@@ -134,143 +213,33 @@ export function Terminal(props: InferClientProps<typeof TerminalDef>): React.Rea
     });
 
     xterm.attachCustomKeyEventHandler((event) => {
-      // Let Ctrl+T bubble to window for new tab
-      if ((event.metaKey || event.ctrlKey) && event.key === "t") {
-        return false;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        return true;
-      }
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && (event.key === "t" || event.key === "w")) return false;
+      if (mod && event.shiftKey && (event.key === "[" || event.key === "]")) return false;
+      if (event.key === "Escape") { event.preventDefault(); return true; }
       return true;
     });
 
-    const resizeObserver = new ResizeObserver(() => {
+    const ro = new ResizeObserver(() => {
       fitAddon.fit();
       sendResize({ cols: xterm.cols, rows: xterm.rows });
     });
-    resizeObserver.observe(containerRef.current);
-
+    ro.observe(containerRef.current);
     sendResize({ cols: xterm.cols, rows: xterm.rows });
 
     return () => {
-      resizeObserver.disconnect();
+      ro.disconnect();
       xterm.dispose();
       xtermRef.current = null;
       fitRef.current = null;
     };
   }, []);
 
-  // Refit when this terminal becomes visible
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      if (containerRef.current?.offsetParent !== null) {
-        fitRef.current?.fit();
-      }
-    });
-    if (containerRef.current?.parentElement) {
-      observer.observe(containerRef.current.parentElement, { attributes: true, attributeFilter: ["style"] });
-    }
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    return output.subscribe((b64Chunk: string) => {
-      xtermRef.current?.write(fromBase64(b64Chunk));
+    return output.subscribe((b64: string) => {
+      xtermRef.current?.write(fromBase64(b64));
     });
   }, [output]);
 
-  return <div ref={containerRef} style={styles.xtermContainer} data-testid={`terminal-${id}`} />;
+  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} data-testid={`terminal-${id}`} />;
 }
-
-// ── Styles ──
-
-const styles: Record<string, React.CSSProperties> = {
-  root: {
-    display: "flex",
-    height: "100vh",
-    background: "#1e1e1e",
-    color: "#d4d4d4",
-  },
-  sidebar: {
-    width: "200px",
-    background: "#252526",
-    borderRight: "1px solid #3c3c3c",
-    display: "flex",
-    flexDirection: "column",
-    flexShrink: 0,
-  },
-  sidebarHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "10px 12px",
-    borderBottom: "1px solid #3c3c3c",
-  },
-  sidebarTitle: {
-    fontSize: "11px",
-    fontWeight: 600,
-    textTransform: "uppercase",
-    color: "#888",
-    letterSpacing: "0.5px",
-  },
-  newTabBtn: {
-    background: "none",
-    border: "1px solid #555",
-    color: "#ccc",
-    width: "22px",
-    height: "22px",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "14px",
-    lineHeight: "1",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tabItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "8px 12px",
-    cursor: "pointer",
-    fontSize: "13px",
-    color: "#aaa",
-    borderLeft: "2px solid transparent",
-  },
-  tabItemActive: {
-    background: "#1e1e1e",
-    color: "#fff",
-    borderLeftColor: "#007acc",
-  },
-  tabIcon: {
-    fontSize: "14px",
-    width: "16px",
-    textAlign: "center",
-  },
-  tabLabel: {
-    flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  tabClose: {
-    opacity: 0.5,
-    cursor: "pointer",
-    fontSize: "14px",
-    lineHeight: "1",
-  },
-  content: {
-    flex: 1,
-    display: "flex",
-    overflow: "hidden",
-  },
-  terminalPane: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-  },
-  xtermContainer: {
-    flex: 1,
-  },
-};

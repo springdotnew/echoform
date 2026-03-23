@@ -59,15 +59,23 @@ function Client<ViewsInterface extends Record<string, unknown> = Record<string, 
   }, []);
 
   const streamSubscribe = useCallback((streamUid: StreamUid, listener: (chunk: SerializableValue) => void): (() => void) => {
-    const listeners = streamListenersRef.current.get(streamUid) ?? new Set();
-    listeners.add(listener);
-    streamListenersRef.current.set(streamUid, listeners);
+    const existing = streamListenersRef.current.get(streamUid);
+    const newSet = new Set(existing);
+    newSet.add(listener);
+    streamListenersRef.current = new Map([...streamListenersRef.current, [streamUid, newSet]]);
 
     return () => {
-      listeners.delete(listener);
-      if (listeners.size === 0) {
-        streamListenersRef.current.delete(streamUid);
+      const current = streamListenersRef.current.get(streamUid);
+      if (!current) return;
+      const updated = new Set(current);
+      updated.delete(listener);
+      const newMap = new Map(streamListenersRef.current);
+      if (updated.size === 0) {
+        newMap.delete(streamUid);
+      } else {
+        newMap.set(streamUid, updated);
       }
+      streamListenersRef.current = newMap;
     };
   }, []);
 
@@ -148,7 +156,9 @@ function Client<ViewsInterface extends Record<string, unknown> = Record<string, 
     };
 
     const streamEndHandler = ({ streamUid }: AppEvents['stream_end']): void => {
-      streamListenersRef.current.delete(streamUid);
+      const newMap = new Map(streamListenersRef.current);
+      newMap.delete(streamUid);
+      streamListenersRef.current = newMap;
     };
 
     const unsubscribeViewsTree = transport.on("update_views_tree", updateViewsTreeHandler);
@@ -167,7 +177,7 @@ function Client<ViewsInterface extends Record<string, unknown> = Record<string, 
       unsubscribeDeleteView?.();
       unsubscribeStreamChunk?.();
       unsubscribeStreamEnd?.();
-      streamListenersRef.current.clear();
+      streamListenersRef.current = new Map();
     };
   }, [requestViewTreeOnMount]);
 

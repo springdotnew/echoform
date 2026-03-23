@@ -1,6 +1,5 @@
 import type { Transport } from "@react-fullstack/fullstack/shared";
-import { createHandlerRegistry, parseAndDispatch, fireDisconnect } from "@react-fullstack/fullstack/shared";
-import type { HandlerRegistry } from "@react-fullstack/fullstack/shared";
+import { createWebSocketTransport } from "@react-fullstack/fullstack/shared";
 
 interface ClientData {
   readonly id: string;
@@ -19,11 +18,6 @@ interface BunServer {
   publish(topic: string, data: string | ArrayBufferView | ArrayBuffer, compress?: boolean): number;
   upgrade(req: Request, options?: { headers?: HeadersInit; data?: ClientData }): boolean;
   stop(): void;
-}
-
-interface ClientState {
-  readonly ws: ServerWebSocket<ClientData>;
-  readonly handlers: HandlerRegistry;
 }
 
 interface SocketClientEvents {
@@ -60,48 +54,12 @@ declare const Bun: {
   }): BunServer;
 };
 
-function generateId(): string {
-  return globalThis.crypto.randomUUID();
-}
-
 export function createBunWebSocketServer(options: BunWebSocketServerOptions): BunWebSocketServer {
   const { port, hostname = "0.0.0.0", path = "/ws" } = options;
 
-  const clients = new Map<string, ClientState>();
+  const clients = new Map<string, { readonly dispatch: (msg: string) => void; readonly disconnect: () => void }>();
   let connectionHandler: ((client: Transport<SocketClientEvents> & { id: string }) => void) | null = null;
   let server: BunServer | null = null;
-
-  function createClientTransport(
-    ws: ServerWebSocket<ClientData>,
-    id: string
-  ): Transport<SocketClientEvents> & { id: string } {
-    const { handlers, on, off } = createHandlerRegistry();
-
-    const transport: Transport<SocketClientEvents> & { id: string } = {
-      id,
-      on: on as Transport<SocketClientEvents>['on'],
-      emit: (event, data) => {
-        ws.send(JSON.stringify({ event, data }));
-      },
-      off: off as Transport<SocketClientEvents>['off'],
-    };
-
-    clients.set(id, { ws, handlers });
-    return transport;
-  }
-
-  function handleMessage(id: string, message: string): void {
-    const client = clients.get(id);
-    if (!client) return;
-    parseAndDispatch(message, client.handlers);
-  }
-
-  function handleDisconnect(id: string): void {
-    const client = clients.get(id);
-    if (!client) return;
-    fireDisconnect(client.handlers);
-    clients.delete(id);
-  }
 
   const transport: Transport<SocketServerEvents> = {
     on: (event, handler) => {
@@ -124,7 +82,7 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
 
         if (url.pathname === path) {
           const upgraded = srv.upgrade(req, {
-            data: { id: generateId() },
+            data: { id: globalThis.crypto.randomUUID() },
           });
           if (upgraded) {
             return undefined;
@@ -149,14 +107,24 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
       websocket: {
         data: {} as ClientData,
         open(ws: ServerWebSocket<ClientData>) {
-          const clientTransport = createClientTransport(ws, ws.data.id);
-          connectionHandler?.(clientTransport);
+          const id = ws.data.id;
+          const { transport: clientTransport, dispatch, disconnect } = createWebSocketTransport<SocketClientEvents>(ws);
+          const clientWithId = Object.assign(clientTransport, { id });
+          clients.set(id, { dispatch, disconnect });
+          connectionHandler?.(clientWithId);
         },
         message(ws: ServerWebSocket<ClientData>, message: string | ArrayBuffer | Uint8Array) {
-          handleMessage(ws.data.id, typeof message === "string" ? message : new TextDecoder().decode(message));
+          const client = clients.get(ws.data.id);
+          if (client) {
+            client.dispatch(typeof message === "string" ? message : new TextDecoder().decode(message));
+          }
         },
         close(ws: ServerWebSocket<ClientData>) {
-          handleDisconnect(ws.data.id);
+          const client = clients.get(ws.data.id);
+          if (client) {
+            client.disconnect();
+            clients.delete(ws.data.id);
+          }
         },
       },
     });

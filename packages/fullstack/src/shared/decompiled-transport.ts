@@ -3,7 +3,6 @@ import { EventContent, Events } from "./enum";
 import type { AppEvents, Prop, Transport, SerializableValue, ExistingSharedViewData } from "./types";
 import type { ViewUid, StreamUid } from "./branded.types";
 import { createEventUid, createViewUid, createRequestUid, createPropName, createStreamUid } from "./branded.types";
-import { nullIfEmpty } from "./collection.utils";
 
 function propToCompiled(prop: Prop): CompiledProp {
   if (prop.type === "data") {
@@ -209,8 +208,8 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
           [EventContent.ChildIndex]: viewData.view.childIndex,
           [EventContent.isRoot]: viewData.view.isRoot,
           [EventContent.Props]: {
-            [EventContent.Create]: nullIfEmpty(viewData.view.props.create)?.map(propToCompiled),
-            [EventContent.Delete]: nullIfEmpty(viewData.view.props.delete),
+            [EventContent.Create]: viewData.view.props.create.length > 0 ? viewData.view.props.create.map(propToCompiled) : undefined,
+            [EventContent.Delete]: viewData.view.props.delete.length > 0 ? viewData.view.props.delete : undefined,
           },
         };
         break;

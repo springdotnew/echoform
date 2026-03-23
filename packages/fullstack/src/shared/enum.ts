@@ -17,9 +17,11 @@ export enum EventContent {
     ChildIndex = 4,
     isRoot = 5,
     EventArgs = 6,
+    // 7 reserved (wire protocol gap)
     Views = 8,
     Props = 9,
     Create = 10,
+    // 11 reserved (wire protocol gap)
     Delete = 12,
     Name = 13,
     Type = 14,

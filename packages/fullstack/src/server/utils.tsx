@@ -19,12 +19,10 @@ export function getViewDef(name: string): ViewDef | undefined {
 
 // ---- View component cache ----
 
-type ViewComponentCache = Readonly<Record<string, React.ComponentType<ViewProps>>>;
-
-const viewComponentCache: Record<string, React.ComponentType<ViewProps>> = {};
+const viewComponentCache = new Map<string, React.ComponentType<ViewProps>>();
 
 function getOrCreateViewComponent(name: string): React.ComponentType<ViewProps> {
-  const existingComponent = viewComponentCache[name];
+  const existingComponent = viewComponentCache.get(name);
   if (existingComponent) {
     return existingComponent;
   }
@@ -34,11 +32,11 @@ function getOrCreateViewComponent(name: string): React.ComponentType<ViewProps> 
   );
   NewViewComponent.displayName = `View(${name})`;
 
-  viewComponentCache[name] = NewViewComponent;
+  viewComponentCache.set(name, NewViewComponent);
   return NewViewComponent;
 }
 
-const viewProxy = new Proxy({} as ViewComponentCache, {
+const viewProxy = new Proxy({} as Record<string, React.ComponentType<ViewProps>>, {
   get: (_target, name): React.ComponentType<ViewProps> => {
     if (typeof name !== 'string') {
       throw new Error('trying to access a view with a non string name');

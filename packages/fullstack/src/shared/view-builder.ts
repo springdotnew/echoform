@@ -10,7 +10,6 @@ export interface CallbackDef<
   TInput extends StandardSchemaV1 = StandardSchemaV1<void>,
   TOutput extends StandardSchemaV1 = StandardSchemaV1<void>,
 > {
-  readonly _tag: "callback";
   readonly input: TInput;
   readonly output: TOutput;
 }
@@ -28,7 +27,6 @@ export interface CallbackConfig<
 export interface StreamDef<
   TChunk extends StandardSchemaV1 = StandardSchemaV1,
 > {
-  readonly _tag: "stream";
   readonly chunk: TChunk;
 }
 
@@ -47,7 +45,6 @@ export interface ViewDef<
   TStreams extends Record<string, StreamDef> = Record<string, StreamDef>,
 > {
   readonly [VIEW_DEF_BRAND]: true;
-  readonly _tag: "view";
   readonly name: TName;
   readonly input: TInput;
   readonly callbacks: TCallbacks;
@@ -104,7 +101,6 @@ export function callback<
   TOutput extends StandardSchemaV1 = StandardSchemaV1<void>,
 >(config?: CallbackConfig<TInput, TOutput>): CallbackDef<TInput, TOutput> {
   return {
-    _tag: "callback",
     input: (config?.input ?? voidSchema) as TInput,
     output: (config?.output ?? voidSchema) as TOutput,
   };
@@ -121,7 +117,6 @@ export function stream<TChunk extends StandardSchemaV1>(
   chunkSchema: TChunk,
 ): StreamDef<TChunk> {
   return {
-    _tag: "stream",
     chunk: chunkSchema,
   };
 }
@@ -147,7 +142,6 @@ export function view<
   config?: ViewConfig<TInput, TCallbacks, TStreams>,
 ): ViewDef<TName, TInput, TCallbacks, TStreams> {
   return {
-    _tag: "view",
     name,
     input: (config?.input ?? {}) as TInput,
     callbacks: (config?.callbacks ?? {}) as TCallbacks,
