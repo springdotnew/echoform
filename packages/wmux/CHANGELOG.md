@@ -1,5 +1,11 @@
 # @playfast/wmux
 
+## 0.2.3
+
+### Patch Changes
+
+- cfefbb7: Update wmux client URL from playfast.dev to play.fast.
+
 ## 0.2.2
 
 ### Patch Changes
