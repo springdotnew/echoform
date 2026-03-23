@@ -1,5 +1,11 @@
 # @playfast/wmux
 
+## 0.2.2
+
+### Patch Changes
+
+- 4c58117: Fix categoryColor crash when category name is undefined.
+
 ## 0.2.1
 
 ### Patch Changes
