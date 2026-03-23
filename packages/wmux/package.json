@@ -1,13 +1,15 @@
 {
   "name": "@playfast/wmux",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Web terminal multiplexer for dev servers",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./views": "./src/views.ts"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "scripts": {
     "typecheck": "tsgo -p .",
     "build": "tsgo -p ."

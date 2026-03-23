@@ -7,7 +7,7 @@ import { generateToken } from "./token";
 import { WmuxRoot } from "./components/WmuxRoot";
 import type { WmuxConfig, WmuxHandle, TabConfig } from "./types";
 
-const BUILT_IN_CLIENT_URL = "__WMUX_CLIENT_URL__";
+const BUILT_IN_CLIENT_URL = "https://wmux.playfast.dev";
 
 function openBrowser(url: string): void {
   try {
