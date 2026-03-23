@@ -11,7 +11,8 @@ import type {
 } from "../shared/types";
 import type { EventUid, ViewUid, StreamUid } from "../shared/branded.types";
 import { createEventUid, createPropName } from "../shared/branded.types";
-import { isStreamEmitter } from "../shared/view-inference";
+import type { StreamEmitterHandle } from "../shared/view-inference";
+import { getViewDef } from "./utils";
 import type { DecompileTransport } from "../shared/decompiled-transport";
 import { decompileTransport } from "../shared/decompiled-transport";
 import { randomId } from "../shared/id";
@@ -136,22 +137,27 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
     );
     const existingView = existingViewIndex >= 0 ? existingSharedViewsRef.current[existingViewIndex] : undefined;
 
+    const viewDef = getViewDef(viewData.name);
+
     const mapProps = (name: string): Prop => {
       const prop = viewData.props[name];
-      if (isStreamEmitter(prop)) {
+
+      if (viewDef?.streams[name]) {
         return {
           name: createPropName(name),
           type: "stream" as const,
-          uid: prop.uid,
+          uid: (prop as unknown as StreamEmitterHandle).uid,
         };
       }
-      if (typeof prop === "function") {
+
+      if (viewDef?.callbacks[name] || typeof prop === "function") {
         return {
           name: createPropName(name),
           type: "event" as const,
           uid: registerViewEvent(prop as EventHandler),
         };
       }
+
       return {
         name: createPropName(name),
         type: "data" as const,

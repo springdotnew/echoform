@@ -23,37 +23,22 @@ export interface StreamReceiver<T> {
   readonly subscribe: (listener: (chunk: T) => void) => () => void;
 }
 
-// ---- Runtime stream emitter ----
+// ---- Runtime stream emitter factory ----
 
-const STREAM_EMITTER_TAG = Symbol.for("react-fullstack/stream-emitter");
-
-export class StreamEmitterImpl<T = unknown> implements StreamEmitter<T> {
-  readonly [STREAM_EMITTER_TAG] = true;
+export interface StreamEmitterHandle<T = unknown> extends StreamEmitter<T> {
   readonly uid: StreamUid;
-  private readonly _onChunk: (streamUid: StreamUid, chunk: SerializableValue) => void;
-  private readonly _onEnd: (streamUid: StreamUid) => void;
-
-  constructor(
-    uid: StreamUid,
-    onChunk: (streamUid: StreamUid, chunk: SerializableValue) => void,
-    onEnd: (streamUid: StreamUid) => void,
-  ) {
-    this.uid = uid;
-    this._onChunk = onChunk;
-    this._onEnd = onEnd;
-  }
-
-  emit(chunk: T): void {
-    this._onChunk(this.uid, chunk as SerializableValue);
-  }
-
-  end(): void {
-    this._onEnd(this.uid);
-  }
 }
 
-export function isStreamEmitter(value: unknown): value is StreamEmitterImpl {
-  return typeof value === "object" && value !== null && STREAM_EMITTER_TAG in value;
+export function createStreamEmitter<T>(
+  uid: StreamUid,
+  onChunk: (streamUid: StreamUid, chunk: SerializableValue) => void,
+  onEnd: (streamUid: StreamUid) => void,
+): StreamEmitterHandle<T> {
+  return {
+    uid,
+    emit: (chunk: T) => onChunk(uid, chunk as SerializableValue),
+    end: () => onEnd(uid),
+  };
 }
 
 // ---- Callback inference ----
@@ -71,22 +56,27 @@ type InferServerCallback<C extends CallbackDef> =
           | Promise<StandardSchemaV1.InferOutput<TOutput>>
     : never;
 
+/** Client-side callback handle with mutate + queryOptions. */
+export interface ClientCallback<TInput, TOutput, TViewName extends string = string, TCallbackName extends string = string> {
+  readonly mutate: [TInput] extends [void]
+    ? () => Promise<TOutput>
+    : (input: TInput) => Promise<TOutput>;
+  readonly queryOptions: () => {
+    readonly mutationFn: [TInput] extends [void]
+      ? () => Promise<TOutput>
+      : (input: TInput) => Promise<TOutput>;
+    readonly mutationKey: readonly [TViewName, TCallbackName];
+  };
+}
+
 type InferClientCallback<C extends CallbackDef, TViewName extends string = string, TCallbackName extends string = string> =
   C extends CallbackDef<infer TInput, infer TOutput>
-    ? (StandardSchemaV1.InferInput<TInput> extends void
-        ? () => Promise<StandardSchemaV1.InferOutput<TOutput>>
-        : (
-            input: StandardSchemaV1.InferInput<TInput>,
-          ) => Promise<StandardSchemaV1.InferOutput<TOutput>>) & {
-        readonly queryOptions: () => {
-          readonly mutationFn: StandardSchemaV1.InferInput<TInput> extends void
-            ? () => Promise<StandardSchemaV1.InferOutput<TOutput>>
-            : (
-                input: StandardSchemaV1.InferInput<TInput>,
-              ) => Promise<StandardSchemaV1.InferOutput<TOutput>>;
-          readonly mutationKey: readonly [TViewName, TCallbackName];
-        };
-      }
+    ? ClientCallback<
+        StandardSchemaV1.InferInput<TInput>,
+        StandardSchemaV1.InferOutput<TOutput>,
+        TViewName,
+        TCallbackName
+      >
     : never;
 
 // ---- Stream inference ----

@@ -26,7 +26,8 @@ export type {
 // View builder API
 export { view, callback, stream, createViews } from "./view-builder";
 export type { ViewDef, CallbackDef, StreamDef, ViewDefs, ViewConfig, CallbackConfig } from "./view-builder";
-export type { InferServerProps, InferClientProps, StreamEmitter, StreamReceiver } from "./view-inference";
+export type { InferServerProps, InferClientProps, StreamEmitter, StreamReceiver, StreamEmitterHandle, ClientCallback } from "./view-inference";
+export { createStreamEmitter } from "./view-inference";
 export type { StandardSchemaV1 } from "./standard-schema";
 export { randomId } from "./id";
 export { ViewsRenderer } from "./ViewsRenderer";

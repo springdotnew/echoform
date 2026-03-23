@@ -1,32 +1,39 @@
-import type { View } from "@react-fullstack/fullstack";
+import { view, callback, createViews } from "@react-fullstack/fullstack";
+import { z } from "zod";
 
-export interface TodoItem {
-  readonly id: string;
-  readonly text: string;
-  readonly completed: boolean;
-}
+export const TodoApp = view("TodoApp", {
+  input: {
+    title: z.string(),
+    itemCount: z.number(),
+    completedCount: z.number(),
+  },
+});
 
-export type Views = {
-  readonly TodoApp: View<{
-    readonly title: string;
-    readonly itemCount: number;
-    readonly completedCount: number;
-  }>;
-  readonly TodoInput: View<{
-    readonly placeholder: string;
-    readonly onAdd: (text: string) => void;
-  }>;
-  readonly TodoList: View<Record<string, unknown>>;
-  readonly TodoItem: View<{
-    readonly id: string;
-    readonly text: string;
-    readonly completed: boolean;
-    readonly onToggle: () => void;
-    readonly onDelete: () => void;
-  }>;
-  readonly FilterButtons: View<{
-    readonly filter: "all" | "active" | "completed";
-    readonly onFilterChange: (filter: "all" | "active" | "completed") => void;
-    readonly onClearCompleted: () => void;
-  }>;
-};
+export const TodoInput = view("TodoInput", {
+  input: { placeholder: z.string() },
+  callbacks: { onAdd: callback({ input: z.string() }) },
+});
+
+export const TodoList = view("TodoList", {});
+
+export const TodoItem = view("TodoItem", {
+  input: {
+    id: z.string(),
+    text: z.string(),
+    completed: z.boolean(),
+  },
+  callbacks: {
+    onToggle: callback(),
+    onDelete: callback(),
+  },
+});
+
+export const FilterButtons = view("FilterButtons", {
+  input: { filter: z.enum(["all", "active", "completed"]) },
+  callbacks: {
+    onFilterChange: callback({ input: z.enum(["all", "active", "completed"]) }),
+    onClearCompleted: callback(),
+  },
+});
+
+export const views = createViews({ TodoApp, TodoInput, TodoList, TodoItem, FilterButtons });

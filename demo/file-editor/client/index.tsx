@@ -1,9 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { Client } from "@react-fullstack/fullstack/client";
-import type { ViewsToComponents } from "@react-fullstack/fullstack/client";
 import { useWebSocketTransport } from "@react-fullstack/fullstack-bun-ws-client";
-import type { Views } from "../shared/views";
 import {
   App,
   FileTree,
@@ -14,7 +12,7 @@ import {
   ErrorDisplay,
 } from "./components";
 
-const views: ViewsToComponents<Views> = {
+const components = {
   App,
   FileTree,
   TabBar,
@@ -43,7 +41,7 @@ function Root(): React.ReactElement {
     );
   }
 
-  return <Client transport={transport} views={views} requestViewTreeOnMount />;
+  return <Client transport={transport} views={components} requestViewTreeOnMount />;
 }
 
 const container = document.getElementById("root");

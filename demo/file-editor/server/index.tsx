@@ -10,13 +10,13 @@ import {
   getLanguageFromPath,
   validatePath,
 } from "./file-operations";
-import type { Views } from "../shared/views";
+import { views } from "../shared/views";
 import type { FileNode, OpenFile } from "../shared/types";
 
 const rootPath = path.resolve(process.argv[2] ?? ".");
 
 function FileEditorApp(): React.ReactElement | null {
-  const View = useViews<Views>();
+  const View = useViews(views);
 
   const [files, setFiles] = useState<FileNode | null>(null);
   const [openFiles, setOpenFiles] = useState<readonly OpenFile[]>([]);

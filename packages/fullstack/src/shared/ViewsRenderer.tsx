@@ -10,6 +10,34 @@ export interface RenderProps<TViews extends Readonly<Record<string, React.Compon
   readonly streamSubscribe?: (streamUid: StreamUid, listener: (chunk: SerializableValue) => void) => () => void;
 }
 
+function buildCallbackProp(
+  eventUid: EventUid,
+  viewName: string,
+  propName: string,
+  createEvent: (eventUid: EventUid, ...args: ReadonlyArray<SerializableValue>) => Promise<SerializableValue>,
+) {
+  const mutate = (...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
+    return createEvent(eventUid, ...args);
+  };
+
+  return {
+    mutate,
+    queryOptions: () => ({
+      mutationFn: mutate,
+      mutationKey: [viewName, propName] as const,
+    }),
+  };
+}
+
+function buildStreamProp(
+  streamUid: StreamUid,
+  streamSubscribe: (streamUid: StreamUid, listener: (chunk: SerializableValue) => void) => () => void,
+): StreamReceiver<SerializableValue> {
+  return {
+    subscribe: (listener) => streamSubscribe(streamUid, listener),
+  };
+}
+
 export function ViewsRenderer(props: RenderProps): ReactElement {
   const { viewsData, views, streamSubscribe } = props;
   const createEvent = props.createEvent ?? (async (): Promise<SerializableValue> => undefined);
@@ -27,28 +55,9 @@ export function ViewsRenderer(props: RenderProps): ReactElement {
       if (prop.type === "data") {
         builtProps[prop.name as string] = prop.data;
       } else if (prop.type === "event") {
-        const eventUid = prop.uid;
-        const callbackFn = (...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
-          return createEvent(eventUid, ...args);
-        };
-
-        // Attach queryOptions for TanStack Query compatibility
-        Object.defineProperty(callbackFn, "queryOptions", {
-          value: () => ({
-            mutationFn: callbackFn,
-            mutationKey: [view.name, prop.name] as const,
-          }),
-          enumerable: false,
-          configurable: false,
-        });
-
-        builtProps[prop.name as string] = callbackFn;
+        builtProps[prop.name as string] = buildCallbackProp(prop.uid, view.name, prop.name as string, createEvent);
       } else if (prop.type === "stream" && streamSubscribe) {
-        const streamUid = prop.uid;
-        const receiver: StreamReceiver<SerializableValue> = {
-          subscribe: (listener) => streamSubscribe(streamUid, listener),
-        };
-        builtProps[prop.name as string] = receiver;
+        builtProps[prop.name as string] = buildStreamProp(prop.uid, streamSubscribe);
       }
     }
 

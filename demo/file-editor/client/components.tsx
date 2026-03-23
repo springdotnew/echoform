@@ -1,15 +1,18 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import type { FileNode, OpenFile } from "../shared/types";
+import React, { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
+import type { InferClientProps } from "@react-fullstack/fullstack/client";
+import type {
+  App as AppDef,
+  FileTree as FileTreeDef,
+  TabBar as TabBarDef,
+  CodeEditor as CodeEditorDef,
+  ExcalidrawEditor as ExcalidrawEditorDef,
+  EmptyEditor as EmptyEditorDef,
+  ErrorDisplay as ErrorDisplayDef,
+} from "../shared/views";
 
 // --- App ---
 
-interface AppProps {
-  readonly rootPath: string;
-  readonly title: string;
-  readonly children?: ReactNode;
-}
-
-export function App({ rootPath, title, children }: AppProps): React.ReactElement {
+export function App({ rootPath, title, children }: InferClientProps<typeof AppDef>): React.ReactElement {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#1e1e1e" }}>
       <div style={{ padding: "8px 16px", background: "#252526", borderBottom: "1px solid #3c3c3c", fontSize: "14px", color: "#cccccc" }}>
@@ -22,14 +25,6 @@ export function App({ rootPath, title, children }: AppProps): React.ReactElement
 
 // --- FileTree ---
 
-interface FileTreeProps {
-  readonly files: FileNode | null;
-  readonly selectedPath: string | null;
-  readonly onSelect: (path: string) => void;
-  readonly onRefresh: () => void;
-  readonly children?: ReactNode;
-}
-
 function FileTreeNode({
   node,
   depth,
@@ -38,7 +33,7 @@ function FileTreeNode({
   onToggleExpand,
   onSelect,
 }: {
-  readonly node: FileNode;
+  readonly node: { path: string; name: string; isDirectory: boolean; children?: readonly any[] };
   readonly depth: number;
   readonly selectedPath: string | null;
   readonly expanded: ReadonlySet<string>;
@@ -87,7 +82,11 @@ function FileTreeNode({
   );
 }
 
-export function FileTree({ files, selectedPath, onSelect, onRefresh }: FileTreeProps): React.ReactElement {
+export function FileTree(props: InferClientProps<typeof FileTreeDef>): React.ReactElement {
+  const { files, selectedPath } = props;
+  const selectFile = props.onSelect.mutate;
+  const refreshTree = props.onRefresh.mutate;
+
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set([files?.path]));
 
   const toggleExpand = useCallback((path: string) => {
@@ -104,7 +103,7 @@ export function FileTree({ files, selectedPath, onSelect, onRefresh }: FileTreeP
       <div style={{ padding: "8px", borderBottom: "1px solid #3c3c3c", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: "11px", textTransform: "uppercase", color: "#888" }}>Explorer</span>
         <button
-          onClick={() => onRefresh()}
+          onClick={() => refreshTree()}
           style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: "14px" }}
         >
           &#x21bb;
@@ -117,7 +116,7 @@ export function FileTree({ files, selectedPath, onSelect, onRefresh }: FileTreeP
           selectedPath={selectedPath}
           expanded={expanded}
           onToggleExpand={toggleExpand}
-          onSelect={onSelect}
+          onSelect={selectFile}
         />
       )}
     </div>
@@ -126,15 +125,11 @@ export function FileTree({ files, selectedPath, onSelect, onRefresh }: FileTreeP
 
 // --- TabBar ---
 
-interface TabBarProps {
-  readonly openFiles: readonly OpenFile[];
-  readonly activeFilePath: string | null;
-  readonly onSelectTab: (path: string) => void;
-  readonly onCloseTab: (path: string) => void;
-  readonly children?: ReactNode;
-}
+export function TabBar(props: InferClientProps<typeof TabBarDef>): React.ReactElement {
+  const { openFiles, activeFilePath, children } = props;
+  const selectTab = props.onSelectTab.mutate;
+  const closeTab = props.onCloseTab.mutate;
 
-export function TabBar({ openFiles, activeFilePath, onSelectTab, onCloseTab, children }: TabBarProps): React.ReactElement {
   if (openFiles.length === 0) return <>{children}</>;
 
   return (
@@ -143,7 +138,7 @@ export function TabBar({ openFiles, activeFilePath, onSelectTab, onCloseTab, chi
         {openFiles.map((file) => (
           <div
             key={file.path}
-            onClick={() => onSelectTab(file.path)}
+            onClick={() => selectTab(file.path)}
             style={{
               padding: "8px 12px",
               cursor: "pointer",
@@ -158,7 +153,7 @@ export function TabBar({ openFiles, activeFilePath, onSelectTab, onCloseTab, chi
           >
             <span>{file.isDirty ? "\u25CF " : ""}{file.name}</span>
             <span
-              onClick={(e) => { e.stopPropagation(); onCloseTab(file.path); }}
+              onClick={(e) => { e.stopPropagation(); closeTab(file.path); }}
               style={{ opacity: 0.6, cursor: "pointer" }}
             >
               &times;
@@ -172,15 +167,6 @@ export function TabBar({ openFiles, activeFilePath, onSelectTab, onCloseTab, chi
 }
 
 // --- CodeEditor (Monaco) ---
-
-interface CodeEditorProps {
-  readonly path: string;
-  readonly content: string;
-  readonly language: string;
-  readonly onChange: (content: string) => void;
-  readonly onSave: () => void;
-  readonly children?: ReactNode;
-}
 
 declare global {
   interface Window {
@@ -214,7 +200,11 @@ interface MonacoEditor {
 
 const MONACO_CDN = "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs";
 
-export function CodeEditor({ path, content, language, onChange, onSave }: CodeEditorProps): React.ReactElement {
+export function CodeEditor(props: InferClientProps<typeof CodeEditorDef>): React.ReactElement {
+  const { path, content, language } = props;
+  const change = props.onChange.mutate;
+  const save = props.onSave.mutate;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<MonacoEditor | null>(null);
   const [ready, setReady] = useState(false);
@@ -249,12 +239,12 @@ export function CodeEditor({ path, content, language, onChange, onSave }: CodeEd
       });
 
       editorRef.current.onDidChangeModelContent(() => {
-        if (editorRef.current) onChange(editorRef.current.getValue());
+        if (editorRef.current) change(editorRef.current.getValue());
       });
 
       editorRef.current.addCommand(
         window.monaco.KeyMod.CtrlCmd | window.monaco.KeyCode.KeyS,
-        onSave,
+        () => save(),
       );
     }
 
@@ -284,30 +274,26 @@ export function CodeEditor({ path, content, language, onChange, onSave }: CodeEd
 
 // --- ExcalidrawEditor (JSON textarea fallback) ---
 
-interface ExcalidrawEditorProps {
-  readonly path: string;
-  readonly content: string;
-  readonly onChange: (content: string) => void;
-  readonly onSave: () => void;
-  readonly children?: ReactNode;
-}
+export function ExcalidrawEditor(props: InferClientProps<typeof ExcalidrawEditorDef>): React.ReactElement {
+  const { content } = props;
+  const change = props.onChange.mutate;
+  const save = props.onSave.mutate;
 
-export function ExcalidrawEditor({ content, onChange, onSave }: ExcalidrawEditorProps): React.ReactElement {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        onSave();
+        save();
       }
     },
-    [onSave],
+    [save],
   );
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <textarea
         value={content}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => change(e.target.value)}
         onKeyDown={handleKeyDown}
         style={{
           flex: 1,
@@ -327,12 +313,7 @@ export function ExcalidrawEditor({ content, onChange, onSave }: ExcalidrawEditor
 
 // --- EmptyEditor ---
 
-interface EmptyEditorProps {
-  readonly message: string;
-  readonly children?: ReactNode;
-}
-
-export function EmptyEditor({ message }: EmptyEditorProps): React.ReactElement {
+export function EmptyEditor({ message }: InferClientProps<typeof EmptyEditorDef>): React.ReactElement {
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: "14px" }}>
       {message}
@@ -342,13 +323,10 @@ export function EmptyEditor({ message }: EmptyEditorProps): React.ReactElement {
 
 // --- ErrorDisplay ---
 
-interface ErrorDisplayProps {
-  readonly error: string;
-  readonly onDismiss: () => void;
-  readonly children?: ReactNode;
-}
+export function ErrorDisplay(props: InferClientProps<typeof ErrorDisplayDef>): React.ReactElement {
+  const { error } = props;
+  const dismiss = props.onDismiss.mutate;
 
-export function ErrorDisplay({ error, onDismiss }: ErrorDisplayProps): React.ReactElement {
   return (
     <div
       style={{
@@ -367,7 +345,7 @@ export function ErrorDisplay({ error, onDismiss }: ErrorDisplayProps): React.Rea
     >
       <span>{error}</span>
       <button
-        onClick={() => onDismiss()}
+        onClick={() => dismiss()}
         style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "16px" }}
       >
         &times;

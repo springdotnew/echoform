@@ -1,12 +1,10 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { Client } from "@react-fullstack/fullstack/client";
-import type { ViewsToComponents } from "@react-fullstack/fullstack/client";
 import { useWebSocketTransport } from "@react-fullstack/fullstack-bun-ws-client";
-import type { Views } from "../shared/views";
 import { TodoApp, TodoInput, TodoList, TodoItem, FilterButtons } from "./components";
 
-const views: ViewsToComponents<Views> = {
+const components = {
   TodoApp,
   TodoInput,
   TodoList,
@@ -35,7 +33,7 @@ function App(): React.ReactElement {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f0f0f0", padding: "20px" }}>
-      <Client transport={transport} views={views} requestViewTreeOnMount />
+      <Client transport={transport} views={components} requestViewTreeOnMount />
     </div>
   );
 }

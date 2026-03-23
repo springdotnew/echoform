@@ -2,14 +2,20 @@ import React, { useState, useCallback } from "react";
 import { Render } from "@react-fullstack/render";
 import { Server, useViews } from "@react-fullstack/fullstack/server";
 import { createBunWebSocketServer } from "@react-fullstack/fullstack-bun-ws-server";
-import type { Views, TodoItem } from "../shared/views";
+import { views } from "../shared/views";
+
+interface TodoItem {
+  readonly id: string;
+  readonly text: string;
+  readonly completed: boolean;
+}
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
 function TodoApp(): React.ReactElement | null {
-  const View = useViews<Views>();
+  const View = useViews(views);
 
   const [todos, setTodos] = useState<ReadonlyArray<TodoItem>>([
     { id: generateId(), text: "Learn react-fullstack", completed: false },
@@ -18,7 +24,7 @@ function TodoApp(): React.ReactElement | null {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
 
   const addTodo = useCallback((text: string) => {
-    if (text.trim()) {
+    if (typeof text === "string" && text.trim()) {
       setTodos((prev) => [
         ...prev,
         { id: generateId(), text: text.trim(), completed: false },

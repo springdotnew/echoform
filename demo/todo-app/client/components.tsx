@@ -1,13 +1,8 @@
 import React, { useState, type ReactNode } from "react";
+import type { InferClientProps } from "@react-fullstack/fullstack/client";
+import type { TodoApp as TodoAppDef, TodoInput as TodoInputDef, TodoItem as TodoItemDef, FilterButtons as FilterButtonsDef } from "../shared/views";
 
-interface TodoAppProps {
-  title: string;
-  itemCount: number;
-  completedCount: number;
-  children?: ReactNode;
-}
-
-export function TodoApp({ title, itemCount, completedCount, children }: TodoAppProps): React.ReactElement {
+export function TodoApp({ title, itemCount, completedCount, children }: InferClientProps<typeof TodoAppDef>): React.ReactElement {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -21,18 +16,13 @@ export function TodoApp({ title, itemCount, completedCount, children }: TodoAppP
   );
 }
 
-interface TodoInputProps {
-  placeholder: string;
-  onAdd: (text: string) => void;
-}
-
-export function TodoInput({ placeholder, onAdd }: TodoInputProps): React.ReactElement {
+export function TodoInput({ placeholder, onAdd }: InferClientProps<typeof TodoInputDef>): React.ReactElement {
   const [value, setValue] = useState("");
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     if (value.trim()) {
-      onAdd(value);
+      onAdd.mutate(value);
       setValue("");
     }
   };
@@ -61,49 +51,35 @@ export function TodoList({ children }: TodoListProps): React.ReactElement {
   return <ul style={styles.list}>{children}</ul>;
 }
 
-interface TodoItemProps {
-  id: string;
-  text: string;
-  completed: boolean;
-  onToggle: () => void;
-  onDelete: () => void;
-}
-
-export function TodoItem({ text, completed, onToggle, onDelete }: TodoItemProps): React.ReactElement {
+export function TodoItem({ text, completed, onToggle, onDelete }: InferClientProps<typeof TodoItemDef>): React.ReactElement {
   return (
     <li style={styles.item}>
       <label style={styles.itemLabel}>
         <input
           type="checkbox"
           checked={completed}
-          onChange={() => onToggle()}
+          onChange={() => onToggle.mutate()}
           style={styles.checkbox}
         />
         <span style={{ ...styles.itemText, ...(completed ? styles.completed : {}) }}>
           {text}
         </span>
       </label>
-      <button onClick={() => onDelete()} style={styles.deleteButton}>
+      <button onClick={() => onDelete.mutate()} style={styles.deleteButton}>
         Delete
       </button>
     </li>
   );
 }
 
-interface FilterButtonsProps {
-  filter: "all" | "active" | "completed";
-  onFilterChange: (filter: "all" | "active" | "completed") => void;
-  onClearCompleted: () => void;
-}
-
-export function FilterButtons({ filter, onFilterChange, onClearCompleted }: FilterButtonsProps): React.ReactElement {
+export function FilterButtons({ filter, onFilterChange, onClearCompleted }: InferClientProps<typeof FilterButtonsDef>): React.ReactElement {
   return (
     <footer style={styles.footer}>
       <div style={styles.filters}>
         {(["all", "active", "completed"] as const).map((f) => (
           <button
             key={f}
-            onClick={() => onFilterChange(f)}
+            onClick={() => onFilterChange.mutate(f)}
             style={{
               ...styles.filterButton,
               ...(filter === f ? styles.activeFilter : {}),
@@ -113,7 +89,7 @@ export function FilterButtons({ filter, onFilterChange, onClearCompleted }: Filt
           </button>
         ))}
       </div>
-      <button onClick={() => onClearCompleted()} style={styles.clearButton}>
+      <button onClick={() => onClearCompleted.mutate()} style={styles.clearButton}>
         Clear Completed
       </button>
     </footer>

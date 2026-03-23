@@ -1,15 +1,23 @@
 import React, { useContext, useRef } from "react";
-import type { Views, ViewProps } from "../shared/types";
+import type { ViewProps } from "../shared/types";
 import { AppContext } from "./contexts";
-import type { ViewsToServerComponents } from "./types";
 import type { ViewDef, ViewDefs } from "../shared/view-builder";
 import type { InferServerProps, StreamEmitter } from "../shared/view-inference";
-import { StreamEmitterImpl } from "../shared/view-inference";
-import type { StreamUid } from "../shared/branded.types";
+import { createStreamEmitter } from "../shared/view-inference";
 import { createStreamUid } from "../shared/branded.types";
 import { randomId } from "../shared/id";
 import type { StandardSchemaV1 } from "../shared/standard-schema";
 import ViewComponent from "./ViewComponent";
+
+// ---- Module-level ViewDef registry ----
+
+const viewDefRegistry = new Map<string, ViewDef>();
+
+export function getViewDef(name: string): ViewDef | undefined {
+  return viewDefRegistry.get(name);
+}
+
+// ---- View component cache ----
 
 type ViewComponentCache = Readonly<Record<string, React.ComponentType<ViewProps>>>;
 
@@ -39,19 +47,23 @@ const viewProxy = new Proxy({} as ViewComponentCache, {
   }
 });
 
+// ---- Hooks ----
+
 /**
  * Get typed view components for rendering on the server.
  *
  * ```ts
- * // New API (with ViewDefs)
  * const View = useViews(views);
- *
- * // Legacy API (with type parameter)
- * const View = useViews<MyViews>();
  * ```
  */
 export function useViews<V extends ViewDefs>(_viewDefs?: V): ViewDefsToServerComponents<V> | null {
   const app = useContext(AppContext);
+
+  if (_viewDefs) {
+    for (const [name, def] of Object.entries(_viewDefs)) {
+      viewDefRegistry.set(name, def);
+    }
+  }
 
   if (!app) {
     return null;
@@ -69,18 +81,18 @@ export function useViews<V extends ViewDefs>(_viewDefs?: V): ViewDefsToServerCom
  * ```
  */
 export function useStream<
-  V extends ViewDef<string, Record<string, StandardSchemaV1>, Record<string, never>, Record<string, import("../shared/view-builder").StreamDef>>,
+  V extends ViewDef,
   K extends keyof V["streams"] & string,
 >(
   _viewDef: V,
   _streamName: K,
 ): StreamEmitter<StandardSchemaV1.InferInput<V["streams"][K]["chunk"]>> {
   const app = useContext(AppContext);
-  const emitterRef = useRef<StreamEmitterImpl | null>(null);
+  const emitterRef = useRef<ReturnType<typeof createStreamEmitter> | null>(null);
 
   if (!emitterRef.current) {
     const uid = createStreamUid(randomId());
-    emitterRef.current = new StreamEmitterImpl(
+    emitterRef.current = createStreamEmitter(
       uid,
       (streamUid, chunk) => app?.broadcastStreamChunk(streamUid, chunk),
       (streamUid) => app?.broadcastStreamEnd(streamUid),
