@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from "react";
 import * as path from "path";
-import { Render } from "@react-fullstack/render";
-import { Server, useViews } from "@react-fullstack/fullstack/server";
-import { createBunWebSocketServer } from "@react-fullstack/fullstack-bun-ws-server";
+import { Render } from "@play/echoform-render";
+import { Server, useViews } from "@play/echoform/server";
+import { createBunWebSocketServer } from "@play/echoform-bun-ws-server";
 import {
   listDirectory,
   readFile,

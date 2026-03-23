@@ -5,7 +5,7 @@ import "@xterm/xterm/css/xterm.css";
 import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps, type DockviewApi } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
 import { Play, Square, RotateCw } from "lucide-react";
-import type { InferClientProps } from "@react-fullstack/fullstack/client";
+import type { InferClientProps } from "@play/echoform/client";
 import type {
   DevServerApp as DevServerAppDef,
   ProcessTerminal as ProcessTerminalDef,

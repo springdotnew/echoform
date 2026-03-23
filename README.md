@@ -5,9 +5,9 @@ A framework for building fullstack React applications with server-driven UI, typ
 ## Quick Start
 
 ```bash
-bun add @react-fullstack/fullstack @react-fullstack/render
-bun add @react-fullstack/fullstack-bun-ws-server  # server
-bun add @react-fullstack/fullstack-bun-ws-client   # client
+bun add @play/echoform @play/echoform-render
+bun add @play/echoform-bun-ws-server  # server
+bun add @play/echoform-bun-ws-client   # client
 bun add zod  # or valibot, arktype — any Standard Schema library
 ```
 
@@ -17,7 +17,7 @@ Views are the shared contract between server and client. Each view declares its 
 
 ```typescript
 // shared/views.ts
-import { view, callback, stream, createViews } from "@react-fullstack/fullstack";
+import { view, callback, stream, createViews } from "@play/echoform";
 import { z } from "zod";
 
 export const TodoApp = view("TodoApp", {
@@ -48,9 +48,9 @@ The server renders React components that map to views. State lives on the server
 
 ```typescript
 // server/index.tsx
-import { Render } from "@react-fullstack/render";
-import { Server, useViews, useStream } from "@react-fullstack/fullstack/server";
-import { createBunWebSocketServer } from "@react-fullstack/fullstack-bun-ws-server";
+import { Render } from "@play/echoform-render";
+import { Server, useViews, useStream } from "@play/echoform/server";
+import { createBunWebSocketServer } from "@play/echoform-bun-ws-server";
 import { views, Terminal } from "../shared/views";
 
 function App() {
@@ -95,7 +95,7 @@ Client components receive typed props with `.mutate()` for callbacks and `.subsc
 
 ```typescript
 // client/components.tsx
-import type { InferClientProps } from "@react-fullstack/fullstack/client";
+import type { InferClientProps } from "@play/echoform/client";
 import { Terminal as TerminalDef } from "../shared/views";
 
 function Terminal(props: InferClientProps<typeof TerminalDef>) {
@@ -122,8 +122,8 @@ function Terminal(props: InferClientProps<typeof TerminalDef>) {
 
 ```typescript
 // client/index.tsx
-import { Client } from "@react-fullstack/fullstack/client";
-import { useWebSocketTransport } from "@react-fullstack/fullstack-bun-ws-client";
+import { Client } from "@play/echoform/client";
+import { useWebSocketTransport } from "@play/echoform-bun-ws-client";
 
 function App() {
   const { transport, error } = useWebSocketTransport("ws://localhost:4201/ws");
@@ -134,7 +134,7 @@ function App() {
 
 ## API
 
-### View Builders (`@react-fullstack/fullstack`)
+### View Builders (`@play/echoform`)
 
 | Function | Description |
 |----------|-------------|
@@ -143,7 +143,7 @@ function App() {
 | `stream(schema)` | Define a server→client stream with chunk schema |
 | `createViews(record)` | Compose view definitions into a registry |
 
-### Server (`@react-fullstack/fullstack/server`)
+### Server (`@play/echoform/server`)
 
 | Export | Description |
 |--------|-------------|
@@ -151,7 +151,7 @@ function App() {
 | `useStream(viewDef, name)` | Create a `StreamEmitter` for pushing data to clients |
 | `Server` | Root component that manages client connections |
 
-### Client (`@react-fullstack/fullstack/client`)
+### Client (`@play/echoform/client`)
 
 | Export | Description |
 |--------|-------------|
@@ -171,7 +171,7 @@ callback.queryOptions()       // { mutationFn, mutationKey } for useMutation
 stream.subscribe(listener)    // Returns unsubscribe function
 ```
 
-### Transport (`@react-fullstack/fullstack-bun-ws-client`)
+### Transport (`@play/echoform-bun-ws-client`)
 
 ```typescript
 const { transport, error, isConnected } = useWebSocketTransport(url);
@@ -179,15 +179,15 @@ const { transport, error, isConnected } = useWebSocketTransport(url);
 
 ## Packages
 
-- [@react-fullstack/fullstack](packages/fullstack) — core framework
-- [@react-fullstack/render](packages/react-render-null) — server-side React renderer
+- [@play/echoform](packages/fullstack) — core framework
+- [@play/echoform-render](packages/react-render-null) — server-side React renderer
 
 ## Transport Plugins
 
-- [@react-fullstack/fullstack-bun-ws-server](plugins/fullstack/bun-ws-server) — Bun WebSocket server
-- [@react-fullstack/fullstack-bun-ws-client](plugins/fullstack/bun-ws-client) — WebSocket client hook
-- [@react-fullstack/fullstack-socket-server](plugins/fullstack/socket-server) — Socket.io server
-- [@react-fullstack/fullstack-socket-client](plugins/fullstack/socket-client) — Socket.io client
+- [@play/echoform-bun-ws-server](plugins/fullstack/bun-ws-server) — Bun WebSocket server
+- [@play/echoform-bun-ws-client](plugins/fullstack/bun-ws-client) — WebSocket client hook
+- [@play/echoform-socket-server](plugins/fullstack/socket-server) — Socket.io server
+- [@play/echoform-socket-client](plugins/fullstack/socket-client) — Socket.io client
 
 ## Demos
 

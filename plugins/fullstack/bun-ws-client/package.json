@@ -1,7 +1,7 @@
 {
-  "name": "@react-fullstack/fullstack-bun-ws-client",
+  "name": "@play/echoform-bun-ws-client",
   "version": "0.3.1-alpha.8",
-  "description": "WebSocket client transport for react-fullstack (works with Bun server)",
+  "description": "WebSocket client transport for echoform (works with Bun server)",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -12,12 +12,12 @@
     "build": "tsgo -p ."
   },
   "peerDependencies": {
-    "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
+    "@play/echoform": ">=0.3.1-alpha.8",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
   },
   "devDependencies": {
-    "@react-fullstack/fullstack": "workspace:*",
+    "@play/echoform": "workspace:*",
     "@types/react": "19.0.2",
     "@types/react-dom": "19.0.2"
   },

@@ -1,4 +1,4 @@
-import { view, callback, createViews, passthrough } from "@react-fullstack/fullstack";
+import { view, callback, createViews, passthrough } from "@play/echoform";
 import { z } from "zod";
 import type { FileNode, OpenFile } from "./types";
 

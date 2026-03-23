@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Client as ClientBase } from "@react-fullstack/fullstack/client";
+import { Client as ClientBase } from "@play/echoform/client";
 import { connect, type Socket, type ManagerOptions, type SocketOptions } from "socket.io-client";
-import type { Transport } from "@react-fullstack/fullstack/shared";
-import { emit } from "@react-fullstack/fullstack/shared";
+import type { Transport } from "@play/echoform/shared";
+import { emit } from "@play/echoform/shared";
 
 interface Props<ViewsInterface extends Record<string, unknown> = Record<string, unknown>> {
   readonly port: number;

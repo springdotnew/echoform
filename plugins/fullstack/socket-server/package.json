@@ -1,7 +1,7 @@
 {
-  "name": "@react-fullstack/fullstack-socket-server",
+  "name": "@play/echoform-socket-server",
   "version": "0.3.1-alpha.8",
-  "description": "Socket.IO server transport for react-fullstack",
+  "description": "Socket.IO server transport for echoform",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -12,7 +12,7 @@
     "build": "tsgo -p ."
   },
   "peerDependencies": {
-    "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
+    "@play/echoform": ">=0.3.1-alpha.8",
     "react": ">=19.0.0"
   },
   "dependencies": {
@@ -21,7 +21,7 @@
     "utf-8-validate": "5.0.10"
   },
   "devDependencies": {
-    "@react-fullstack/fullstack": "workspace:*",
+    "@play/echoform": "workspace:*",
     "@types/react": "19.0.2",
     "@types/react-dom": "19.0.2",
     "@types/socket.io": "2.1.13"

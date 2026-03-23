@@ -3,6 +3,8 @@ import type { Transport } from "../shared/types";
 import { ViewsRenderer } from "../shared/ViewsRenderer";
 import App, { type AppHandle } from "./App";
 
+type AnyTransport = Transport<Record<string | number, unknown>>;
+
 interface DisconnectEvent {
   readonly disconnect: void;
 }
@@ -49,22 +51,19 @@ export function Server(props: ServerProps): React.ReactElement {
       if (!appRef.current) return;
 
       if (singleInstance) {
-        appRef.current.addClient(clientTransport);
+        appRef.current.addClient(clientTransport as AnyTransport);
       } else {
-        setClients((prevClients) => ({
-          ...prevClients,
-          [clientTransport.id]: clientTransport,
-        }));
+        setClients((prev) => ({ ...prev, [clientTransport.id]: clientTransport }));
       }
 
       clientTransport.on("disconnect", () => {
         if (!appRef.current) return;
 
         if (singleInstance) {
-          appRef.current.removeClient(clientTransport);
+          appRef.current.removeClient(clientTransport as AnyTransport);
         } else {
-          setClients((prevClients) => {
-            const { [clientTransport.id]: _removed, ...rest } = prevClients;
+          setClients((prev) => {
+            const { [clientTransport.id]: _removed, ...rest } = prev;
             return rest;
           });
         }
@@ -78,7 +77,7 @@ export function Server(props: ServerProps): React.ReactElement {
     <>
       <App
         paused={!singleInstance}
-        transport={transport as unknown as Transport<Record<string | number, unknown>>}
+        transport={transport as unknown as AnyTransport}
         transportIsClient={false}
         ref={(handle) => {
           (appRef as React.MutableRefObject<AppHandle | null>).current = handle;
@@ -92,12 +91,10 @@ export function Server(props: ServerProps): React.ReactElement {
       {!singleInstance &&
         clientIds.map((id) => {
           const clientTransport = clients[id];
-          if (!clientTransport) {
-            return null;
-          }
+          if (!clientTransport) return null;
           return (
             <App
-              transport={clientTransport as unknown as Transport<Record<string | number, unknown>>}
+              transport={clientTransport as unknown as AnyTransport}
               transportIsClient
               key={id}
               paused={false}

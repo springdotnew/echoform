@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { Client } from "@react-fullstack/fullstack/client";
-import { useWebSocketTransport } from "@react-fullstack/fullstack-bun-ws-client";
+import { Client } from "@play/echoform/client";
+import { useWebSocketTransport } from "@play/echoform-bun-ws-client";
 import {
   App,
   FileTree,

@@ -74,8 +74,10 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
     handlerSet.add(handler as (data: unknown) => void);
 
     return () => {
-      handlerSet!.delete(handler as (data: unknown) => void);
-      if (handlerSet!.size === 0) {
+      const set = appHandlers.get(eventName);
+      if (!set) return;
+      set.delete(handler as (data: unknown) => void);
+      if (set.size === 0) {
         appHandlers.delete(eventName);
       }
     };

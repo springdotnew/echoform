@@ -117,8 +117,8 @@ export function createWebSocketTransport<TEvents extends Record<string, unknown>
               handler(data);
             }
           }
-        } catch {
-          // Invalid JSON
+        } catch (err) {
+          console.warn("[echoform] Failed to parse JSON message:", err);
         }
       } else {
         // Binary message → dispatch to __bin__ handlers

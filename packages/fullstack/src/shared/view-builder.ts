@@ -76,7 +76,7 @@ export type ViewDefs = Readonly<Record<string, ViewDef>>;
 const voidSchema: StandardSchemaV1<void> = {
   "~standard": {
     version: 1,
-    vendor: "react-fullstack",
+    vendor: "echoform",
     validate: () => ({ value: undefined as void }),
     types: {
       input: undefined as void,
@@ -90,7 +90,7 @@ const voidSchema: StandardSchemaV1<void> = {
  * Useful for complex types that can't be expressed with zod/valibot alone.
  *
  * ```ts
- * import { passthrough } from "@react-fullstack/fullstack";
+ * import { passthrough } from "@play/echoform";
  * const MyView = view("MyView", { input: { data: passthrough<MyType>() } });
  * ```
  */

@@ -32,7 +32,7 @@ export function validateSchema(
     result = schema["~standard"].validate(value);
   } catch (err) {
     console.warn(
-      `[react-fullstack] Schema validation threw an error (${context}):`,
+      `[echoform] Schema validation threw an error (${context}):`,
       err,
     );
     return;
@@ -42,19 +42,19 @@ export function validateSchema(
     result.then((resolved) => {
       if ("issues" in resolved && resolved.issues) {
         console.warn(
-          `[react-fullstack] Schema validation failed (${context}):\n${formatIssues(resolved.issues)}`,
+          `[echoform] Schema validation failed (${context}):\n${formatIssues(resolved.issues)}`,
         );
       }
     }).catch((err) => {
       console.warn(
-        `[react-fullstack] Async schema validation threw an error (${context}):`,
+        `[echoform] Async schema validation threw an error (${context}):`,
         err,
       );
     });
   } else {
     if ("issues" in result && result.issues) {
       console.warn(
-        `[react-fullstack] Schema validation failed (${context}):\n${formatIssues(result.issues)}`,
+        `[echoform] Schema validation failed (${context}):\n${formatIssues(result.issues)}`,
       );
     }
   }

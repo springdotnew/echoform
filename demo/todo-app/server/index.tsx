@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
-import { Render } from "@react-fullstack/render";
-import { Server, useViews } from "@react-fullstack/fullstack/server";
-import { createBunWebSocketServer } from "@react-fullstack/fullstack-bun-ws-server";
+import { Render } from "@play/echoform-render";
+import { Server, useViews } from "@play/echoform/server";
+import { createBunWebSocketServer } from "@play/echoform-bun-ws-server";
 import { views } from "../shared/views";
 
 interface TodoItem {
@@ -18,7 +18,7 @@ function TodoApp(): React.ReactElement | null {
   const View = useViews(views);
 
   const [todos, setTodos] = useState<ReadonlyArray<TodoItem>>([
-    { id: generateId(), text: "Learn react-fullstack", completed: false },
+    { id: generateId(), text: "Learn echoform", completed: false },
     { id: generateId(), text: "Build something awesome", completed: false },
   ]);
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");

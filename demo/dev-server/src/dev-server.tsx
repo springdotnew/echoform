@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Render } from "@react-fullstack/render";
-import { Server, useViews, useStream } from "@react-fullstack/fullstack/server";
-import { createBunWebSocketServer } from "@react-fullstack/fullstack-bun-ws-server";
+import { Render } from "@play/echoform-render";
+import { Server, useViews, useStream } from "@play/echoform/server";
+import { createBunWebSocketServer } from "@play/echoform-bun-ws-server";
 import { views, ProcessTerminal } from "../shared/views";
 import { ManagedProcess } from "./process";
 import type { DevServerConfig, ProcessStatus } from "./types";

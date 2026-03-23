@@ -17,10 +17,10 @@
       "name": "@demo/dev-server",
       "version": "1.0.0",
       "dependencies": {
-        "@react-fullstack/fullstack": "workspace:*",
-        "@react-fullstack/fullstack-bun-ws-client": "workspace:*",
-        "@react-fullstack/fullstack-bun-ws-server": "workspace:*",
-        "@react-fullstack/render": "workspace:*",
+        "@play/echoform": "workspace:*",
+        "@play/echoform-bun-ws-client": "workspace:*",
+        "@play/echoform-bun-ws-server": "workspace:*",
+        "@play/echoform-render": "workspace:*",
         "@xterm/addon-fit": "^0.10.0",
         "@xterm/xterm": "^5.5.0",
         "dockview-react": "^5.1.0",
@@ -44,10 +44,10 @@
       "name": "file-editor-demo",
       "version": "1.0.0",
       "dependencies": {
-        "@react-fullstack/fullstack": "workspace:*",
-        "@react-fullstack/fullstack-bun-ws-client": "workspace:*",
-        "@react-fullstack/fullstack-bun-ws-server": "workspace:*",
-        "@react-fullstack/render": "workspace:*",
+        "@play/echoform": "workspace:*",
+        "@play/echoform-bun-ws-client": "workspace:*",
+        "@play/echoform-bun-ws-server": "workspace:*",
+        "@play/echoform-render": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "zod": "^4.3.6",
@@ -67,10 +67,10 @@
       "name": "todo-app-demo",
       "version": "1.0.0",
       "dependencies": {
-        "@react-fullstack/fullstack": "workspace:*",
-        "@react-fullstack/fullstack-bun-ws-client": "workspace:*",
-        "@react-fullstack/fullstack-bun-ws-server": "workspace:*",
-        "@react-fullstack/render": "workspace:*",
+        "@play/echoform": "workspace:*",
+        "@play/echoform-bun-ws-client": "workspace:*",
+        "@play/echoform-bun-ws-server": "workspace:*",
+        "@play/echoform-render": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "zod": "^4.3.6",
@@ -87,7 +87,7 @@
       },
     },
     "packages/fullstack": {
-      "name": "@react-fullstack/fullstack",
+      "name": "@play/echoform",
       "version": "0.3.1-alpha.8",
       "dependencies": {
         "crypto-random-string": "5.0.0",
@@ -102,7 +102,7 @@
       },
     },
     "packages/react-render-null": {
-      "name": "@react-fullstack/render",
+      "name": "@play/echoform-render",
       "version": "0.3.1-alpha.8",
       "dependencies": {
         "react-reconciler": "0.31.0",
@@ -114,56 +114,56 @@
         "react": "19.0.0",
       },
       "peerDependencies": {
-        "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
+        "@play/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
       },
     },
     "plugins/fullstack/bun-ws-client": {
-      "name": "@react-fullstack/fullstack-bun-ws-client",
+      "name": "@play/echoform-bun-ws-client",
       "version": "0.3.1-alpha.8",
       "devDependencies": {
-        "@react-fullstack/fullstack": "workspace:*",
+        "@play/echoform": "workspace:*",
         "@types/react": "19.0.2",
         "@types/react-dom": "19.0.2",
       },
       "peerDependencies": {
-        "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
+        "@play/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
       },
     },
     "plugins/fullstack/bun-ws-server": {
-      "name": "@react-fullstack/fullstack-bun-ws-server",
+      "name": "@play/echoform-bun-ws-server",
       "version": "0.3.1-alpha.8",
       "devDependencies": {
-        "@react-fullstack/fullstack": "workspace:*",
+        "@play/echoform": "workspace:*",
         "@types/react": "19.0.2",
       },
       "peerDependencies": {
-        "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
+        "@play/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
       },
     },
     "plugins/fullstack/socket-client": {
-      "name": "@react-fullstack/fullstack-socket-client",
+      "name": "@play/echoform-socket-client",
       "version": "0.3.1-alpha.8",
       "dependencies": {
         "socket.io-client": "4.5.3",
       },
       "devDependencies": {
-        "@react-fullstack/fullstack": "workspace:*",
+        "@play/echoform": "workspace:*",
         "@types/react": "19.0.2",
         "@types/react-dom": "19.0.2",
         "@types/socket.io-client": "1.4.36",
       },
       "peerDependencies": {
-        "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
+        "@play/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
       },
     },
     "plugins/fullstack/socket-server": {
-      "name": "@react-fullstack/fullstack-socket-server",
+      "name": "@play/echoform-socket-server",
       "version": "0.3.1-alpha.8",
       "dependencies": {
         "bufferutil": "4.0.7",
@@ -171,13 +171,13 @@
         "utf-8-validate": "5.0.10",
       },
       "devDependencies": {
-        "@react-fullstack/fullstack": "workspace:*",
+        "@play/echoform": "workspace:*",
         "@types/react": "19.0.2",
         "@types/react-dom": "19.0.2",
         "@types/socket.io": "2.1.13",
       },
       "peerDependencies": {
-        "@react-fullstack/fullstack": ">=0.3.1-alpha.8",
+        "@play/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
       },
     },
@@ -397,19 +397,19 @@
 
     "@oxlint/win32-x64": ["@oxlint/win32-x64@0.13.2", "", { "os": "win32", "cpu": "x64" }, "sha512-G8FM8RTJRMt2dPRJ/TXhqIEu9k00vRAoh3DSV2r3o+jD8FZDBZXOgoDn2D0F9HqgFLEOVTxpfalmWntyk2hmyw=="],
 
+    "@play/echoform": ["@play/echoform@workspace:packages/fullstack"],
+
+    "@play/echoform-bun-ws-client": ["@play/echoform-bun-ws-client@workspace:plugins/fullstack/bun-ws-client"],
+
+    "@play/echoform-bun-ws-server": ["@play/echoform-bun-ws-server@workspace:plugins/fullstack/bun-ws-server"],
+
+    "@play/echoform-render": ["@play/echoform-render@workspace:packages/react-render-null"],
+
+    "@play/echoform-socket-client": ["@play/echoform-socket-client@workspace:plugins/fullstack/socket-client"],
+
+    "@play/echoform-socket-server": ["@play/echoform-socket-server@workspace:plugins/fullstack/socket-server"],
+
     "@playwright/test": ["@playwright/test@1.58.2", "", { "dependencies": { "playwright": "1.58.2" }, "bin": { "playwright": "cli.js" } }, "sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA=="],
-
-    "@react-fullstack/fullstack": ["@react-fullstack/fullstack@workspace:packages/fullstack"],
-
-    "@react-fullstack/fullstack-bun-ws-client": ["@react-fullstack/fullstack-bun-ws-client@workspace:plugins/fullstack/bun-ws-client"],
-
-    "@react-fullstack/fullstack-bun-ws-server": ["@react-fullstack/fullstack-bun-ws-server@workspace:plugins/fullstack/bun-ws-server"],
-
-    "@react-fullstack/fullstack-socket-client": ["@react-fullstack/fullstack-socket-client@workspace:plugins/fullstack/socket-client"],
-
-    "@react-fullstack/fullstack-socket-server": ["@react-fullstack/fullstack-socket-server@workspace:plugins/fullstack/socket-server"],
-
-    "@react-fullstack/render": ["@react-fullstack/render@workspace:packages/react-render-null"],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-beta.27", "", {}, "sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA=="],
 

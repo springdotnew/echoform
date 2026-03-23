@@ -11,10 +11,10 @@
     "test": "playwright test"
   },
   "dependencies": {
-    "@react-fullstack/fullstack": "workspace:*",
-    "@react-fullstack/fullstack-bun-ws-client": "workspace:*",
-    "@react-fullstack/fullstack-bun-ws-server": "workspace:*",
-    "@react-fullstack/render": "workspace:*",
+    "@play/echoform": "workspace:*",
+    "@play/echoform-bun-ws-client": "workspace:*",
+    "@play/echoform-bun-ws-server": "workspace:*",
+    "@play/echoform-render": "workspace:*",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "dockview-react": "^5.1.0",

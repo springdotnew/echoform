@@ -1,4 +1,4 @@
-# @react-fullstack/fullstack-socket-client
+# @play/echoform-socket-client
 
 ## 0.3.1-alpha.8
 
@@ -6,7 +6,7 @@
 
 - .
 - Updated dependencies
-  - @react-fullstack/fullstack@0.3.1-alpha.8
+  - @play/echoform@0.3.1-alpha.8
 
 ## 0.3.1-alpha.7
 
@@ -14,7 +14,7 @@
 
 - d0febb8: add support for handling ssr requests
 - Updated dependencies [d0febb8]
-  - @react-fullstack/fullstack@0.3.1-alpha.7
+  - @play/echoform@0.3.1-alpha.7
 
 ## 0.3.1-alpha.6
 
@@ -22,7 +22,7 @@
 
 - fix single instance duble event bug
 - Updated dependencies
-  - @react-fullstack/fullstack@0.3.1-alpha.6
+  - @play/echoform@0.3.1-alpha.6
 
 ## 0.3.1-alpha.5
 
@@ -30,4 +30,4 @@
 
 - pre release alpha
 - Updated dependencies
-  - @react-fullstack/fullstack@0.3.1-alpha.5
+  - @play/echoform@0.3.1-alpha.5

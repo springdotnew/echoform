@@ -1,5 +1,5 @@
-import type { Transport } from "@react-fullstack/fullstack/shared";
-import { createWebSocketTransport } from "@react-fullstack/fullstack/shared";
+import type { Transport } from "@play/echoform/shared";
+import { createWebSocketTransport } from "@play/echoform/shared";
 
 interface ClientData {
   readonly id: string;
@@ -99,7 +99,7 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
           });
         }
 
-        return new Response("react-fullstack Bun WebSocket Server", {
+        return new Response("echoform Bun WebSocket Server", {
           headers: { "Access-Control-Allow-Origin": "*" },
         });
       },

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
-import type { InferClientProps } from "@react-fullstack/fullstack/client";
+import type { InferClientProps } from "@play/echoform/client";
 import type {
   App as AppDef,
   FileTree as FileTreeDef,

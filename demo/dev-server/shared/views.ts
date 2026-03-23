@@ -1,4 +1,4 @@
-import { view, callback, stream, createViews } from "@react-fullstack/fullstack";
+import { view, callback, stream, createViews } from "@play/echoform";
 import { z } from "zod";
 
 const processStatus = z.enum(["idle", "running", "stopped", "failed"]);

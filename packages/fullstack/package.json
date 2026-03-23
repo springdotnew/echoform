@@ -1,5 +1,5 @@
 {
-  "name": "@react-fullstack/fullstack",
+  "name": "@play/echoform",
   "version": "0.3.1-alpha.8",
   "description": "run your react app logic on the server",
   "type": "module",
@@ -37,10 +37,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shmuelhizmi/react-fullstack.git"
+    "url": "git+https://github.com/shmuelhizmi/echoform.git"
   },
   "bugs": {
-    "url": "https://github.com/shmuelhizmi/react-fullstack/issues"
+    "url": "https://github.com/shmuelhizmi/echoform/issues"
   },
-  "homepage": "https://github.com/shmuelhizmi/react-fullstack/tree/master/packages/fullstack#readme"
+  "homepage": "https://github.com/shmuelhizmi/echoform/tree/master/packages/fullstack#readme"
 }

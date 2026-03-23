@@ -42,7 +42,7 @@ test.describe("Todo App E2E", () => {
 
   test("should show initial todos", async ({ page }) => {
     await expect(page.getByText("0 of 2 completed")).toBeVisible();
-    await expect(page.getByText("Learn react-fullstack")).toBeVisible();
+    await expect(page.getByText("Learn echoform")).toBeVisible();
     await expect(page.getByText("Build something awesome")).toBeVisible();
   });
 
@@ -57,7 +57,7 @@ test.describe("Todo App E2E", () => {
   test("should toggle a todo", async ({ page }) => {
     await page
       .getByRole("listitem")
-      .filter({ hasText: "Learn react-fullstack" })
+      .filter({ hasText: "Learn echoform" })
       .getByRole("checkbox")
       .click();
 
@@ -79,24 +79,24 @@ test.describe("Todo App E2E", () => {
     // Toggle first todo to completed
     await page
       .getByRole("listitem")
-      .filter({ hasText: "Learn react-fullstack" })
+      .filter({ hasText: "Learn echoform" })
       .getByRole("checkbox")
       .click();
     await expect(page.getByText("1 of 2 completed")).toBeVisible();
 
     // Filter active
     await page.getByRole("button", { name: "Active" }).click();
-    await expect(page.getByText("Learn react-fullstack")).not.toBeVisible();
+    await expect(page.getByText("Learn echoform")).not.toBeVisible();
     await expect(page.getByText("Build something awesome")).toBeVisible();
 
     // Filter completed
     await page.getByRole("button", { name: "Completed", exact: true }).click();
-    await expect(page.getByText("Learn react-fullstack")).toBeVisible();
+    await expect(page.getByText("Learn echoform")).toBeVisible();
     await expect(page.getByText("Build something awesome")).not.toBeVisible();
 
     // Filter all
     await page.getByRole("button", { name: "All" }).click();
-    await expect(page.getByText("Learn react-fullstack")).toBeVisible();
+    await expect(page.getByText("Learn echoform")).toBeVisible();
     await expect(page.getByText("Build something awesome")).toBeVisible();
   });
 
@@ -104,14 +104,14 @@ test.describe("Todo App E2E", () => {
     // Toggle first todo
     await page
       .getByRole("listitem")
-      .filter({ hasText: "Learn react-fullstack" })
+      .filter({ hasText: "Learn echoform" })
       .getByRole("checkbox")
       .click();
     await expect(page.getByText("1 of 2 completed")).toBeVisible();
 
     await page.getByRole("button", { name: "Clear Completed" }).click();
 
-    await expect(page.getByText("Learn react-fullstack")).not.toBeVisible();
+    await expect(page.getByText("Learn echoform")).not.toBeVisible();
     await expect(page.getByText("0 of 1 completed")).toBeVisible();
   });
 });
