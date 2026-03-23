@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@play/echoform"><img alt="NPM Version" src="https://img.shields.io/npm/v/@play/echoform?style=for-the-badge"></a>
-  <a href="https://www.npmjs.com/package/@play/echoform"><img alt="NPM Downloads" src="https://img.shields.io/npm/dt/@play/echoform?style=for-the-badge"></a>
+  <a href="https://www.npmjs.com/package/@playfast/echoform"><img alt="NPM Version" src="https://img.shields.io/npm/v/@playfast/echoform?style=for-the-badge"></a>
+  <a href="https://www.npmjs.com/package/@playfast/echoform"><img alt="NPM Downloads" src="https://img.shields.io/npm/dt/@playfast/echoform?style=for-the-badge"></a>
 </p>
 
 React-Fullstack is a react framework for building React applications with their layout/UI components running on the client and with the connections between them and business logic running on the server.
@@ -47,7 +47,7 @@ Example:
 ```ts
 // shared/src/index.ts
 
-import { View } from "@play/echoform/shared";
+import { View } from "@playfast/echoform/shared";
 
 export const Views = {
   Home: {} as View<{ username: string; logout: () => void }>, // Home layout component and its props
@@ -62,10 +62,10 @@ next, after we finished declaring all of our client components in our shared pac
 ```tsx
 // server/src/index
 import React from "react";
-import { Render } from "@play/echoform-render";
-import { ViewsProvider } from "@play/echoform/server";
+import { Render } from "@playfast/echoform-render";
+import { ViewsProvider } from "@playfast/echoform/server";
 import { Views } from "shared-package"; // import our shared package
-import { Server } from "@play/echoform-socket-server";
+import { Server } from "@playfast/echoform-socket-server";
 
 
 const App = () => {
@@ -127,8 +127,8 @@ after we finished adding all of our business logic to the server its now time to
 
 import React from "react";
 import ReactDOM from "react-dom";
-import { Component } from "@play/echoform/client";
-import { Client } from "@play/echoform-socket-client"
+import { Component } from "@playfast/echoform/client";
+import { Client } from "@playfast/echoform-socket-client"
 import { Views } from "shared-package";
 
 // home layout component

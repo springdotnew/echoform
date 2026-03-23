@@ -1,7 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { Client } from "@play/echoform/client";
-import { useWebSocketTransport } from "@play/echoform-bun-ws-client";
+import { Client } from "@playfast/echoform/client";
+import { useWebSocketTransport } from "@playfast/echoform-bun-ws-client";
 import { TodoApp, TodoInput, TodoList, TodoItem, FilterButtons } from "./components";
 
 const components = {

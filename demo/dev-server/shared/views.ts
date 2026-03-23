@@ -1,4 +1,4 @@
-import { view, callback, stream, createViews } from "@play/echoform";
+import { view, callback, stream, createViews } from "@playfast/echoform";
 import { z } from "zod";
 
 const processStatus = z.enum(["idle", "running", "stopped", "failed"]);

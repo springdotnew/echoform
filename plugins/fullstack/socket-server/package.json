@@ -1,5 +1,5 @@
 {
-  "name": "@play/echoform-socket-server",
+  "name": "@playfast/echoform-socket-server",
   "version": "0.3.1-alpha.8",
   "description": "Socket.IO server transport for echoform",
   "type": "module",
@@ -12,7 +12,7 @@
     "build": "tsgo -p ."
   },
   "peerDependencies": {
-    "@play/echoform": ">=0.3.1-alpha.8",
+    "@playfast/echoform": ">=0.3.1-alpha.8",
     "react": ">=19.0.0"
   },
   "dependencies": {
@@ -21,7 +21,7 @@
     "utf-8-validate": "5.0.10"
   },
   "devDependencies": {
-    "@play/echoform": "workspace:*",
+    "@playfast/echoform": "workspace:*",
     "@types/react": "19.0.2",
     "@types/react-dom": "19.0.2",
     "@types/socket.io": "2.1.13"

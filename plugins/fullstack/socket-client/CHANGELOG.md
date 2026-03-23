@@ -1,4 +1,4 @@
-# @play/echoform-socket-client
+# @playfast/echoform-socket-client
 
 ## 0.3.1-alpha.8
 
@@ -6,7 +6,7 @@
 
 - .
 - Updated dependencies
-  - @play/echoform@0.3.1-alpha.8
+  - @playfast/echoform@0.3.1-alpha.8
 
 ## 0.3.1-alpha.7
 
@@ -14,7 +14,7 @@
 
 - d0febb8: add support for handling ssr requests
 - Updated dependencies [d0febb8]
-  - @play/echoform@0.3.1-alpha.7
+  - @playfast/echoform@0.3.1-alpha.7
 
 ## 0.3.1-alpha.6
 
@@ -22,7 +22,7 @@
 
 - fix single instance duble event bug
 - Updated dependencies
-  - @play/echoform@0.3.1-alpha.6
+  - @playfast/echoform@0.3.1-alpha.6
 
 ## 0.3.1-alpha.5
 
@@ -30,4 +30,4 @@
 
 - pre release alpha
 - Updated dependencies
-  - @play/echoform@0.3.1-alpha.5
+  - @playfast/echoform@0.3.1-alpha.5

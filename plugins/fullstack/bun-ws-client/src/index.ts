@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import type { Transport } from "@play/echoform/shared";
-import { createWebSocketTransport, type WebSocketLike } from "@play/echoform/shared";
+import type { Transport } from "@playfast/echoform/shared";
+import { createWebSocketTransport, type WebSocketLike } from "@playfast/echoform/shared";
 
 export interface WebSocketTransportState {
   readonly transport: Transport<Record<string, unknown>> | null;

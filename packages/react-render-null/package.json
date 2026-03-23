@@ -1,5 +1,5 @@
 {
-  "name": "@play/echoform-render",
+  "name": "@playfast/echoform-render",
   "version": "0.3.1-alpha.8",
   "description": "render react tree to nothing!",
   "type": "module",
@@ -14,7 +14,7 @@
     "build": "tsgo -p ."
   },
   "peerDependencies": {
-    "@play/echoform": ">=0.3.1-alpha.8",
+    "@playfast/echoform": ">=0.3.1-alpha.8",
     "react": ">=19.0.0"
   },
   "dependencies": {

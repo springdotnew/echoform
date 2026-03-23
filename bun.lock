@@ -18,10 +18,10 @@
       "name": "@demo/dev-server",
       "version": "1.0.0",
       "dependencies": {
-        "@play/echoform": "workspace:*",
-        "@play/echoform-bun-ws-client": "workspace:*",
-        "@play/echoform-bun-ws-server": "workspace:*",
-        "@play/echoform-render": "workspace:*",
+        "@playfast/echoform": "workspace:*",
+        "@playfast/echoform-bun-ws-client": "workspace:*",
+        "@playfast/echoform-bun-ws-server": "workspace:*",
+        "@playfast/echoform-render": "workspace:*",
         "@xterm/addon-fit": "^0.10.0",
         "@xterm/xterm": "^5.5.0",
         "dockview-react": "^5.1.0",
@@ -45,10 +45,10 @@
       "name": "file-editor-demo",
       "version": "1.0.0",
       "dependencies": {
-        "@play/echoform": "workspace:*",
-        "@play/echoform-bun-ws-client": "workspace:*",
-        "@play/echoform-bun-ws-server": "workspace:*",
-        "@play/echoform-render": "workspace:*",
+        "@playfast/echoform": "workspace:*",
+        "@playfast/echoform-bun-ws-client": "workspace:*",
+        "@playfast/echoform-bun-ws-server": "workspace:*",
+        "@playfast/echoform-render": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "zod": "^4.3.6",
@@ -68,10 +68,10 @@
       "name": "todo-app-demo",
       "version": "1.0.0",
       "dependencies": {
-        "@play/echoform": "workspace:*",
-        "@play/echoform-bun-ws-client": "workspace:*",
-        "@play/echoform-bun-ws-server": "workspace:*",
-        "@play/echoform-render": "workspace:*",
+        "@playfast/echoform": "workspace:*",
+        "@playfast/echoform-bun-ws-client": "workspace:*",
+        "@playfast/echoform-bun-ws-server": "workspace:*",
+        "@playfast/echoform-render": "workspace:*",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "zod": "^4.3.6",
@@ -88,7 +88,7 @@
       },
     },
     "packages/fullstack": {
-      "name": "@play/echoform",
+      "name": "@playfast/echoform",
       "version": "0.3.1-alpha.8",
       "dependencies": {
         "crypto-random-string": "5.0.0",
@@ -104,7 +104,7 @@
       },
     },
     "packages/react-render-null": {
-      "name": "@play/echoform-render",
+      "name": "@playfast/echoform-render",
       "version": "0.3.1-alpha.8",
       "dependencies": {
         "react-reconciler": "0.31.0",
@@ -116,56 +116,56 @@
         "react": "19.0.0",
       },
       "peerDependencies": {
-        "@play/echoform": ">=0.3.1-alpha.8",
+        "@playfast/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
       },
     },
     "plugins/fullstack/bun-ws-client": {
-      "name": "@play/echoform-bun-ws-client",
+      "name": "@playfast/echoform-bun-ws-client",
       "version": "0.3.1-alpha.8",
       "devDependencies": {
-        "@play/echoform": "workspace:*",
+        "@playfast/echoform": "workspace:*",
         "@types/react": "19.0.2",
         "@types/react-dom": "19.0.2",
       },
       "peerDependencies": {
-        "@play/echoform": ">=0.3.1-alpha.8",
+        "@playfast/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
       },
     },
     "plugins/fullstack/bun-ws-server": {
-      "name": "@play/echoform-bun-ws-server",
+      "name": "@playfast/echoform-bun-ws-server",
       "version": "0.3.1-alpha.8",
       "devDependencies": {
-        "@play/echoform": "workspace:*",
+        "@playfast/echoform": "workspace:*",
         "@types/react": "19.0.2",
       },
       "peerDependencies": {
-        "@play/echoform": ">=0.3.1-alpha.8",
+        "@playfast/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
       },
     },
     "plugins/fullstack/socket-client": {
-      "name": "@play/echoform-socket-client",
+      "name": "@playfast/echoform-socket-client",
       "version": "0.3.1-alpha.8",
       "dependencies": {
         "socket.io-client": "4.5.3",
       },
       "devDependencies": {
-        "@play/echoform": "workspace:*",
+        "@playfast/echoform": "workspace:*",
         "@types/react": "19.0.2",
         "@types/react-dom": "19.0.2",
         "@types/socket.io-client": "1.4.36",
       },
       "peerDependencies": {
-        "@play/echoform": ">=0.3.1-alpha.8",
+        "@playfast/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
       },
     },
     "plugins/fullstack/socket-server": {
-      "name": "@play/echoform-socket-server",
+      "name": "@playfast/echoform-socket-server",
       "version": "0.3.1-alpha.8",
       "dependencies": {
         "bufferutil": "4.0.7",
@@ -173,13 +173,13 @@
         "utf-8-validate": "5.0.10",
       },
       "devDependencies": {
-        "@play/echoform": "workspace:*",
+        "@playfast/echoform": "workspace:*",
         "@types/react": "19.0.2",
         "@types/react-dom": "19.0.2",
         "@types/socket.io": "2.1.13",
       },
       "peerDependencies": {
-        "@play/echoform": ">=0.3.1-alpha.8",
+        "@playfast/echoform": ">=0.3.1-alpha.8",
         "react": ">=19.0.0",
       },
     },
@@ -399,17 +399,17 @@
 
     "@oxlint/win32-x64": ["@oxlint/win32-x64@0.13.2", "", { "os": "win32", "cpu": "x64" }, "sha512-G8FM8RTJRMt2dPRJ/TXhqIEu9k00vRAoh3DSV2r3o+jD8FZDBZXOgoDn2D0F9HqgFLEOVTxpfalmWntyk2hmyw=="],
 
-    "@play/echoform": ["@play/echoform@workspace:packages/fullstack"],
+    "@playfast/echoform": ["@playfast/echoform@workspace:packages/fullstack"],
 
-    "@play/echoform-bun-ws-client": ["@play/echoform-bun-ws-client@workspace:plugins/fullstack/bun-ws-client"],
+    "@playfast/echoform-bun-ws-client": ["@playfast/echoform-bun-ws-client@workspace:plugins/fullstack/bun-ws-client"],
 
-    "@play/echoform-bun-ws-server": ["@play/echoform-bun-ws-server@workspace:plugins/fullstack/bun-ws-server"],
+    "@playfast/echoform-bun-ws-server": ["@playfast/echoform-bun-ws-server@workspace:plugins/fullstack/bun-ws-server"],
 
-    "@play/echoform-render": ["@play/echoform-render@workspace:packages/react-render-null"],
+    "@playfast/echoform-render": ["@playfast/echoform-render@workspace:packages/react-render-null"],
 
-    "@play/echoform-socket-client": ["@play/echoform-socket-client@workspace:plugins/fullstack/socket-client"],
+    "@playfast/echoform-socket-client": ["@playfast/echoform-socket-client@workspace:plugins/fullstack/socket-client"],
 
-    "@play/echoform-socket-server": ["@play/echoform-socket-server@workspace:plugins/fullstack/socket-server"],
+    "@playfast/echoform-socket-server": ["@playfast/echoform-socket-server@workspace:plugins/fullstack/socket-server"],
 
     "@playwright/test": ["@playwright/test@1.58.2", "", { "dependencies": { "playwright": "1.58.2" }, "bin": { "playwright": "cli.js" } }, "sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA=="],
 

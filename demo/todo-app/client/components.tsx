@@ -1,5 +1,5 @@
 import React, { useState, type ReactNode } from "react";
-import type { InferClientProps } from "@play/echoform/client";
+import type { InferClientProps } from "@playfast/echoform/client";
 import type { TodoApp as TodoAppDef, TodoInput as TodoInputDef, TodoItem as TodoItemDef, FilterButtons as FilterButtonsDef } from "../shared/views";
 
 export function TodoApp({ title, itemCount, completedCount, children }: InferClientProps<typeof TodoAppDef>): React.ReactElement {

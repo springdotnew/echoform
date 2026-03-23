@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import SocketIO from "socket.io";
-import type { Transport } from "@play/echoform/shared";
-import type { Server as ServerBase, ServerProps } from "@play/echoform/server";
+import type { Transport } from "@playfast/echoform/shared";
+import type { Server as ServerBase, ServerProps } from "@playfast/echoform/server";
 import type { Server as HTTPServer } from "http";
 
 interface Props extends Pick<ServerProps, 'children' | 'singleInstance' | 'instanceRenderHandler'> {

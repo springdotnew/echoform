@@ -1,5 +1,5 @@
-import type { Transport } from "@play/echoform/shared";
-import { createWebSocketTransport } from "@play/echoform/shared";
+import type { Transport } from "@playfast/echoform/shared";
+import { createWebSocketTransport } from "@playfast/echoform/shared";
 
 interface ClientData {
   readonly id: string;

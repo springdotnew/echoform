@@ -84,7 +84,7 @@ const voidSchema: StandardSchemaV1<void> = {
  * Useful for complex types that can't be expressed with zod/valibot alone.
  *
  * ```ts
- * import { passthrough } from "@play/echoform";
+ * import { passthrough } from "@playfast/echoform";
  * const MyView = view("MyView", { input: { data: passthrough<MyType>() } });
  * ```
  */

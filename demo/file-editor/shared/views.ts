@@ -1,4 +1,4 @@
-import { view, callback, createViews, passthrough } from "@play/echoform";
+import { view, callback, createViews, passthrough } from "@playfast/echoform";
 import { z } from "zod";
 import type { FileNode, OpenFile } from "./types";
 
