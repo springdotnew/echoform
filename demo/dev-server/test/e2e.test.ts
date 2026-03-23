@@ -11,6 +11,8 @@ test.describe("Terminal E2E", () => {
     await expect(page.locator(".xterm-screen")).toBeVisible({ timeout: 10000 });
   });
 
+  // PTY-based input/output is unreliable in headless CI (no real tty)
+  test.skip(!!process.env.CI, "skipped in CI — requires working PTY");
   test("should accept keyboard input and show output", async ({ page }) => {
     // Switch to the interactive "shell" tab
     await page.locator("button").filter({ hasText: "shell" }).click();
