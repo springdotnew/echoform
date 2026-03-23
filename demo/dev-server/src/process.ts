@@ -18,119 +18,119 @@ interface Terminal {
   close(): void;
 }
 
-export class ManagedProcess {
+export interface ManagedProcess {
   readonly id: string;
   readonly name: string;
   readonly config: ProcessConfig;
+  readonly status: ProcessStatus;
+  readonly attachOutput: (emitter: OutputEmitter) => void;
+  readonly start: () => void;
+  readonly stop: () => void;
+  readonly restart: () => void;
+  readonly write: (b64: string) => void;
+  readonly resize: (cols: number, rows: number) => void;
+  readonly dispose: () => void;
+}
 
-  private _status: ProcessStatus = "idle";
-  get status(): ProcessStatus { return this._status; }
+export function createManagedProcess(
+  id: string,
+  name: string,
+  config: ProcessConfig,
+  onStatusChange: (status: ProcessStatus) => void,
+): ManagedProcess {
+  let currentStatus: ProcessStatus = "idle";
+  let terminal: Terminal | null = null;
+  let outputEmitter: OutputEmitter | null = null;
+  let cols = 80;
+  let rows = 24;
+  let restartTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private terminal: Terminal | null = null;
-  private outputEmitter: OutputEmitter | null = null;
-  private cols = 80;
-  private rows = 24;
-  private restartTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly onStatusChange: (status: ProcessStatus) => void;
-
-  constructor(
-    id: string,
-    name: string,
-    config: ProcessConfig,
-    onStatusChange: (status: ProcessStatus) => void,
-  ) {
-    this.id = id;
-    this.name = name;
-    this.config = config;
-    this.onStatusChange = onStatusChange;
+  function setStatus(status: ProcessStatus): void {
+    currentStatus = status;
+    onStatusChange(status);
   }
 
-  attachOutput(emitter: OutputEmitter): void {
-    this.outputEmitter = emitter;
+  function clearRestartTimer(): void {
+    if (restartTimer) {
+      clearTimeout(restartTimer);
+      restartTimer = null;
+    }
   }
 
-  start(): void {
-    if (this.status === "running") return;
-    this.clearRestartTimer();
+  function stop(): void {
+    clearRestartTimer();
+    if (terminal) {
+      terminal.close();
+      terminal = null;
+    }
+  }
 
-    const argv = typeof this.config.command === "string"
-      ? ["/bin/sh", "-c", this.config.command]
-      : [...this.config.command];
+  function start(): void {
+    if (currentStatus === "running") return;
+    clearRestartTimer();
 
-    const emitter = this.outputEmitter;
+    const argv = typeof config.command === "string"
+      ? ["/bin/sh", "-c", config.command]
+      : [...config.command];
+
+    const emitter = outputEmitter;
 
     const proc = Bun.spawn(argv, {
-      cwd: this.config.cwd,
-      env: this.config.env ? { ...process.env, ...this.config.env } : undefined,
+      cwd: config.cwd,
+      env: config.env ? { ...process.env, ...config.env } : undefined,
       terminal: {
-        cols: this.cols,
-        rows: this.rows,
+        cols,
+        rows,
         data: (_t: unknown, data: Uint8Array) => {
           emitter?.emit(toBase64(data));
         },
       },
     });
 
-    this.terminal = proc.terminal!;
-    this.setStatus("running");
+    terminal = proc.terminal!;
+    setStatus("running");
 
     proc.exited.then((code) => {
-      this.terminal = null;
+      terminal = null;
       const newStatus: ProcessStatus = code === 0 ? "stopped" : "failed";
-      this.setStatus(newStatus);
+      setStatus(newStatus);
 
-      if (this.config.autoRestart && code !== 0) {
-        this.restartTimer = setTimeout(() => {
-          this.restartTimer = null;
-          this.start();
+      if (config.autoRestart && code !== 0) {
+        restartTimer = setTimeout(() => {
+          restartTimer = null;
+          start();
         }, 1000);
       }
     });
   }
 
-  stop(): void {
-    this.clearRestartTimer();
-    if (this.terminal) {
-      this.terminal.close();
-      this.terminal = null;
-    }
-  }
-
-  restart(): void {
-    this.outputEmitter?.emit(
-      toBase64(new TextEncoder().encode("\r\n\x1b[2m--- restarting ---\x1b[0m\r\n")),
-    );
-    this.stop();
-    this.start();
-  }
-
-  write(b64: string): void {
-    this.terminal?.write(fromBase64(b64));
-  }
-
-  resize(cols: number, rows: number): void {
-    this.cols = cols;
-    this.rows = rows;
-    this.terminal?.resize(cols, rows);
-  }
-
-  dispose(): void {
-    this.clearRestartTimer();
-    if (this.terminal) {
-      this.terminal.close();
-      this.terminal = null;
-    }
-  }
-
-  private setStatus(status: ProcessStatus): void {
-    this._status = status;
-    this.onStatusChange(status);
-  }
-
-  private clearRestartTimer(): void {
-    if (this.restartTimer) {
-      clearTimeout(this.restartTimer);
-      this.restartTimer = null;
-    }
-  }
+  return {
+    id,
+    name,
+    config,
+    get status() { return currentStatus; },
+    attachOutput(emitter) { outputEmitter = emitter; },
+    start,
+    stop,
+    restart() {
+      outputEmitter?.emit(
+        toBase64(new TextEncoder().encode("\r\n\x1b[2m--- restarting ---\x1b[0m\r\n")),
+      );
+      stop();
+      start();
+    },
+    write(b64) { terminal?.write(fromBase64(b64)); },
+    resize(newCols, newRows) {
+      cols = newCols;
+      rows = newRows;
+      terminal?.resize(newCols, newRows);
+    },
+    dispose() {
+      clearRestartTimer();
+      if (terminal) {
+        terminal.close();
+        terminal = null;
+      }
+    },
+  };
 }

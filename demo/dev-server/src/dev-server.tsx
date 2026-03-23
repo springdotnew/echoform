@@ -3,7 +3,7 @@ import { Render } from "@play/echoform-render";
 import { Server, useViews, useStream } from "@play/echoform/server";
 import { createBunWebSocketServer } from "@play/echoform-bun-ws-server";
 import { views, ProcessTerminal } from "../shared/views";
-import { ManagedProcess } from "./process";
+import { createManagedProcess, type ManagedProcess } from "./process";
 import type { DevServerConfig, ProcessStatus } from "./types";
 
 function ProcessTerminalSession({ proc }: { readonly proc: ManagedProcess }): React.ReactElement | null {
@@ -90,7 +90,7 @@ export async function devServer(config: DevServerConfig): Promise<DevServerHandl
 
   const processes = new Map<string, ManagedProcess>();
   for (const [name, procConfig] of Object.entries(config.procs)) {
-    processes.set(name, new ManagedProcess(name, name, procConfig, () => {}));
+    processes.set(name, createManagedProcess(name, name, procConfig, () => {}));
   }
 
   const { transport, start } = createBunWebSocketServer({ port, path: "/ws" });

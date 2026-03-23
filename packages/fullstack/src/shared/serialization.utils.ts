@@ -7,11 +7,10 @@ import type { SerializableValue } from "./types";
 /**
  * Error thrown when attempting to serialize prohibited values like DOM Events.
  */
-export class SerializationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SerializationError';
-  }
+export function createSerializationError(message: string): Error {
+  const error = new Error(message);
+  error.name = 'SerializationError';
+  return error;
 }
 
 /**
@@ -79,7 +78,7 @@ export function stringifyWithoutCircular(
   values: ReadonlyArray<SerializableValue>
 ): string {
   if (hasProhibitedEvent(values)) {
-    throw new SerializationError(
+    throw createSerializationError(
       "Passing JS events to the server is prohibited. " +
       "Ensure you are not passing callbacks directly to DOM elements."
     );

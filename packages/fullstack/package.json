@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "crypto-random-string": "5.0.0",
+    "fossil-delta": "^2.0.0",
     "typed-binary": "^4.3.3"
   },
   "devDependencies": {

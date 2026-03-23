@@ -6,7 +6,6 @@
  */
 
 import {
-  Schema,
   BufferReader,
   BufferWriter,
   Measurer,
@@ -16,8 +15,27 @@ import {
   u8,
   u32,
 } from "typed-binary";
-import type { ISerialInput, ISerialOutput, IMeasurer } from "typed-binary";
+import type { ISchema, ISerialInput, ISerialOutput, IMeasurer, IRefResolver } from "typed-binary";
 import type { SerializableValue } from "./types";
+
+type SchemaImpl<T> = {
+  readonly write: (output: ISerialOutput, value: T) => void;
+  readonly read: (input: ISerialInput) => T;
+  readonly measure: (value: T | typeof MaxValue, measurer: IMeasurer) => IMeasurer;
+};
+
+function createSchema<T>(impl: SchemaImpl<T>): ISchema<T> {
+  return {
+    __unwrapped: undefined as unknown as T,
+    resolveReferences(_ctx: IRefResolver): void {},
+    seekProperty(): null { return null; },
+    write: impl.write as ISchema<T>["write"],
+    read: impl.read as ISchema<T>["read"],
+    measure(value, measurer: IMeasurer = new Measurer()): IMeasurer {
+      return impl.measure(value as T | typeof MaxValue, measurer);
+    },
+  } as ISchema<T>;
+}
 
 /** Read `count` items from a binary stream. Mutation is scoped: the array never escapes until complete. */
 function readArray<T>(count: number, readItem: (input: ISerialInput) => T, input: ISerialInput): T[] {
@@ -30,21 +48,18 @@ function readArray<T>(count: number, readItem: (input: ISerialInput) => T, input
 
 // For numbers, use JSON string encoding to preserve full f64 precision
 // (typed-binary only has f32 which loses precision)
-class NumberSchema extends Schema<number> {
-  write(output: ISerialOutput, value: number): void {
-    // Encode as string to preserve full precision
+const numSchema = createSchema<number>({
+  write(output, value) {
     binString.write(output, String(value));
-  }
-  read(input: ISerialInput): number {
+  },
+  read(input) {
     return Number(binString.read(input));
-  }
-  measure(value: number | typeof MaxValue, measurer: IMeasurer = new Measurer()): IMeasurer {
+  },
+  measure(value, measurer) {
     if (value === MaxValue) return measurer.unbounded;
-    return binString.measure(String(value), measurer);
-  }
-}
-
-const numSchema = new NumberSchema();
+    return binString.measure(String(value as number), measurer);
+  },
+});
 
 // ---- SerializableValue: custom recursive schema ----
 // Type tags: 0=null, 1=undefined, 2=bool, 3=number, 4=string, 5=array, 6=object
@@ -57,102 +72,96 @@ const TAG_STRING = 4;
 const TAG_ARRAY = 5;
 const TAG_OBJECT = 6;
 
-class SerializableValueSchema extends Schema<SerializableValue> {
-  write(output: ISerialOutput, value: SerializableValue): void {
-    if (value === null) {
-      u8.write(output, TAG_NULL);
-    } else if (value === undefined) {
-      u8.write(output, TAG_UNDEFINED);
-    } else if (typeof value === "boolean") {
-      u8.write(output, TAG_BOOL);
-      bool.write(output, value);
-    } else if (typeof value === "number") {
-      u8.write(output, TAG_NUMBER);
-      numSchema.write(output, value);
-    } else if (typeof value === "string") {
-      u8.write(output, TAG_STRING);
-      binString.write(output, value);
-    } else if (Array.isArray(value)) {
-      u8.write(output, TAG_ARRAY);
-      u32.write(output, value.length);
-      for (const item of value) {
-        this.write(output, item as SerializableValue);
-      }
-    } else {
-      u8.write(output, TAG_OBJECT);
-      const entries = Object.entries(value as Record<string, SerializableValue>);
-      u32.write(output, entries.length);
-      for (const [key, val] of entries) {
-        binString.write(output, key);
-        this.write(output, val);
-      }
+function writeSerializableValue(output: ISerialOutput, value: SerializableValue): void {
+  if (value === null) {
+    u8.write(output, TAG_NULL);
+  } else if (value === undefined) {
+    u8.write(output, TAG_UNDEFINED);
+  } else if (typeof value === "boolean") {
+    u8.write(output, TAG_BOOL);
+    bool.write(output, value);
+  } else if (typeof value === "number") {
+    u8.write(output, TAG_NUMBER);
+    numSchema.write(output, value);
+  } else if (typeof value === "string") {
+    u8.write(output, TAG_STRING);
+    binString.write(output, value);
+  } else if (Array.isArray(value)) {
+    u8.write(output, TAG_ARRAY);
+    u32.write(output, value.length);
+    for (const item of value) {
+      writeSerializableValue(output, item as SerializableValue);
     }
-  }
-
-  read(input: ISerialInput): SerializableValue {
-    const tag = u8.read(input);
-    switch (tag) {
-      case TAG_NULL: return null;
-      case TAG_UNDEFINED: return undefined;
-      case TAG_BOOL: return bool.read(input);
-      case TAG_NUMBER: return numSchema.read(input);
-      case TAG_STRING: return binString.read(input);
-      case TAG_ARRAY: {
-        const len = u32.read(input);
-        return readArray(len, (r) => this.read(r), input);
-      }
-      case TAG_OBJECT: {
-        const len = u32.read(input);
-        const obj: Record<string, SerializableValue> = {};
-        for (let i = 0; i < len; i++) {
-          const key = binString.read(input);
-          obj[key] = this.read(input);
-        }
-        return obj;
-      }
-      default:
-        return null;
-    }
-  }
-
-  measure(value: SerializableValue | typeof MaxValue, measurer: IMeasurer = new Measurer()): IMeasurer {
-    if (value === MaxValue) {
-      return measurer.unbounded;
-    }
-
-    if (value === null || value === undefined) {
-      return measurer.add(1); // tag only
-    }
-    if (typeof value === "boolean") {
-      return measurer.add(1 + 1); // tag + bool
-    }
-    if (typeof value === "number") {
-      measurer.add(1); // tag
-      return numSchema.measure(value as number, measurer);
-    }
-    if (typeof value === "string") {
-      measurer.add(1); // tag
-      return binString.measure(value, measurer);
-    }
-    if (Array.isArray(value)) {
-      measurer.add(1 + 4); // tag + length
-      for (const item of value) {
-        this.measure(item as SerializableValue, measurer);
-      }
-      return measurer;
-    }
-    // object
+  } else {
+    u8.write(output, TAG_OBJECT);
     const entries = Object.entries(value as Record<string, SerializableValue>);
-    measurer.add(1 + 4); // tag + length
+    u32.write(output, entries.length);
     for (const [key, val] of entries) {
-      binString.measure(key, measurer);
-      this.measure(val, measurer);
+      binString.write(output, key);
+      writeSerializableValue(output, val);
     }
-    return measurer;
   }
 }
 
-export const serializableValue = new SerializableValueSchema();
+function readSerializableValue(input: ISerialInput): SerializableValue {
+  const tag = u8.read(input);
+  switch (tag) {
+    case TAG_NULL: return null;
+    case TAG_UNDEFINED: return undefined;
+    case TAG_BOOL: return bool.read(input);
+    case TAG_NUMBER: return numSchema.read(input);
+    case TAG_STRING: return binString.read(input);
+    case TAG_ARRAY: {
+      const len = u32.read(input);
+      return readArray(len, readSerializableValue, input);
+    }
+    case TAG_OBJECT: {
+      const len = u32.read(input);
+      const obj: Record<string, SerializableValue> = {};
+      for (let i = 0; i < len; i++) {
+        const key = binString.read(input);
+        obj[key] = readSerializableValue(input);
+      }
+      return obj;
+    }
+    default:
+      return null;
+  }
+}
+
+function measureSerializableValue(value: SerializableValue | typeof MaxValue, measurer: IMeasurer): IMeasurer {
+  if (value === MaxValue) return measurer.unbounded;
+  if (value === null || value === undefined) return measurer.add(1);
+  if (typeof value === "boolean") return measurer.add(1 + 1);
+  if (typeof value === "number") {
+    measurer.add(1);
+    return numSchema.measure(value as number, measurer);
+  }
+  if (typeof value === "string") {
+    measurer.add(1);
+    return binString.measure(value, measurer);
+  }
+  if (Array.isArray(value)) {
+    measurer.add(1 + 4);
+    for (const item of value) {
+      measureSerializableValue(item as SerializableValue, measurer);
+    }
+    return measurer;
+  }
+  const entries = Object.entries(value as Record<string, SerializableValue>);
+  measurer.add(1 + 4);
+  for (const [key, val] of entries) {
+    binString.measure(key, measurer);
+    measureSerializableValue(val, measurer);
+  }
+  return measurer;
+}
+
+export const serializableValue = createSchema<SerializableValue>({
+  write: writeSerializableValue,
+  read: readSerializableValue,
+  measure: measureSerializableValue,
+});
 
 // ---- Prop schema (discriminated: data=0, event=1, stream=2) ----
 
@@ -182,8 +191,8 @@ interface BinaryStreamProp {
 
 type BinaryProp = BinaryDataProp | BinaryEventProp | BinaryStreamProp;
 
-class PropBinarySchema extends Schema<BinaryProp> {
-  write(output: ISerialOutput, value: BinaryProp): void {
+const propBinary = createSchema<BinaryProp>({
+  write(output, value) {
     binString.write(output, value.name);
     if (value.type === "data") {
       u8.write(output, PROP_DATA);
@@ -195,9 +204,8 @@ class PropBinarySchema extends Schema<BinaryProp> {
       u8.write(output, PROP_STREAM);
       binString.write(output, value.uid);
     }
-  }
-
-  read(input: ISerialInput): BinaryProp {
+  },
+  read(input) {
     const name = binString.read(input);
     const tag = u8.read(input);
     if (tag === PROP_DATA) {
@@ -207,22 +215,19 @@ class PropBinarySchema extends Schema<BinaryProp> {
       return { name, type: "event", uid: binString.read(input) };
     }
     return { name, type: "stream", uid: binString.read(input) };
-  }
-
-  measure(value: BinaryProp | typeof MaxValue, measurer: IMeasurer = new Measurer()): IMeasurer {
+  },
+  measure(value, measurer) {
     if (value === MaxValue) return measurer.unbounded;
     binString.measure(value.name, measurer);
-    measurer.add(1); // tag
+    measurer.add(1);
     if (value.type === "data") {
       serializableValue.measure(value.data, measurer);
     } else {
       binString.measure(value.uid, measurer);
     }
     return measurer;
-  }
-}
-
-const propBinary = new PropBinarySchema();
+  },
+});
 
 // ---- Event type discriminator ----
 
