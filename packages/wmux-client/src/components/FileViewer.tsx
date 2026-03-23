@@ -10,6 +10,7 @@ interface FileEntry {
 }
 
 interface FileViewerProps {
+  readonly id: string;
   readonly entries: ReadonlyArray<FileEntry>;
   readonly selectedPath: string;
   readonly selectedContent: string;

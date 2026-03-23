@@ -29,7 +29,7 @@
   --color-info: #58a6ff;
 
   --font-mono: 'JetBrainsMono Nerd Font Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
-  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: 'Geist', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -43,6 +43,8 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -58,11 +60,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: #27272a;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: #3f3f46;
 }
 
 /* Dockview overrides */
@@ -74,10 +76,44 @@ body {
   --dv-activegroup-hiddenpanel-tab-background-color: var(--color-card);
   --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-card);
   --dv-inactivegroup-hiddenpanel-tab-background-color: var(--color-card);
-  --dv-tab-divider-color: var(--color-border);
+  --dv-tab-divider-color: transparent;
   --dv-activegroup-visiblepanel-tab-color: var(--color-foreground);
   --dv-activegroup-hiddenpanel-tab-color: var(--color-muted-foreground);
   --dv-inactivegroup-visiblepanel-tab-color: var(--color-muted-foreground);
   --dv-inactivegroup-hiddenpanel-tab-color: var(--color-muted-foreground);
   --dv-separator-border: var(--color-border);
+}
+
+/* Hide dockview close buttons on tabs */
+.dockview-theme-dark .dv-default-tab-action {
+  display: none !important;
+}
+
+/* Smoother tab transitions */
+.dockview-theme-dark .dv-tab {
+  transition: background-color 100ms ease, color 100ms ease;
+  font-size: 12px;
+  padding: 0 12px;
+}
+
+/* Subtle tab bar bottom border */
+.dockview-theme-dark .tabs-and-actions-container {
+  border-bottom: 1px solid #1a1a1e;
+}
+
+/* cmdk dialog styles */
+[cmdk-root] {
+  background: transparent;
+}
+
+[cmdk-input] {
+  caret-color: var(--color-foreground);
+}
+
+[cmdk-item] {
+  transition: background-color 100ms ease;
+}
+
+[cmdk-group] + [cmdk-group] {
+  margin-top: 4px;
 }

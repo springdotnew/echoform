@@ -58,6 +58,7 @@ export const WmuxTerminal = view("WmuxTerminal", {
 
 export const WmuxFileViewer = view("WmuxFileViewer", {
   input: {
+    id: z.string(),
     entries: z.array(fileEntry),
     selectedPath: z.string(),
     selectedContent: z.string(),

@@ -6,10 +6,12 @@ import { parseHashParams } from "./utils/params";
 import { useAuthenticatedTransport } from "./utils/transport";
 import { WmuxApp } from "./components/WmuxApp";
 import { WmuxTerminal } from "./components/WmuxTerminal";
+import { FileViewer as WmuxFileViewer } from "./components/FileViewer";
 
 const viewComponents = {
   WmuxApp,
   WmuxTerminal,
+  WmuxFileViewer,
 };
 
 function ErrorPage({ message }: { readonly message: string }): React.ReactElement {

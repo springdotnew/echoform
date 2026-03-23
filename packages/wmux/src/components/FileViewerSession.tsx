@@ -120,7 +120,7 @@ export function FileViewerSession({ root }: { readonly root: string }): React.Re
   return (
     <View.WmuxFileViewer
       id="__files__"
-      entries={flatten()}
+      entries={flatten() as FlatEntry[]}
       selectedPath={selectedPath}
       selectedContent={selectedContent}
       onToggleDir={handleToggleDir}
