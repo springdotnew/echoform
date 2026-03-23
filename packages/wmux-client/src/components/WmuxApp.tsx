@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useCallback, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, Command as CommandIcon } from "lucide-react";
-import { STATUS_COLORS } from "../styles/theme";
+import { Command as CommandIcon } from "lucide-react";
 import { resolveIcon } from "../utils/icons";
 import { CommandPalette } from "./CommandPalette";
-import { FileTree } from "./FileViewer";
+import { Sidebar } from "./Sidebar";
 import { TabBar, type Tab } from "./TabBar";
 
 // ── Types ──
@@ -32,101 +31,6 @@ interface CategoryInfo {
   readonly tabs: readonly TabInfo[];
   readonly fileEntries?: readonly FileEntry[];
   readonly openFiles?: readonly { readonly path: string; readonly name: string }[];
-}
-
-// ── Sidebar ──
-
-function Sidebar({
-  categories,
-  activeCategory,
-  activeTabId,
-  collapsedCategories,
-  onSelectCategory,
-  onToggleCollapse,
-  onSelectTab,
-  onToggleDir,
-  onOpenFile,
-}: {
-  readonly categories: ReadonlyArray<CategoryInfo>;
-  readonly activeCategory: string;
-  readonly activeTabId: string;
-  readonly collapsedCategories: ReadonlySet<string>;
-  readonly onSelectCategory: (name: string) => void;
-  readonly onToggleCollapse: (name: string) => void;
-  readonly onSelectTab: (id: string) => void;
-  readonly onToggleDir: (path: string) => void;
-  readonly onOpenFile: (path: string) => void;
-}): React.ReactElement {
-  return (
-    <div className="w-[200px] min-w-[200px] bg-background border-r border-border/40 flex flex-col select-none overflow-y-auto">
-      {categories.map((cat) => {
-        const isActive = cat.name === activeCategory;
-        const isCollapsed = collapsedCategories.has(cat.name);
-        const CatIcon = resolveIcon(cat.icon);
-        const isFiles = cat.type === "files";
-
-        return (
-          <div key={cat.name} className="mt-px">
-            <div
-              onClick={() => { onSelectCategory(cat.name); if (isCollapsed) onToggleCollapse(cat.name); }}
-              className={`flex items-center gap-1 px-2 py-[5px] text-[11px] cursor-pointer transition-colors duration-100 ${
-                isActive ? "text-foreground/70" : "text-muted-foreground/50 hover:text-muted-foreground/70"
-              }`}
-            >
-              <span onClick={(e) => { e.stopPropagation(); onToggleCollapse(cat.name); }} className="flex items-center justify-center w-3.5 h-3.5 cursor-pointer shrink-0">
-                {isCollapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
-              </span>
-              {CatIcon ? <CatIcon size={11} className="shrink-0 mr-0.5" /> : <span className="w-1.5 h-1.5 rounded-sm shrink-0 mr-0.5" style={{ background: cat.color }} />}
-              <span className="lowercase tracking-wide font-medium flex-1 truncate">{cat.name}</span>
-              <span className="text-[10px] text-muted-foreground/20 tabular-nums pr-0.5">
-                {isFiles ? (cat.openFiles?.length ?? 0) : cat.tabs.length}
-              </span>
-            </div>
-
-            {!isCollapsed && isFiles && cat.fileEntries && (
-              <div className="max-h-[50vh] overflow-y-auto">
-                <FileTree
-                  entries={cat.fileEntries}
-                  onToggleDir={(path) => { if (!isActive) onSelectCategory(cat.name); onToggleDir(path); }}
-                  onOpenFile={(path) => { if (!isActive) onSelectCategory(cat.name); onOpenFile(path); }}
-                />
-              </div>
-            )}
-
-            {!isCollapsed && !isFiles && cat.tabs.map((tab) => {
-              const isActiveTab = tab.id === activeTabId && isActive;
-              const TabIcon = resolveIcon(tab.icon);
-              return (
-                <div
-                  key={tab.id}
-                  onClick={() => { if (!isActive) onSelectCategory(cat.name); onSelectTab(tab.id); }}
-                  className={`flex items-center gap-2.5 pl-5 pr-2 py-[7px] cursor-pointer transition-colors duration-100 rounded-sm mx-1 ${
-                    isActiveTab ? "bg-card/80 text-foreground" : "text-muted-foreground/60 hover:bg-card/40 hover:text-foreground/70"
-                  }`}
-                >
-                  {TabIcon ? <TabIcon size={14} className="shrink-0" /> : <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: STATUS_COLORS[tab.status] ?? "#3f3f46" }} />}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] leading-snug truncate">{tab.name}</div>
-                    {tab.description && <div className="text-[10px] leading-snug text-muted-foreground/30 truncate mt-px">{tab.description}</div>}
-                  </div>
-                  {TabIcon && <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: STATUS_COLORS[tab.status] ?? "#3f3f46" }} />}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-
-      <div className="mt-auto py-2 px-2.5 border-t border-border/20 flex flex-col gap-1">
-        {[["⌘K", "Command palette"], ["⌘1-9", "Switch category"], ["⌘[]", "Switch tab"]].map(([key, label]) => (
-          <div key={key} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/20">
-            <kbd className="bg-background/50 px-1 py-px rounded border border-border/20 font-mono text-[9px]">{key}</kbd>
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // ── Empty state ──
@@ -279,7 +183,6 @@ export function WmuxApp(props: {
       />
 
       <div className="flex-1 flex flex-col min-w-0 relative">
-        {/* Tab bar */}
         {activeCategory && hasTabs && (
           <TabBar
             tabs={orderedTabs}
@@ -292,7 +195,6 @@ export function WmuxApp(props: {
           />
         )}
 
-        {/* Content — all children always mounted, only active visible */}
         <div className="flex-1 min-h-0 relative">
           {[...registry.entries()].map(([id, child]) => (
             <div
@@ -304,7 +206,6 @@ export function WmuxApp(props: {
             </div>
           ))}
 
-          {/* Empty state overlay */}
           {(!activeCategory || !hasTabs) && (
             <div className="absolute inset-0 z-10">
               <EmptyState categories={categories} onOpen={selectCategory} />
