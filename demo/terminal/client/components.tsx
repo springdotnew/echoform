@@ -53,6 +53,15 @@ export function Terminal(props: InferClientProps<typeof TerminalDef>): React.Rea
       onInput.mutate(toBase64(new TextEncoder().encode(data)));
     });
 
+    // Prevent Escape from defocusing the terminal (needed for vim, etc.)
+    xterm.attachCustomKeyEventHandler((event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        return true; // let xterm handle it
+      }
+      return true;
+    });
+
     // Handle resize
     const resizeObserver = new ResizeObserver(() => {
       fitAddon.fit();

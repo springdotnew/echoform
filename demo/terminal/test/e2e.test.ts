@@ -6,7 +6,7 @@ test.describe("Terminal E2E", () => {
   });
 
   test("should show the terminal title bar", async ({ page }) => {
-    await expect(page.getByText("Terminal")).toBeVisible();
+    await expect(page.getByText("Terminal", { exact: true })).toBeVisible();
   });
 
   test("should render the xterm container", async ({ page }) => {

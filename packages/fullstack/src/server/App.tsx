@@ -375,7 +375,9 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
   // componentDidMount equivalent
   useEffect(() => {
     if (transportIsClient) {
-      addClient(transport);
+      // Only register listeners — don't add to clientsRef since serverRef
+      // already wraps this transport (adding would cause double-emit)
+      registerSocketListener(serverRef.current);
     }
   }, [transportIsClient, transport, addClient]);
 
