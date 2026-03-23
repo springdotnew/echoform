@@ -14,9 +14,10 @@ const CATEGORY_COLORS = [
   "#eab308", "#06b6d4", "#f43f5e", "#84cc16", "#a855f7",
 ];
 
-function categoryColor(name: string): string {
+function categoryColor(name: string | undefined): string {
+  const str = name ?? "default";
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
   return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length]!;
 }
 
