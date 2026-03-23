@@ -95,7 +95,7 @@ console.log(`Server running on http://localhost:${PORT}`);
 console.log(`WebSocket endpoint: ws://localhost:${PORT}/ws`);
 
 Render(
-  <Server transport={transport} singleInstance>
+  <Server transport={transport}>
     {() => <TodoApp />}
   </Server>
 );

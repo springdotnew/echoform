@@ -9,7 +9,7 @@
     "dev:client": "vite",
     "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
     "build:client": "vite build",
-    "test": "bun test test/e2e.test.ts"
+    "test": "playwright test"
   },
   "dependencies": {
     "@react-fullstack/fullstack": "workspace:*",
@@ -20,6 +20,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/bun": "latest",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

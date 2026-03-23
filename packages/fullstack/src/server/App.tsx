@@ -38,6 +38,7 @@ export interface AppHandle {
 const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(function App({ children, transport, paused, transportIsClient }, ref) {
   const serverRef = useRef<DecompileTransport>(decompileTransport(transport));
   const clientsRef = useRef<ReadonlyArray<DecompileTransport>>([]);
+  const clientsMapRef = useRef<Map<Transport<Record<string | number, unknown>>, DecompileTransport>>(new Map());
   const existingSharedViewsRef = useRef<MutableExistingSharedViewData[]>([]);
   const viewEventsRef = useRef<ReadonlyMap<EventUid, EventHandler>>(new Map());
   const cleanUpFunctionsRef = useRef<ReadonlyArray<() => void>>([]);
@@ -100,15 +101,14 @@ const App = forwardRef<AppHandle, AppProps<Record<string | number, unknown>>>(fu
 
   const addClient = useCallback(<TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => {
     const clientTransport = decompileTransport(client);
-    clientsRef.current = [...clientsRef.current, clientTransport];
+    clientsMapRef.current.set(client as unknown as Transport<Record<string | number, unknown>>, clientTransport);
+    clientsRef.current = Array.from(clientsMapRef.current.values());
     registerSocketListener(clientTransport);
   }, [registerSocketListener]);
 
   const removeClient = useCallback(<TClientEvents extends Record<string | number, unknown>>(client: Transport<TClientEvents>) => {
-    const clientTransport = decompileTransport(client);
-    clientsRef.current = clientsRef.current.filter(
-      (currentClient) => currentClient !== clientTransport
-    );
+    clientsMapRef.current.delete(client as unknown as Transport<Record<string | number, unknown>>);
+    clientsRef.current = Array.from(clientsMapRef.current.values());
   }, []);
 
   const updateRunningView = useCallback((viewData: ViewData) => {

@@ -4,16 +4,10 @@
   "initialVersions": {
     "@react-fullstack/fullstack": "0.3.0",
     "@react-fullstack/render": "0.3.0",
-    "@react-fullstack/server": "0.3.0",
-    "@react-fullstack/server-express": "0.3.0",
     "@react-fullstack/fullstack-socket-client": "0.3.0",
     "@react-fullstack/fullstack-socket-server": "0.3.0",
-    "@react-fullstack/plugin-server-side-rendering": "0.3.0"
+    "@react-fullstack/fullstack-bun-ws-client": "0.0.1",
+    "@react-fullstack/fullstack-bun-ws-server": "0.0.1"
   },
-  "changesets": [
-    "big-pears-impress",
-    "green-goats-report",
-    "sweet-laws-change",
-    "two-pugs-sneeze"
-  ]
+  "changesets": []
 }

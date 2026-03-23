@@ -76,14 +76,14 @@ export function TodoItem({ text, completed, onToggle, onDelete }: TodoItemProps)
         <input
           type="checkbox"
           checked={completed}
-          onChange={onToggle}
+          onChange={() => onToggle()}
           style={styles.checkbox}
         />
         <span style={{ ...styles.itemText, ...(completed ? styles.completed : {}) }}>
           {text}
         </span>
       </label>
-      <button onClick={onDelete} style={styles.deleteButton}>
+      <button onClick={() => onDelete()} style={styles.deleteButton}>
         Delete
       </button>
     </li>
@@ -113,7 +113,7 @@ export function FilterButtons({ filter, onFilterChange, onClearCompleted }: Filt
           </button>
         ))}
       </div>
-      <button onClick={onClearCompleted} style={styles.clearButton}>
+      <button onClick={() => onClearCompleted()} style={styles.clearButton}>
         Clear Completed
       </button>
     </footer>
