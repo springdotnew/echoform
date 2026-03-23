@@ -19,6 +19,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
     let disposed = false;
 
     const ws = new WebSocket(url);
+    ws.binaryType = "arraybuffer";
 
     const { transport, dispatch, disconnect } = createWebSocketTransport(ws, { checkOpen: true });
 
@@ -29,7 +30,7 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
     };
 
     ws.onmessage = (messageEvent) => {
-      dispatch(messageEvent.data as string);
+      dispatch(messageEvent.data as string | ArrayBuffer);
     };
 
     ws.onerror = () => {

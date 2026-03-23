@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, createContext, useContext, useState, type ReactNode } from "react";
+import React, { useEffect, useRef, useMemo, useCallback, createContext, useContext, useState, type ReactNode } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -27,8 +27,8 @@ function fromBase64(b64: string): Uint8Array {
 // Each Terminal child rendered by react-fullstack registers itself here.
 // The dockview panel component looks up and renders the registered element.
 
-type TerminalRegistry = Map<string, ReactNode>;
-const TerminalRegistryContext = createContext<React.RefObject<TerminalRegistry>>({ current: new Map() });
+type TerminalRegistry = ReadonlyMap<string, ReactNode>;
+const TerminalRegistryContext = createContext<TerminalRegistry>(new Map());
 const NewTabContext = createContext<() => void>(() => {});
 
 // ── TerminalApp ──
@@ -40,17 +40,18 @@ export function TerminalApp(props: InferClientProps<typeof TerminalAppDef>): Rea
   const selectTab = props.onSelectTab.mutate;
 
   const apiRef = useRef<DockviewApi | null>(null);
-  const registryRef = useRef<TerminalRegistry>(new Map());
   const syncedRef = useRef<Set<string>>(new Set());
-  const [, forceUpdate] = useState(0);
 
-  // Collect Terminal children into registry by id
-  const childArray = React.Children.toArray(children) as React.ReactElement[];
-  registryRef.current.clear();
-  for (const child of childArray) {
-    const id = (child.props as { id?: string }).id;
-    if (id) registryRef.current.set(id, child);
-  }
+  // Build registry from children — new Map each time so context consumers re-render
+  const registry = useMemo(() => {
+    const map = new Map<string, ReactNode>();
+    const childArray = React.Children.toArray(children) as React.ReactElement[];
+    for (const child of childArray) {
+      const id = (child.props as { id?: string }).id;
+      if (id) map.set(id, child);
+    }
+    return map;
+  }, [children]);
 
   // Sync tabs → dockview panels
   useEffect(() => {
@@ -84,8 +85,6 @@ export function TerminalApp(props: InferClientProps<typeof TerminalAppDef>): Rea
       activePanel.api.setActive();
     }
 
-    // Force re-render so dockview panels pick up new registry entries
-    forceUpdate((n) => n + 1);
   }, [tabs, activeTabId]);
 
   // Shortcuts
@@ -137,7 +136,7 @@ export function TerminalApp(props: InferClientProps<typeof TerminalAppDef>): Rea
   }, []);
 
   return (
-    <TerminalRegistryContext.Provider value={registryRef}>
+    <TerminalRegistryContext.Provider value={registry}>
       <NewTabContext.Provider value={newTab}>
         <div style={{ height: "100vh", width: "100vw" }}>
           <DockviewReact
@@ -169,8 +168,8 @@ function HeaderActions(): React.ReactElement {
 // ── Dockview panel: renders the registered Terminal child ──
 
 function DockviewTerminalPanel({ params }: IDockviewPanelProps<{ tabId: string }>): React.ReactElement {
-  const registryRef = useContext(TerminalRegistryContext);
-  const child = registryRef.current?.get(params.tabId);
+  const registry = useContext(TerminalRegistryContext);
+  const child = registry.get(params.tabId);
 
   if (!child) {
     return <div style={{ padding: 20, color: "#555" }}>Loading...</div>;
