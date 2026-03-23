@@ -52,11 +52,23 @@ export function WmuxTerminal(props: WmuxTerminalProps): React.ReactElement {
       return true;
     });
 
+    // Track last sent dimensions to avoid redundant resizes (shell redraws prompt on SIGWINCH)
+    let lastCols = xterm.cols;
+    let lastRows = xterm.rows;
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-    const ro = new ResizeObserver(() => {
+
+    const doResize = (): void => {
       fitAddon.fit();
+      if (xterm.cols !== lastCols || xterm.rows !== lastRows) {
+        lastCols = xterm.cols;
+        lastRows = xterm.rows;
+        sendResize({ cols: xterm.cols, rows: xterm.rows });
+      }
+    };
+
+    const ro = new ResizeObserver(() => {
       if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => sendResize({ cols: xterm.cols, rows: xterm.rows }), 100);
+      resizeTimer = setTimeout(doResize, 100);
     });
     ro.observe(containerRef.current);
     sendResize({ cols: xterm.cols, rows: xterm.rows });

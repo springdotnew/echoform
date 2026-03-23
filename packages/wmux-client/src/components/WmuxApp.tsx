@@ -295,7 +295,11 @@ export function WmuxApp(props: {
         {/* Content — all children always mounted, only active visible */}
         <div className="flex-1 min-h-0 relative">
           {[...registry.entries()].map(([id, child]) => (
-            <div key={id} className="absolute inset-0" style={{ display: id === activeTabId ? "contents" : "none" }}>
+            <div
+              key={id}
+              className="absolute inset-0"
+              style={{ visibility: id === activeTabId ? "visible" : "hidden", zIndex: id === activeTabId ? 1 : 0 }}
+            >
               {child}
             </div>
           ))}
