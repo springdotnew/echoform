@@ -1,6 +1,8 @@
 import { wmux } from "@playfast/wmux";
 
 await wmux({
+  title: "react-fullstack",
+  description: "local",
   sidebarItems: [
     {
       category: "background",

@@ -246,6 +246,7 @@ export function WmuxApp(props: {
           )}
         </div>
       </div>
+      </div>
 
       <CommandPalette
         open={cmdkOpen}
