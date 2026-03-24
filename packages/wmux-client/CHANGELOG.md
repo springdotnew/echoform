@@ -1,5 +1,11 @@
 # @playfast/wmux-client
 
+## 0.0.8
+
+### Patch Changes
+
+- @playfast/wmux@0.2.6
+
 ## 0.0.7
 
 ### Patch Changes
