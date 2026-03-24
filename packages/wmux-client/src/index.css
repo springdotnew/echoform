@@ -95,6 +95,32 @@ body {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* ── Syntax highlight paint-in animation ─────────────────── */
+
+/* All tokens share this base transition */
+.wmux-tok-kw, .wmux-tok-str, .wmux-tok-fn,
+.wmux-tok-prop, .wmux-tok-dim, .wmux-tok-norm {
+  transition: color 0.6s ease;
+}
+
+/* Dim state — everything is monochrome gray */
+.wmux-code-dim { color: #48484a; }
+.wmux-code-dim .wmux-tok-kw   { color: #58585c; }
+.wmux-code-dim .wmux-tok-str  { color: #58585c; }
+.wmux-code-dim .wmux-tok-fn   { color: #58585c; }
+.wmux-code-dim .wmux-tok-prop { color: #48484a; }
+.wmux-code-dim .wmux-tok-dim  { color: #38383a; }
+.wmux-code-dim .wmux-tok-norm { color: #48484a; }
+
+/* Lit state — colors paint in with staggered delays */
+.wmux-code-lit { color: #f5f5f780; }
+.wmux-code-lit .wmux-tok-kw   { color: #ff7ab2; transition-delay: 0.00s; }
+.wmux-code-lit .wmux-tok-str  { color: #ff8170; transition-delay: 0.08s; }
+.wmux-code-lit .wmux-tok-fn   { color: #dabaff; transition-delay: 0.04s; }
+.wmux-code-lit .wmux-tok-prop { color: #41a1c0; transition-delay: 0.12s; }
+.wmux-code-lit .wmux-tok-dim  { color: #6c7986; transition-delay: 0.16s; }
+.wmux-code-lit .wmux-tok-norm { color: #f5f5f7cc; transition-delay: 0.06s; }
+
 /* Landing page blur entrance */
 .wmux-blur-enter {
   animation: wmux-blur-enter 0.6s ease-out both;

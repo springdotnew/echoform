@@ -287,13 +287,55 @@ function MockEnvironment(): React.ReactElement {
 
 /* ── Setup modal ───────────────────────────────────────────── */
 
-function CodeBlock({ children }: { readonly children: string }): React.ReactElement {
+function CopyButton({ text }: { readonly text: string }): React.ReactElement {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (): void => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
   return (
-    <pre className="bg-[#1c1c1e] border border-border/50 rounded-lg px-4 py-3 text-[12px] font-mono leading-relaxed overflow-x-auto text-foreground/90">
+    <button
+      onClick={handleCopy}
+      className="absolute top-2 right-2 p-1.5 rounded-md bg-transparent hover:bg-white/10 text-muted-foreground/50 hover:text-foreground/80 transition-colors cursor-pointer opacity-0 group-hover/code:opacity-100"
+      title="Copy to clipboard"
+    >
+      {copied
+        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-success"><path d="M20 6 9 17l-5-5"/></svg>
+        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      }
+    </button>
+  );
+}
+
+function CodeBlock({ raw, delay, children }: { readonly raw: string; readonly delay?: number; readonly children: React.ReactNode }): React.ReactElement {
+  const [lit, setLit] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLit(true), delay ?? 600);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  return (
+    <pre
+      className={`relative bg-[#1c1c1e] border border-border/50 rounded-lg px-4 py-3 pr-10 text-[12px] font-mono leading-relaxed overflow-x-auto group/code transition-all duration-700 ${lit ? "wmux-code-lit" : "wmux-code-dim"}`}
+    >
       {children}
+      <CopyButton text={raw} />
     </pre>
   );
 }
+
+/* Syntax color tokens — hand-tuned for Apple dark */
+const K = "wmux-tok-kw";   // keyword (import, await, from)
+const S = "wmux-tok-str";  // string
+const F = "wmux-tok-fn";   // function / identifier
+const P = "wmux-tok-prop"; // property key
+const C = "wmux-tok-dim";  // punctuation dim
+const N = "wmux-tok-norm"; // normal
 
 function StepNumber({ n }: { readonly n: number }): React.ReactElement {
   return (
@@ -326,7 +368,9 @@ function SetupModal(): React.ReactElement {
           <StepNumber n={1} />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] text-foreground/90 font-medium mb-2">Install the package</p>
-            <CodeBlock>{"npm install @playfast/wmux"}</CodeBlock>
+            <CodeBlock raw="bun add @playfast/wmux" delay={700}>
+              <span className={`${C} select-none`}>$ </span><span className={N}>bun add</span> <span className={S}>@playfast/wmux</span>
+            </CodeBlock>
           </div>
         </div>
 
@@ -334,24 +378,26 @@ function SetupModal(): React.ReactElement {
           <StepNumber n={2} />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] text-foreground/90 font-medium mb-2">Create your config</p>
-            <CodeBlock>{`import { wmux } from "@playfast/wmux";
-
-await wmux({
-  title: "my-project",
-  sidebarItems: [
-    {
-      category: "services",
-      tabs: [
-        { name: "api", process: { command: "bun run dev" } },
-        { name: "web", process: { command: "next dev" } },
-      ],
-    },
-    {
-      category: "files",
-      files: "./src",
-    },
-  ],
-});`}</CodeBlock>
+            <CodeBlock delay={1000} raw={`import { wmux } from "@playfast/wmux";\n\nawait wmux({\n  title: "my-project",\n  sidebarItems: [\n    {\n      category: "services",\n      tabs: [\n        { name: "api", process: { command: "bun run dev" } },\n        { name: "web", process: { command: "next dev" } },\n      ],\n    },\n    {\n      category: "files",\n      files: "./src",\n    },\n  ],\n});`}>
+              <span className={K}>import</span> <span className={N}>{"{ "}</span><span className={F}>wmux</span><span className={N}>{" }"}</span> <span className={K}>from</span> <span className={S}>"@playfast/wmux"</span><span className={C}>;</span>{"\n"}
+{"\n"}
+<span className={K}>await</span> <span className={F}>wmux</span><span className={N}>({"{"}</span>{"\n"}
+{"  "}<span className={P}>title</span><span className={C}>:</span> <span className={S}>"my-project"</span><span className={C}>,</span>{"\n"}
+{"  "}<span className={P}>sidebarItems</span><span className={C}>:</span> <span className={N}>[</span>{"\n"}
+{"    "}<span className={N}>{"{"}</span>{"\n"}
+{"      "}<span className={P}>category</span><span className={C}>:</span> <span className={S}>"services"</span><span className={C}>,</span>{"\n"}
+{"      "}<span className={P}>tabs</span><span className={C}>:</span> <span className={N}>[</span>{"\n"}
+{"        "}<span className={N}>{"{"}</span> <span className={P}>name</span><span className={C}>:</span> <span className={S}>"api"</span><span className={C}>,</span> <span className={P}>process</span><span className={C}>:</span> <span className={N}>{"{"}</span> <span className={P}>command</span><span className={C}>:</span> <span className={S}>"bun run dev"</span> <span className={N}>{"}"}</span> <span className={N}>{"}"}</span><span className={C}>,</span>{"\n"}
+{"        "}<span className={N}>{"{"}</span> <span className={P}>name</span><span className={C}>:</span> <span className={S}>"web"</span><span className={C}>,</span> <span className={P}>process</span><span className={C}>:</span> <span className={N}>{"{"}</span> <span className={P}>command</span><span className={C}>:</span> <span className={S}>"next dev"</span> <span className={N}>{"}"}</span> <span className={N}>{"}"}</span><span className={C}>,</span>{"\n"}
+{"      "}<span className={N}>]</span><span className={C}>,</span>{"\n"}
+{"    "}<span className={N}>{"}"}</span><span className={C}>,</span>{"\n"}
+{"    "}<span className={N}>{"{"}</span>{"\n"}
+{"      "}<span className={P}>category</span><span className={C}>:</span> <span className={S}>"files"</span><span className={C}>,</span>{"\n"}
+{"      "}<span className={P}>files</span><span className={C}>:</span> <span className={S}>"./src"</span><span className={C}>,</span>{"\n"}
+{"    "}<span className={N}>{"}"}</span><span className={C}>,</span>{"\n"}
+{"  "}<span className={N}>]</span><span className={C}>,</span>{"\n"}
+<span className={N}>{"}"}</span><span className={N}>)</span><span className={C}>;</span>
+            </CodeBlock>
           </div>
         </div>
 
@@ -359,7 +405,9 @@ await wmux({
           <StepNumber n={3} />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] text-foreground/90 font-medium mb-2">Run it</p>
-            <CodeBlock>{"bun run wmux.ts"}</CodeBlock>
+            <CodeBlock raw="bun run wmux.ts" delay={1300}>
+              <span className={`${C} select-none`}>$ </span><span className={N}>bun run</span> <span className={S}>wmux.ts</span>
+            </CodeBlock>
             <p className="text-[11px] text-muted-foreground/60 mt-2 leading-relaxed">
               The browser will open automatically with your multiplexed dev environment.
             </p>
@@ -372,14 +420,25 @@ await wmux({
         <span className="text-[11px] text-muted-foreground/50">
           Or pass <code className="text-muted-foreground/70 bg-background/60 px-1.5 py-0.5 rounded text-[10px] font-mono">#token=...&ws=...</code> in the URL
         </span>
-        <a
-          href="https://github.com/springdotnew/echoform"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[11px] text-[#0a84ff] hover:text-[#409cff] transition-colors"
-        >
-          Docs ↗
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="https://www.npmjs.com/package/@playfast/wmux"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-muted-foreground/60 hover:text-foreground/80 transition-colors"
+          >
+            npm ↗
+          </a>
+          <span className="text-border">·</span>
+          <a
+            href="https://github.com/springdotnew/echoform"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-[#0a84ff] hover:text-[#409cff] transition-colors"
+          >
+            Docs ↗
+          </a>
+        </div>
       </div>
     </div>
   );
