@@ -8,7 +8,11 @@ export interface WebSocketTransportState {
   readonly status: "connecting" | "connected" | "error" | "disconnected";
 }
 
-export function useWebSocketTransport(url: string): WebSocketTransportState {
+export interface WebSocketTransportOptions {
+  readonly authToken?: string;
+}
+
+export function useWebSocketTransport(url: string, options?: WebSocketTransportOptions): WebSocketTransportState {
   const [state, setState] = useState<WebSocketTransportState>({
     transport: null,
     error: null,
@@ -18,7 +22,10 @@ export function useWebSocketTransport(url: string): WebSocketTransportState {
   useEffect(() => {
     let disposed = false;
 
-    const ws = new WebSocket(url);
+    const finalUrl = options?.authToken
+      ? `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(options.authToken)}`
+      : url;
+    const ws = new WebSocket(finalUrl);
     ws.binaryType = "arraybuffer";
 
     const { transport, dispatch, disconnect } = createWebSocketTransport(ws as unknown as WebSocketLike, { checkOpen: true });

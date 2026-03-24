@@ -354,7 +354,7 @@ interface BinaryShareableViewData extends BinaryViewBase {
 type WireUpdateViewsTree = { readonly views: ReadonlyArray<BinaryExistingViewData> };
 type WireUpdateView = { readonly view: BinaryShareableViewData };
 type WireDeleteView = { readonly viewUid: string };
-type WireRespondToEvent = { readonly data: SerializableValue; readonly uid: string; readonly eventUid: string };
+type WireRespondToEvent = { readonly data: SerializableValue; readonly uid: string; readonly eventUid: string; readonly error?: string };
 type WireRequestEvent = { readonly eventArguments: ReadonlyArray<SerializableValue>; readonly uid: string; readonly eventUid: string };
 type WireStreamChunk = { readonly streamUid: string; readonly chunk: SerializableValue };
 type WireStreamEnd = { readonly streamUid: string };
@@ -409,17 +409,34 @@ const respondToEventCodec: EventCodec<WireRespondToEvent> = {
     serializableValue.write(w, data.data);
     binString.write(w, data.uid);
     binString.write(w, data.eventUid);
+    const hasError = data.error !== undefined;
+    bool.write(w, hasError);
+    if (hasError) {
+      binString.write(w, data.error!);
+    }
   },
   read(r) {
     const data = serializableValue.read(r);
     const uid = binString.read(r);
     const eventUid = binString.read(r);
+    try {
+      const hasError = bool.read(r);
+      if (hasError) {
+        return { data, uid, eventUid, error: binString.read(r) };
+      }
+    } catch {
+      // Backward compat: old encoders don't write the error field
+    }
     return { data, uid, eventUid };
   },
   measure(data, m) {
     serializableValue.measure(data.data, m);
     binString.measure(data.uid, m);
     binString.measure(data.eventUid, m);
+    m.add(1); // hasError bool
+    if (data.error !== undefined) {
+      binString.measure(data.error, m);
+    }
   },
 };
 

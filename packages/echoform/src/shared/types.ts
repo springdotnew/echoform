@@ -25,6 +25,7 @@ export interface EventResponseData {
   readonly data: SerializableValue;
   readonly uid: RequestUid;
   readonly eventUid: EventUid;
+  readonly error?: string;
 }
 
 export interface EventRequestData {

@@ -9,15 +9,16 @@ interface Props<ViewsInterface extends Record<string, unknown> = Record<string, 
   readonly host: string;
   readonly views: Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>;
   readonly socketOptions?: Partial<ManagerOptions & SocketOptions>;
+  readonly auth?: Readonly<Record<string, string>>;
 }
 
 function Client<ViewsInterface extends Record<string, unknown> = Record<string, unknown>>(props: Props<ViewsInterface>): React.ReactElement {
-  const { host, port, views, socketOptions } = props;
+  const { host, port, views, socketOptions, auth } = props;
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = connect(`${host}:${port}`, socketOptions);
+    const socket = connect(`${host}:${port}`, { ...socketOptions, auth: auth ?? socketOptions?.auth });
     socketRef.current = socket;
 
     socket.on("connect", () => {

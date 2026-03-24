@@ -20,6 +20,7 @@ export interface ServerProps {
   readonly singleInstance?: boolean;
   readonly transport: ServerTransport;
   readonly instanceRenderHandler?: ServerInstanceRenderHandler;
+  readonly skipCallbackValidation?: boolean;
 }
 
 const setApp = Symbol("setApp");
@@ -94,6 +95,7 @@ export function Server(props: ServerProps): React.ReactElement {
         paused={!singleInstance}
         transport={transport as unknown as AnyTransport}
         transportIsClient={false}
+        skipCallbackValidation={props.skipCallbackValidation}
         ref={(handle) => {
           (appRef as React.MutableRefObject<AppHandle | null>).current = handle;
           if (props.instanceRenderHandler) {
@@ -113,6 +115,7 @@ export function Server(props: ServerProps): React.ReactElement {
               transportIsClient
               key={id}
               paused={false}
+              skipCallbackValidation={props.skipCallbackValidation}
             >
               {children}
             </App>

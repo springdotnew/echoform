@@ -26,6 +26,8 @@ export type { ViewDef, CallbackDef, StreamDef, ViewDefs, ViewConfig, CallbackCon
 export type { InferServerProps, InferClientProps, StreamEmitter, StreamReceiver, StreamEmitterHandle, ClientCallback } from "./view-inference";
 export { createStreamEmitter, toMutationOptions } from "./view-inference";
 export type { StandardSchemaV1 } from "./standard-schema";
+export { validateSchema, validateSchemaStrict } from "./validation";
+export type { ValidationResult } from "./validation";
 export { randomId } from "./id";
 export { ViewsRenderer } from "./ViewsRenderer";
 export type { RenderProps } from "./ViewsRenderer";

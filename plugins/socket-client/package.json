@@ -23,13 +23,12 @@
     "react-dom": ">=19.0.0"
   },
   "dependencies": {
-    "socket.io-client": "4.5.3"
+    "socket.io-client": "4.8.3"
   },
   "devDependencies": {
     "@playfast/echoform": "workspace:*",
     "@types/react": "19.0.2",
-    "@types/react-dom": "19.0.2",
-    "@types/socket.io-client": "1.4.36"
+    "@types/react-dom": "19.0.2"
   },
   "author": "shmuelhizmi",
   "license": "MIT"

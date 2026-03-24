@@ -67,7 +67,7 @@ function Client<TEvents extends Record<string | number, unknown> = Record<string
   const streamListenersRef = useRef<Map<StreamUid, Set<(chunk: SerializableValue) => void>>>(new Map());
 
   const createEvent = useCallback((eventUid: EventUid, ...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const requestUid = createRequestUid(randomId());
       const transport = transportRef.current;
 
@@ -77,11 +77,15 @@ function Client<TEvents extends Record<string | number, unknown> = Record<string
         data,
         uid,
         eventUid: responseEventUid,
+        error,
       }: AppEvents['respond_to_event']): void => {
-        if (uid === requestUid && responseEventUid === eventUid) {
-          resolve(data);
-          unsubscribe?.();
+        if (uid !== requestUid || responseEventUid !== eventUid) return;
+        unsubscribe?.();
+        if (error) {
+          reject(new Error(error));
+          return;
         }
+        resolve(data);
       };
 
       unsubscribe = transport.on("respond_to_event", handler) ?? undefined;

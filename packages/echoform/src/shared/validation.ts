@@ -21,14 +21,7 @@ function reportValidationResult(result: StandardSchemaV1.Result<unknown>, contex
 }
 
 /**
- * Validate a value against a Standard Schema v1 schema.
- *
- * Returns `true` if valid, logs a warning and returns `false` if invalid.
- * Handles both sync and async validation results.
- *
- * @param schema - The Standard Schema v1 schema to validate against.
- * @param value - The value to validate.
- * @param context - A description of where the validation is happening (for logging).
+ * Validate a value against a Standard Schema v1 schema (advisory, logs warnings only).
  */
 export function validateSchema(
   schema: StandardSchemaV1,
@@ -58,4 +51,49 @@ export function validateSchema(
   } else {
     reportValidationResult(result, context);
   }
+}
+
+export interface ValidationResult {
+  readonly valid: boolean;
+  readonly error?: string;
+}
+
+function toValidationResult(result: StandardSchemaV1.Result<unknown>, context: string): ValidationResult {
+  if ("issues" in result && result.issues) {
+    const error = `Schema validation failed (${context}):\n${formatIssues(result.issues)}`;
+    console.warn(`[echoform] ${error}`);
+    return { valid: false, error };
+  }
+  return { valid: true };
+}
+
+/**
+ * Validate a value against a Standard Schema v1 schema (strict, returns result).
+ * Used for callback input validation where invalid data should be rejected.
+ */
+export function validateSchemaStrict(
+  schema: StandardSchemaV1,
+  value: unknown,
+  context: string,
+): ValidationResult | Promise<ValidationResult> {
+  let result: StandardSchemaV1.Result<unknown> | Promise<StandardSchemaV1.Result<unknown>>;
+  try {
+    result = schema["~standard"].validate(value);
+  } catch (err) {
+    const error = `Schema validation threw an error (${context}): ${String(err)}`;
+    console.warn(`[echoform] ${error}`);
+    return { valid: false, error };
+  }
+
+  if (result instanceof Promise) {
+    return result
+      .then((resolved) => toValidationResult(resolved, context))
+      .catch((err) => {
+        const error = `Async schema validation threw an error (${context}): ${String(err)}`;
+        console.warn(`[echoform] ${error}`);
+        return { valid: false, error } as ValidationResult;
+      });
+  }
+
+  return toValidationResult(result, context);
 }

@@ -17,7 +17,8 @@ import type { DecompileTransport } from "../shared/decompiled-transport";
 import { decompileTransport } from "../shared/decompiled-transport";
 import { randomId } from "../shared/id";
 import { deeplyEqual } from "../shared/comparison.utils";
-import { validateSchema } from "../shared/validation";
+import { validateSchema, validateSchemaStrict } from "../shared/validation";
+import type { ValidationResult } from "../shared/validation";
 import type { CallbackDef, ViewDef } from "../shared/view-builder";
 import type { StandardSchemaV1 } from "../shared/standard-schema";
 
@@ -36,6 +37,7 @@ interface AppProps {
   readonly transport: Transport<Record<string | number, unknown>>;
   readonly paused: boolean;
   readonly transportIsClient: boolean;
+  readonly skipCallbackValidation?: boolean;
 }
 
 export interface AppHandle {
@@ -149,6 +151,10 @@ function reconcileProps(
   return { currentProps: current, propsToAdd: toAdd };
 }
 
+function collectEventUids(props: ReadonlyArray<Prop>): ReadonlyArray<EventUid> {
+  return props.filter((p): p is Prop & { type: 'event' } => p.type === "event").map((p) => p.uid);
+}
+
 function replaceAt<T>(items: ReadonlyArray<T>, index: number, item: T): T[] {
   return [...items.slice(0, index), item, ...items.slice(index + 1)];
 }
@@ -159,14 +165,18 @@ function removeAt<T>(items: ReadonlyArray<T>, index: number): T[] {
 
 // ── Component ──
 
-const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, paused, transportIsClient }, ref) {
+const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, paused, transportIsClient, skipCallbackValidation }, ref) {
   const serverRef = useRef<DecompileTransport>(decompileTransport(transport));
   const clientsRef = useRef<ReadonlyArray<DecompileTransport>>([]);
   const clientsMapRef = useRef<Map<Transport<Record<string | number, unknown>>, DecompileTransport>>(new Map());
   const existingSharedViewsRef = useRef<ReadonlyArray<ExistingSharedViewData>>([]);
   const viewEventsRef = useRef<ReadonlyMap<EventUid, RegisteredEvent>>(new Map());
   const cleanUpFunctionsRef = useRef<ReadonlyArray<() => void>>([]);
+  const clientCleanupMapRef = useRef<Map<AnyTransport, () => void>>(new Map());
+  const clientEventAuthRef = useRef<Map<DecompileTransport, Set<EventUid>>>(new Map());
   const eventChainRef = useRef(Promise.resolve());
+  const skipValidationRef = useRef(skipCallbackValidation ?? false);
+  skipValidationRef.current = skipCallbackValidation ?? false;
 
   const registerViewEvent = useCallback((event: EventHandler, callbackDef?: CallbackDef): EventUid => {
     const eventUid = createEventUid(randomId());
@@ -194,31 +204,61 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
   const registerSocketListener = useCallback((client: DecompileTransport) => {
     const cleanReqTree = client.on("request_views_tree", () => {
       client.emit("update_views_tree", { views: snapshotViews(existingSharedViewsRef.current) });
+      const allEventUids = existingSharedViewsRef.current.flatMap((v) => collectEventUids(v.props));
+      clientEventAuthRef.current.set(client, new Set(allEventUids));
     });
 
     const cleanReqEvent = client.on("request_event", ({
       eventArguments, eventUid: requestedEventUid, uid: currentEventUid,
     }: AppEvents['request_event']) => {
       eventChainRef.current = eventChainRef.current.then(() => {
+        const authorized = clientEventAuthRef.current.get(client);
+        if (authorized && !authorized.has(requestedEventUid)) {
+          client.emit("respond_to_event", { data: null, uid: currentEventUid, eventUid: requestedEventUid, error: "Unauthorized event access" });
+          return;
+        }
+
         const registered = viewEventsRef.current.get(requestedEventUid);
         if (!registered) {
-          throw new Error("the client is trying to access an event that does not exist");
+          client.emit("respond_to_event", { data: null, uid: currentEventUid, eventUid: requestedEventUid, error: "Event does not exist" });
+          return;
         }
 
-        if (registered.callbackDef?.input) {
-          const argValue = eventArguments.length === 1 ? eventArguments[0] : eventArguments;
-          validateSchema(registered.callbackDef.input as StandardSchemaV1, argValue, `callback ${requestedEventUid as string}`);
+        const executeHandler = (): Promise<void> =>
+          Promise.resolve(registered.handler(...eventArguments)).then((result) => {
+            client.emit("respond_to_event", { data: result, uid: currentEventUid, eventUid: requestedEventUid });
+          });
+
+        if (!registered.callbackDef?.input || skipValidationRef.current) {
+          return executeHandler();
         }
 
-        return Promise.resolve(registered.handler(...eventArguments)).then((result) => {
-          client.emit("respond_to_event", { data: result, uid: currentEventUid, eventUid: requestedEventUid });
-        });
+        const argValue = eventArguments.length === 1 ? eventArguments[0] : eventArguments;
+        const validationResult = validateSchemaStrict(
+          registered.callbackDef.input as StandardSchemaV1, argValue, `callback ${requestedEventUid as string}`,
+        );
+
+        const handleValidation = (result: ValidationResult): Promise<void> => {
+          if (!result.valid) {
+            client.emit("respond_to_event", { data: null, uid: currentEventUid, eventUid: requestedEventUid, error: result.error });
+            return Promise.resolve();
+          }
+          return executeHandler();
+        };
+
+        if (validationResult instanceof Promise) {
+          return validationResult.then(handleValidation);
+        }
+        return handleValidation(validationResult);
       }).catch((error) => {
         console.error("echoform: event handler error", error);
+        client.emit("respond_to_event", { data: null, uid: currentEventUid, eventUid: requestedEventUid, error: String(error) });
       });
     });
 
-    cleanUpFunctionsRef.current = [...cleanUpFunctionsRef.current, () => { cleanReqTree?.(); cleanReqEvent?.(); }];
+    const cleanup = (): void => { cleanReqTree?.(); cleanReqEvent?.(); };
+    cleanUpFunctionsRef.current = [...cleanUpFunctionsRef.current, cleanup];
+    return cleanup;
   }, []);
 
   const addClient = useCallback(<T extends Record<string | number, unknown>>(client: Transport<T>) => {
@@ -226,11 +266,22 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     const key = client as unknown as AnyTransport;
     clientsMapRef.current = new Map([...clientsMapRef.current, [key, clientTransport]]);
     clientsRef.current = Array.from(clientsMapRef.current.values());
-    registerSocketListener(clientTransport);
+    clientEventAuthRef.current.set(clientTransport, new Set());
+    const cleanup = registerSocketListener(clientTransport);
+    clientCleanupMapRef.current = new Map([...clientCleanupMapRef.current, [key, cleanup]]);
   }, [registerSocketListener]);
 
   const removeClient = useCallback(<T extends Record<string | number, unknown>>(client: Transport<T>) => {
     const key = client as unknown as AnyTransport;
+    const clientTransport = clientsMapRef.current.get(key);
+    if (clientTransport) {
+      clientEventAuthRef.current.delete(clientTransport);
+    }
+    const cleanup = clientCleanupMapRef.current.get(key);
+    cleanup?.();
+    const newCleanupMap = new Map(clientCleanupMapRef.current);
+    newCleanupMap.delete(key);
+    clientCleanupMapRef.current = newCleanupMap;
     const newMap = new Map(clientsMapRef.current);
     newMap.delete(key);
     clientsMapRef.current = newMap;
@@ -254,6 +305,10 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
       };
       existingSharedViewsRef.current = [...existingSharedViewsRef.current, newView];
       broadcast("update_view", buildViewPayload(newView, props, []));
+      const newEventUids = collectEventUids(props);
+      for (const [, authSet] of clientEventAuthRef.current) {
+        for (const uid of newEventUids) authSet.add(uid);
+      }
       return;
     }
 
@@ -266,6 +321,10 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
 
     if (propsToAdd.length > 0 || propsToDelete.length > 0) {
       broadcast("update_view", buildViewPayload(existingView, propsToAdd, propsToDelete.map((prop) => prop.name)));
+      const newEventUids = collectEventUids(propsToAdd);
+      for (const [, authSet] of clientEventAuthRef.current) {
+        for (const uid of newEventUids) authSet.add(uid);
+      }
     }
   }, [registerViewEvent, broadcast]);
 
@@ -282,6 +341,10 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
       deletedView.props.filter((prop): prop is Prop & { type: 'event' } => prop.type === "event").map((prop) => prop.uid),
     );
     viewEventsRef.current = new Map([...viewEventsRef.current].filter(([key]) => !deleteSet.has(key)));
+
+    for (const [, authSet] of clientEventAuthRef.current) {
+      for (const uid of deleteSet) authSet.delete(uid);
+    }
 
     broadcast("delete_view", { viewUid: uid });
   }, [broadcast]);

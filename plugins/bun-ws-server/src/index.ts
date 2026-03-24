@@ -32,6 +32,7 @@ export interface BunWebSocketServerOptions {
   readonly port: number;
   readonly hostname?: string;
   readonly path?: string;
+  readonly validateConnection?: (req: Request) => boolean | Promise<boolean>;
 }
 
 export interface BunWebSocketServer {
@@ -76,10 +77,16 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
     server = Bun.serve<ClientData>({
       port,
       hostname,
-      fetch(req: Request, srv: BunServer) {
+      async fetch(req: Request, srv: BunServer) {
         const url = new URL(req.url);
 
         if (url.pathname === path) {
+          if (options.validateConnection) {
+            const allowed = await Promise.resolve(options.validateConnection(req));
+            if (!allowed) {
+              return new Response("Unauthorized", { status: 401 });
+            }
+          }
           const upgraded = srv.upgrade(req, {
             data: { id: globalThis.crypto.randomUUID() },
           });

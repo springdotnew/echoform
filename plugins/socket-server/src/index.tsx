@@ -4,10 +4,12 @@ import type { Transport } from "@playfast/echoform/shared";
 import type { Server as ServerBase, ServerProps } from "@playfast/echoform/server";
 import type { Server as HTTPServer } from "http";
 
-interface Props extends Pick<ServerProps, 'children' | 'singleInstance' | 'instanceRenderHandler'> {
+interface Props extends Pick<ServerProps, 'children' | 'singleInstance' | 'instanceRenderHandler' | 'skipCallbackValidation'> {
   readonly port?: number;
   readonly server?: HTTPServer;
   readonly socketOptions?: Partial<SocketIO.ServerOptions>;
+  readonly validateConnection?: (socket: SocketIO.Socket) => boolean | Promise<boolean>;
+  readonly maxListeners?: number;
 }
 
 interface SocketServerComponentProps extends Props {
@@ -27,10 +29,19 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
       ? new SocketIO.Server(props.server, props.socketOptions)
       : new SocketIO.Server(props.socketOptions);
 
-    server.setMaxListeners(Infinity);
+    const listenerLimit = props.maxListeners ?? 100;
+    server.setMaxListeners(listenerLimit);
     server.on("connection", (socket: SocketIO.Socket) => {
-      socket.setMaxListeners(Infinity);
+      socket.setMaxListeners(listenerLimit);
     });
+
+    if (props.validateConnection) {
+      const validate = props.validateConnection;
+      server.use(async (socket, next) => {
+        const allowed = await Promise.resolve(validate(socket));
+        next(allowed ? undefined : new Error("Connection rejected"));
+      });
+    }
 
     if (!props.server && props.port) {
       server.listen(props.port);
@@ -49,7 +60,7 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
   }, [server]);
 
   const getProps = useCallback((): ServerProps => {
-    const { children, singleInstance, instanceRenderHandler } = props;
+    const { children, singleInstance, instanceRenderHandler, skipCallbackValidation } = props;
 
     const transport: Transport<{ readonly connection: Transport<{ readonly disconnect: void }> & { readonly id: string } }> = {
       on: (event, callback) => {
@@ -63,10 +74,11 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
         server.sockets.emit(event as string, data);
       },
       off: (event, callback) => {
-        server.sockets.removeListener(event as string, callback as (...args: unknown[]) => void);
         if (event === "connection") {
-          server.removeAllListeners("connection");
+          server.removeListener("connection", callback as (...args: unknown[]) => void);
+          return;
         }
+        server.sockets.removeListener(event as string, callback as (...args: unknown[]) => void);
       },
     };
 
@@ -75,6 +87,7 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
       singleInstance,
       children,
       instanceRenderHandler,
+      skipCallbackValidation,
     };
   }, [props.children, props.singleInstance, props.instanceRenderHandler, server]);
 
