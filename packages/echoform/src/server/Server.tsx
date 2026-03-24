@@ -79,12 +79,16 @@ export function Server(props: ServerProps): React.ReactElement {
   const [clients, setClients] = useState<Readonly<Record<string, Transport<DisconnectEvent>>>>({});
 
   useEffect(() => {
-    transport.on("connection", (clientTransport) => {
+    const connectionHandler = (clientTransport: Transport<DisconnectEvent> & { readonly id: string }): void => {
       handleClientConnect(appRef, singleInstance, clientTransport, setClients);
       clientTransport.on("disconnect", () => {
         handleClientDisconnect(appRef, singleInstance, clientTransport, setClients);
       });
-    });
+    };
+    transport.on("connection", connectionHandler);
+    return () => {
+      transport.off?.("connection", connectionHandler);
+    };
   }, [singleInstance, transport]);
 
   const clientIds = Object.keys(clients);

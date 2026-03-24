@@ -19,6 +19,7 @@ interface SocketServerComponentProps extends Props {
 function SocketServer(props: SocketServerComponentProps): React.ReactElement {
   const { ServerBase } = props;
   const serverRef = useRef<SocketIO.Server | null>(null);
+  const connectionWrappersRef = useRef(new Map<(data: unknown) => void, (socket: SocketIO.Socket) => void>());
 
   if (!serverRef.current) {
     if (!props.server && !props.port) {
@@ -66,14 +67,14 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
   const getProps = useCallback((): ServerProps => {
     const { children, singleInstance, instanceRenderHandler, skipCallbackValidation } = props;
 
-    const connectionWrappers = new Map<(data: unknown) => void, (socket: SocketIO.Socket) => void>();
+    const wrappers = connectionWrappersRef.current;
 
     const transport: Transport<{ readonly connection: Transport<{ readonly disconnect: void }> & { readonly id: string } }> = {
       on: (event, callback) => {
         if (event !== "connection") return;
         const typedCallback = callback as (data: unknown) => void;
         const wrapper = (socket: SocketIO.Socket): void => { typedCallback(socket); };
-        connectionWrappers.set(typedCallback, wrapper);
+        wrappers.set(typedCallback, wrapper);
         server.on("connection", wrapper);
       },
       emit: (event, data) => {
@@ -82,10 +83,10 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
       off: (event, callback) => {
         if (event === "connection") {
           const typedCallback = callback as (data: unknown) => void;
-          const wrapper = connectionWrappers.get(typedCallback);
+          const wrapper = wrappers.get(typedCallback);
           if (!wrapper) return;
           server.removeListener("connection", wrapper);
-          connectionWrappers.delete(typedCallback);
+          wrappers.delete(typedCallback);
           return;
         }
         server.sockets.removeListener(event as string, callback as (...args: unknown[]) => void);

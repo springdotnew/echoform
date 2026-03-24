@@ -143,6 +143,9 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
   };
 
   const stop = (): void => {
+    for (const client of clients.values()) {
+      client.disconnect();
+    }
     server?.stop();
     server = null;
     clients.clear();

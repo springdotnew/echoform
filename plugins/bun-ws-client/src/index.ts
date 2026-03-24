@@ -61,7 +61,7 @@ export function useWebSocketTransport(url: string, options?: WebSocketTransportO
       disposed = true;
       ws.close();
     };
-  }, [url]);
+  }, [url, options?.authToken]);
 
   return state;
 }
