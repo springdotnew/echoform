@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useCallback, type ReactElement } from "react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { X, Play, RotateCw, Square } from "lucide-react";
@@ -97,14 +97,17 @@ function handleDragEnd(
 }
 
 export function TabBar({ tabs, activeId, categoryColor, onSelect, onClose, onReorder, processActions }: TabBarProps): ReactElement {
+  const onDragEnd = useCallback(
+    (event: Parameters<NonNullable<Parameters<typeof DragDropProvider>[0]["onDragEnd"]>>[0]) => handleDragEnd(event, tabs, onReorder),
+    [tabs, onReorder],
+  );
+
   return (
     <div
       className="flex items-center h-8 border-b border-border/20 shrink-0 overflow-x-auto scrollbar-hide"
       style={{ backgroundColor: `color-mix(in srgb, ${categoryColor} 4%, var(--color-background))` }}
     >
-      <DragDropProvider
-        onDragEnd={(event) => handleDragEnd(event, tabs, onReorder)}
-      >
+      <DragDropProvider onDragEnd={onDragEnd}>
         {tabs.map((tab, i) => (
           <SortableTab
             key={tab.id}

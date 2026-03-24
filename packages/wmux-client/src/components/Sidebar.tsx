@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useCallback, type ReactElement } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { STATUS_COLORS } from "../styles/theme";
 import { resolveIcon } from "../utils/icons";
@@ -143,17 +143,17 @@ function CategorySection({
 }): ReactElement {
   const isFiles = category.type === "files";
 
-  const handleToggleDir = (path: string): void => {
+  const handleToggleDir = useCallback((path: string): void => {
     selectCategoryAndAct(isActive, onSelectCategory, () => onToggleDir(path));
-  };
+  }, [isActive, onSelectCategory, onToggleDir]);
 
-  const handleOpenFile = (path: string): void => {
+  const handleOpenFile = useCallback((path: string): void => {
     selectCategoryAndAct(isActive, onSelectCategory, () => onOpenFile(path));
-  };
+  }, [isActive, onSelectCategory, onOpenFile]);
 
-  const handleSelectTab = (tabId: string): void => {
+  const handleSelectTab = useCallback((tabId: string): void => {
     selectCategoryAndAct(isActive, onSelectCategory, () => onSelectTab(tabId));
-  };
+  }, [isActive, onSelectCategory, onSelectTab]);
 
   return (
     <div
@@ -201,16 +201,16 @@ function CategorySection({
   );
 }
 
-function SidebarFooter(): ReactElement {
-  const shortcuts = [
-    { key: "⌘K", label: "Command palette" },
-    { key: "↑↓", label: "Navigate sidebar" },
-    { key: "⌘[]", label: "Switch tab" },
-  ] as const;
+const SHORTCUTS = [
+  { key: "⌘K", label: "Command palette" },
+  { key: "↑↓", label: "Navigate sidebar" },
+  { key: "⌘[]", label: "Switch tab" },
+] as const;
 
+function SidebarFooter(): ReactElement {
   return (
     <div className="border-t border-border/20 p-2 flex flex-col gap-1">
-      {shortcuts.map(({ key, label }) => (
+      {SHORTCUTS.map(({ key, label }) => (
         <div key={key} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/25">
           <kbd className="bg-muted/30 px-1 py-px rounded border border-border/15 font-mono text-[9px]">
             {key}

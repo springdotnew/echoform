@@ -1,4 +1,4 @@
-import { useEffect, type ReactElement } from "react";
+import { useEffect, useCallback, type ReactElement } from "react";
 import { useViews, useStream } from "@playfast/echoform/server";
 import { views, WmuxTerminal } from "../views";
 import type { ManagedProcess } from "../process";
@@ -16,6 +16,9 @@ export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): Re
     return () => proc.dispose();
   }, []);
 
+  const handleInput = useCallback((b64: string) => proc.write(b64), [proc]);
+  const handleResize = useCallback(({ cols, rows }: { cols: number; rows: number }) => proc.resize(cols, rows), [proc]);
+
   if (!View) return null;
 
   return (
@@ -24,8 +27,8 @@ export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): Re
       name={proc.name}
       status={proc.status}
       output={output}
-      onInput={(b64: string) => proc.write(b64)}
-      onResize={({ cols, rows }: { cols: number; rows: number }) => proc.resize(cols, rows)}
+      onInput={handleInput}
+      onResize={handleResize}
     />
   );
 }

@@ -6,13 +6,13 @@ const fs = require("fs");
 const path = require("path");
 
 const packages = [
-  "packages/fullstack",
+  "packages/echoform",
   "packages/react-render-null",
   "packages/wmux",
-  "plugins/fullstack/bun-ws-client",
-  "plugins/fullstack/bun-ws-server",
-  "plugins/fullstack/socket-client",
-  "plugins/fullstack/socket-server",
+  "plugins/echoform/bun-ws-client",
+  "plugins/echoform/bun-ws-server",
+  "plugins/echoform/socket-client",
+  "plugins/echoform/socket-server",
 ];
 
 const versions = new Map();

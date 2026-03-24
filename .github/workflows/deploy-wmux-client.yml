@@ -6,7 +6,7 @@ on:
     paths:
       - "packages/wmux-client/**"
       - "packages/wmux/src/views.ts"
-      - "packages/fullstack/src/shared/**"
+      - "packages/echoform/src/shared/**"
 
 concurrency:
   group: deploy-wmux-client

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, type ReactElement } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, type ReactElement } from "react";
 import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { resolveIcon } from "../utils/icons";
@@ -218,10 +218,9 @@ export function CommandPalette({
 
   const activeTab = useMemo(() => findActiveTab(categories, activeTabId), [categories, activeTabId]);
   const allFiles = useMemo(() => extractSearchableFiles(categories), [categories]);
+  const closePalette = useCallback(() => onOpenChange(false), [onOpenChange]);
 
   if (!open) return null;
-
-  const closePalette = () => onOpenChange(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]" onClick={closePalette}>

@@ -5,7 +5,7 @@
       "entry": [],
       "project": ["*.{ts,tsx,js,jsx}"]
     },
-    "packages/fullstack": {
+    "packages/echoform": {
       "entry": [
         "src/shared/index.ts",
         "src/server/index.ts",
@@ -17,11 +17,11 @@
       "entry": ["src/render.tsx"],
       "project": ["src/**/*.{ts,tsx}"]
     },
-    "plugins/fullstack/socket-server": {
+    "plugins/echoform/socket-server": {
       "entry": ["src/index.tsx"],
       "project": ["src/**/*.{ts,tsx}"]
     },
-    "plugins/fullstack/socket-client": {
+    "plugins/echoform/socket-client": {
       "entry": ["src/index.tsx"],
       "project": ["src/**/*.{ts,tsx}"]
     },

@@ -193,15 +193,15 @@ const { transport, error, status } = useWebSocketTransport(url);
 
 ## Packages
 
-- [@playfast/echoform](packages/fullstack) — core framework
+- [@playfast/echoform](packages/echoform) — core framework
 - [@playfast/echoform-render](packages/react-render-null) — server-side React renderer
 
 ## Transport Plugins
 
-- [@playfast/echoform-bun-ws-server](plugins/fullstack/bun-ws-server) — Bun WebSocket server
-- [@playfast/echoform-bun-ws-client](plugins/fullstack/bun-ws-client) — WebSocket client hook
-- [@playfast/echoform-socket-server](plugins/fullstack/socket-server) — Socket.io server
-- [@playfast/echoform-socket-client](plugins/fullstack/socket-client) — Socket.io client
+- [@playfast/echoform-bun-ws-server](plugins/echoform/bun-ws-server) — Bun WebSocket server
+- [@playfast/echoform-bun-ws-client](plugins/echoform/bun-ws-client) — WebSocket client hook
+- [@playfast/echoform-socket-server](plugins/echoform/socket-server) — Socket.io server
+- [@playfast/echoform-socket-client](plugins/echoform/socket-client) — Socket.io client
 
 ## Demos
 

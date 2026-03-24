@@ -1,4 +1,4 @@
-import { createRef, useState, useEffect, useRef, type RefObject, type ReactElement } from "react";
+import { createRef, useState, useEffect, useRef, useMemo, useCallback, type RefObject, type ReactElement } from "react";
 import { useViews } from "@playfast/echoform/server";
 import { views } from "../views";
 import type { ManagedProcess } from "../process";
@@ -140,14 +140,36 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
     return () => clearInterval(interval);
   }, [processes]);
 
+  const categories = useMemo(
+    () => categoryDefs.map((definition) => {
+      if (definition.type === "files") return buildFileCategory(definition, fileStates[definition.name]);
+      return buildProcessCategory(definition, statuses);
+    }),
+    [categoryDefs, fileStates, statuses],
+  );
+
+  const iframeTabs = useMemo(() => extractIframeTabs(categoryDefs), [categoryDefs]);
+  const processIds = useMemo(() => [...processes.keys()], [processes]);
+  const fileCategories = useMemo(
+    () => categoryDefs.filter((d) => d.type === "files" && d.fileRoot),
+    [categoryDefs],
+  );
+
+  const handleSelectCategory = useCallback((category: string) => {
+    setActiveCategory(category);
+    const definition = categoryDefs.find((d) => d.name === category);
+    if (!definition) return;
+    setActiveTabId(resolveInitialTabId(definition, fileStates));
+  }, [categoryDefs, fileStates]);
+
+  const handleStartProcess = useCallback((id: string) => processes.get(id)?.start(), [processes]);
+  const handleStopProcess = useCallback((id: string) => processes.get(id)?.stop(), [processes]);
+  const handleRestartProcess = useCallback((id: string) => processes.get(id)?.restart(), [processes]);
+  const handleToggleDir = useCallback((path: string) => fileRefs.current[activeCategory]?.current?.toggleDir(path), [activeCategory]);
+  const handleOpenFile = useCallback((path: string) => fileRefs.current[activeCategory]?.current?.openFile(path), [activeCategory]);
+  const handleCloseFile = useCallback((id: string) => fileRefs.current[activeCategory]?.current?.closeFile(id), [activeCategory]);
+
   if (!View) return null;
-
-  const categories = categoryDefs.map((definition) => {
-    if (definition.type === "files") return buildFileCategory(definition, fileStates[definition.name]);
-    return buildProcessCategory(definition, statuses);
-  });
-
-  const iframeTabs = extractIframeTabs(categoryDefs);
 
   return (
     <View.WmuxApp
@@ -156,27 +178,22 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
       categories={categories}
       activeCategory={activeCategory}
       activeTabId={activeTabId}
-      onSelectCategory={(category: string) => {
-        setActiveCategory(category);
-        const definition = categoryDefs.find((d) => d.name === category);
-        if (!definition) return;
-        setActiveTabId(resolveInitialTabId(definition, fileStates));
-      }}
+      onSelectCategory={handleSelectCategory}
       onSelectTab={setActiveTabId}
-      onStartProcess={(id: string) => processes.get(id)?.start()}
-      onStopProcess={(id: string) => processes.get(id)?.stop()}
-      onRestartProcess={(id: string) => processes.get(id)?.restart()}
-      onToggleDir={(path: string) => fileRefs.current[activeCategory]?.current?.toggleDir(path)}
-      onOpenFile={(path: string) => fileRefs.current[activeCategory]?.current?.openFile(path)}
-      onCloseFile={(id: string) => fileRefs.current[activeCategory]?.current?.closeFile(id)}
+      onStartProcess={handleStartProcess}
+      onStopProcess={handleStopProcess}
+      onRestartProcess={handleRestartProcess}
+      onToggleDir={handleToggleDir}
+      onOpenFile={handleOpenFile}
+      onCloseFile={handleCloseFile}
     >
-      {[...processes.keys()].map((id) => (
+      {processIds.map((id) => (
         <TerminalSession key={id} proc={processes.get(id)!} />
       ))}
       {iframeTabs.map((tab) => (
         <IframeSession key={tab.id} id={tab.id} name={tab.id.split("/").pop()!} url={tab.url!} />
       ))}
-      {categoryDefs.filter((d) => d.type === "files" && d.fileRoot).map((definition) => (
+      {fileCategories.map((definition) => (
         <FileViewerSession
           key={definition.name}
           ref={fileRefs.current[definition.name]!}

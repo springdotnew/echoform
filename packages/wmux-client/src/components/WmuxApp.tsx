@@ -259,12 +259,15 @@ export function WmuxApp(props: {
   const hasTabs = orderedTabs.length > 0;
 
   const activeTabInfo = processTabs.find((t) => t.id === activeTabId);
-  const processActions = !isFileCategory && activeTabInfo ? {
-    status: activeTabInfo.status,
-    onStart: () => startProcess(activeTabId),
-    onStop: () => stopProcess(activeTabId),
-    onRestart: () => restartProcess(activeTabId),
-  } : null;
+  const processActions = useMemo(() => {
+    if (isFileCategory || !activeTabInfo) return null;
+    return {
+      status: activeTabInfo.status,
+      onStart: () => startProcess(activeTabId),
+      onStop: () => stopProcess(activeTabId),
+      onRestart: () => restartProcess(activeTabId),
+    };
+  }, [isFileCategory, activeTabInfo, activeTabId, startProcess, stopProcess, restartProcess]);
 
   const sidebarItems = useMemo(
     () => buildSidebarNavigationItems(categories, collapsedCategories),

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useImperativeHandle, forwardRef } from "react";
 import { useViews } from "@playfast/echoform/server";
 import { views } from "../views";
 import { readdir } from "node:fs/promises";
@@ -149,11 +149,13 @@ export const FileViewerSession = forwardRef<FileViewerActions, Props>(
       },
     }), [onActiveTabChange]);
 
+    const openFilesList = useMemo(() => [...openFiles.values()], [openFiles]);
+
     if (!View) return null;
 
     return (
       <>
-        {[...openFiles.values()].map((file) => (
+        {openFilesList.map((file) => (
           <View.WmuxFileContent
             key={file.path}
             id={`file::${file.path}`}

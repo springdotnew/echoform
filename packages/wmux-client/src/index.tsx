@@ -30,14 +30,15 @@ function TerminalLine({ text, delay, dimmed }: { readonly text: string; readonly
   );
 }
 
+const SPINNER_FRAMES = ["    ", ".   ", "..  ", "... ", "...."];
+
 function Spinner(): React.ReactElement {
   const [frame, setFrame] = useState(0);
-  const chars = ["    ", ".   ", "..  ", "... ", "...."];
   useEffect(() => {
-    const t = setInterval(() => setFrame((f) => (f + 1) % chars.length), 400);
+    const t = setInterval(() => setFrame((f) => (f + 1) % SPINNER_FRAMES.length), 400);
     return () => clearInterval(t);
   }, []);
-  return <span className="text-muted-foreground/40 inline-block w-[4ch]">{chars[frame]}</span>;
+  return <span className="text-muted-foreground/40 inline-block w-[4ch]">{SPINNER_FRAMES[frame]}</span>;
 }
 
 function extractHost(url: string): string {
