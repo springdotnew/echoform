@@ -16,6 +16,8 @@ bun i @playfast/wmux
 import { wmux } from "@playfast/wmux";
 
 await wmux({
+  title: "my-app",
+  description: "local dev",
   sidebarItems: [
     {
       category: "dev",
@@ -37,6 +39,8 @@ Open the printed URL in your browser.
 
 ```ts
 interface WmuxConfig {
+  title?: string;          // displayed in the top bar search button
+  description?: string;    // shown next to the title in the top bar
   sidebarItems: SidebarItem[];
   port?: number;           // default: random
   hostname?: string;       // default: "127.0.0.1"
@@ -67,7 +71,7 @@ Each sidebar item is either a **tab group** or a **file browser**:
   category: "services",
   icon: "Server",             // optional, any Lucide icon name
   tabs: [
-    { name: "api", process: { command: "bun run dev" } },
+    { name: "api", description: "REST API", process: { command: "bun run dev" } },
     { name: "docs", url: "http://localhost:3001" },
   ],
 }
@@ -85,7 +89,7 @@ Each sidebar item is either a **tab group** or a **file browser**:
 ```ts
 interface TabConfig {
   name: string;
-  description?: string;
+  description?: string;       // shown below the tab name in the sidebar
   icon?: string;              // Lucide icon name
   process?: ProcessConfig;    // terminal process
   url?: string;               // iframe URL
@@ -123,9 +127,11 @@ await wmux({
 - PTY terminals via `Bun.spawn`
 - Iframe tabs for web previews
 - File browser with Monaco editor viewer
-- Sidebar with collapsible categories and Lucide icons
+- VS Code-style top bar with search button
+- Sidebar with collapsible categories and color-coded left borders
 - Drag-to-reorder tabs
 - Command palette (`Cmd+K`)
+- Arrow key sidebar navigation (when terminal is not focused)
 - Keyboard shortcuts (`Cmd+1-9` switch category, `Cmd+[/]` switch tab)
 - Token-based WebSocket auth
 - Auto-restart on crash

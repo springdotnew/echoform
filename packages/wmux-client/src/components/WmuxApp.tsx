@@ -170,8 +170,27 @@ export function WmuxApp(props: {
     onRestart: () => restartProcess(activeTabId),
   } : null;
 
+  // Build flat navigable sidebar item list
+  const sidebarItems = useMemo(() => {
+    const items: Array<{ readonly type: "category"; readonly name: string } | { readonly type: "tab"; readonly categoryName: string; readonly tabId: string }> = [];
+    for (const cat of categories) {
+      items.push({ type: "category", name: cat.name });
+      if (!collapsedCategories.has(cat.name) && cat.type !== "files") {
+        for (const tab of cat.tabs) {
+          items.push({ type: "tab", categoryName: cat.name, tabId: tab.id });
+        }
+      }
+    }
+    return items;
+  }, [categories, collapsedCategories]);
+
   // Keyboard shortcuts
   useEffect(() => {
+    const isTerminalFocused = (): boolean => {
+      const el = document.activeElement;
+      return el != null && el.closest(".xterm") != null;
+    };
+
     const handler = (e: KeyboardEvent): void => {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key === "k") { e.preventDefault(); setCmdkOpen((p) => !p); return; }
@@ -188,11 +207,33 @@ export function WmuxApp(props: {
         const idx = orderedTabs.findIndex((t) => t.id === activeTabId);
         const next = e.key === "]" ? (idx + 1) % orderedTabs.length : (idx - 1 + orderedTabs.length) % orderedTabs.length;
         selectTab(orderedTabs[next]!.id);
+        return;
+      }
+
+      // Arrow key sidebar navigation (only when terminal is not focused)
+      if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !isTerminalFocused() && !cmdkOpen && sidebarItems.length > 0) {
+        e.preventDefault();
+        const currentIdx = sidebarItems.findIndex((item) =>
+          item.type === "tab"
+            ? item.tabId === activeTabId && item.categoryName === activeCategory
+            : item.name === activeCategory && !sidebarItems.some((s) => s.type === "tab" && s.categoryName === activeCategory && s.tabId === activeTabId),
+        );
+        const delta = e.key === "ArrowDown" ? 1 : -1;
+        const nextIdx = currentIdx === -1
+          ? 0
+          : (currentIdx + delta + sidebarItems.length) % sidebarItems.length;
+        const next = sidebarItems[nextIdx]!;
+        if (next.type === "category") {
+          selectCategory(next.name);
+        } else {
+          selectCategory(next.categoryName);
+          selectTab(next.tabId);
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [cmdkOpen, categories, selectCategory, orderedTabs, activeTabId, selectTab]);
+  }, [cmdkOpen, categories, selectCategory, orderedTabs, activeTabId, selectTab, sidebarItems, activeCategory]);
 
   const toggleCollapse = useCallback((name: string) => {
     setCollapsedCategories((prev) => { const next = new Set(prev); next.has(name) ? next.delete(name) : next.add(name); return next; });

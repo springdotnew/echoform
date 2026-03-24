@@ -217,7 +217,7 @@ function CategorySection({
 function SidebarFooter(): ReactElement {
   const shortcuts = [
     { key: "⌘K", label: "Command palette" },
-    { key: "⌘1-9", label: "Switch category" },
+    { key: "↑↓", label: "Navigate sidebar" },
     { key: "⌘[]", label: "Switch tab" },
   ] as const;
 
