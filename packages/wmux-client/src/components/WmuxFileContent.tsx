@@ -21,20 +21,20 @@ const EXT_TO_LANG: Record<string, string> = {
 };
 
 const WMUX_DARK_THEME_COLORS = {
-  "editor.background": "#060607",
-  "editor.foreground": "#e4e4e7",
-  "editorLineNumber.foreground": "#27272a",
-  "editorLineNumber.activeForeground": "#52525b",
-  "editor.lineHighlightBackground": "#111113",
-  "editorGutter.background": "#060607",
-  "editor.selectionBackground": "#3f3f4640",
-  "editorWidget.background": "#111113",
-  "editorWidget.border": "#27272a",
-  "input.background": "#1a1a1e",
-  "input.border": "#27272a",
-  "scrollbarSlider.background": "#27272a80",
-  "scrollbarSlider.hoverBackground": "#3f3f46",
-  "scrollbarSlider.activeBackground": "#52525b",
+  "editor.background": "#1c1c1e",
+  "editor.foreground": "#e5e5ea",
+  "editorLineNumber.foreground": "#48484a",
+  "editorLineNumber.activeForeground": "#8e8e93",
+  "editor.lineHighlightBackground": "#2c2c2e",
+  "editorGutter.background": "#1c1c1e",
+  "editor.selectionBackground": "#48484a60",
+  "editorWidget.background": "#2c2c2e",
+  "editorWidget.border": "#38383a",
+  "input.background": "#2c2c2e",
+  "input.border": "#38383a",
+  "scrollbarSlider.background": "#48484a80",
+  "scrollbarSlider.hoverBackground": "#636366",
+  "scrollbarSlider.activeBackground": "#8e8e93",
 };
 
 const EDITOR_OPTIONS = {

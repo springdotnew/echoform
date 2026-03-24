@@ -39,32 +39,34 @@ function CategoryHeader({
   readonly onSelect: () => void;
   readonly onToggle: () => void;
 }): ReactElement {
+  const Icon = resolveIcon(category.icon);
+
   return (
     <div
       onClick={() => selectAndExpand(isCollapsed, onSelect, onToggle)}
-      className={`flex items-center gap-1.5 px-2 py-1.5 text-xs cursor-pointer transition-colors group relative ${
+      className={`flex items-center gap-2 px-3 py-2.5 text-xs cursor-pointer transition-colors group relative ${
         isActive
-          ? "text-foreground/90"
-          : "text-muted-foreground/50 hover:text-muted-foreground/70"
+          ? "text-foreground bg-card/60"
+          : "text-muted-foreground/70 hover:text-muted-foreground/90 hover:bg-card/30"
       }`}
     >
       <span
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
-        className="flex items-center justify-center w-3.5 h-3.5 cursor-pointer shrink-0 text-muted-foreground/40"
+        className="flex items-center justify-center w-4 h-4 cursor-pointer shrink-0 text-muted-foreground/60"
       >
-        {isCollapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+        {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
       </span>
 
-      <span
-        className="w-2 h-2 rounded-sm shrink-0 transition-opacity"
-        style={{ background: category.color, opacity: isActive ? 1 : 0.4 }}
-      />
+      {Icon
+        ? <Icon size={14} className="shrink-0 transition-opacity" style={{ color: category.color, opacity: isActive ? 1 : 0.7 }} />
+        : <span className="w-2.5 h-2.5 rounded-sm shrink-0 transition-opacity" style={{ background: category.color, opacity: isActive ? 1 : 0.6 }} />
+      }
 
       <span className="lowercase tracking-wide font-medium flex-1 truncate text-[12px]">
         {category.name}
       </span>
 
-      <span className="text-[10px] text-muted-foreground/30 tabular-nums pr-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <span className="text-[10px] text-muted-foreground/50 tabular-nums pr-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
         {categoryTabCount(category)}
       </span>
     </div>
@@ -85,10 +87,10 @@ function TabItem({
   return (
     <div
       onClick={onSelect}
-      className={`flex items-center gap-2.5 pl-5 pr-2 py-[7px] cursor-pointer transition-colors rounded-sm mx-1 group ${
+      className={`flex items-center gap-2.5 pl-7 pr-3 py-2 cursor-pointer transition-colors rounded-md mx-1.5 group ${
         isActive
-          ? "bg-border/20 text-foreground"
-          : "text-muted-foreground/50 hover:bg-border/10 hover:text-foreground/70"
+          ? "bg-accent/60 text-foreground"
+          : "text-muted-foreground/70 hover:bg-accent/30 hover:text-foreground/90"
       }`}
     >
       {TabIcon
@@ -99,18 +101,16 @@ function TabItem({
       <div className="flex-1 min-w-0">
         <div className="text-[13px] leading-snug truncate">{tab.name}</div>
         {tab.description && (
-          <div className="text-[10px] leading-snug text-muted-foreground/30 truncate mt-0.5">
+          <div className="text-[10px] leading-snug text-muted-foreground/60 truncate mt-0.5">
             {tab.description}
           </div>
         )}
       </div>
 
-      {TabIcon && (
-        <span
-          className="w-[6px] h-[6px] rounded-full shrink-0"
-          style={{ background: STATUS_COLORS[tab.status] ?? "#3f3f46" }}
-        />
-      )}
+      <span
+        className="w-[6px] h-[6px] rounded-full shrink-0"
+        style={{ background: STATUS_COLORS[tab.status] ?? "#3f3f46" }}
+      />
     </div>
   );
 }
@@ -157,8 +157,8 @@ function CategorySection({
 
   return (
     <div
-      className="border-b border-border/10 last:border-b-0 border-l-2"
-      style={{ borderLeftColor: category.color }}
+      className="mb-1 border-l-[3px] transition-colors"
+      style={{ borderLeftColor: isActive ? category.color : `color-mix(in srgb, ${category.color} 20%, transparent)` }}
     >
       <CategoryHeader
         category={category}
@@ -201,23 +201,15 @@ function CategorySection({
   );
 }
 
-const SHORTCUTS = [
-  { key: "⌘K", label: "Command palette" },
-  { key: "↑↓", label: "Navigate sidebar" },
-  { key: "⌘[]", label: "Switch tab" },
-] as const;
-
 function SidebarFooter(): ReactElement {
   return (
-    <div className="border-t border-border/20 p-2 flex flex-col gap-1">
-      {SHORTCUTS.map(({ key, label }) => (
-        <div key={key} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/25">
-          <kbd className="bg-muted/30 px-1 py-px rounded border border-border/15 font-mono text-[9px]">
-            {key}
-          </kbd>
-          <span>{label}</span>
-        </div>
-      ))}
+    <div className="border-t border-border/40 px-3 py-2 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <span className="text-[10px] text-muted-foreground/50 font-mono">⌘K</span>
+        <span className="text-[10px] text-muted-foreground/50 font-mono">↑↓</span>
+        <span className="text-[10px] text-muted-foreground/50 font-mono">⌘[]</span>
+      </div>
+      <span className="text-[9px] text-muted-foreground/40">wmux</span>
     </div>
   );
 }
@@ -234,8 +226,8 @@ export function Sidebar({
   onOpenFile,
 }: SidebarProps): ReactElement {
   return (
-    <div className="w-[240px] min-w-[240px] bg-background border-r border-border/30 flex flex-col select-none h-full">
-      <div className="flex-1 overflow-y-auto scrollbar-hide">
+    <div className="w-[240px] min-w-[240px] bg-[#232325] border-r border-border/50 flex flex-col select-none h-full">
+      <div className="flex-1 overflow-y-auto scrollbar-hide py-1.5">
         {categories.map((category) => (
           <CategorySection
             key={category.name}

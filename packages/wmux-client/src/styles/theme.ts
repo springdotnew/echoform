@@ -13,8 +13,8 @@ export const CATEGORY_COLORS = [
 ];
 
 export const STATUS_COLORS: Record<string, string> = {
-  running: "oklch(0.627 0.194 149.214)", // success green
-  idle: "#3f3f46",
-  stopped: "#52525b",
-  failed: "oklch(0.704 0.191 22.216)", // destructive red
+  running: "#30d158", // Apple green
+  idle: "#636366",    // Apple gray
+  stopped: "#8e8e93", // Apple secondary gray
+  failed: "#ff453a",  // Apple red
 };

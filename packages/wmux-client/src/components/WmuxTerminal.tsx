@@ -32,10 +32,15 @@ export function WmuxTerminal(props: WmuxTerminalProps): React.ReactElement {
       fontSize: 14,
       fontFamily: "'JetBrainsMono Nerd Font Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace",
       theme: {
-        background: "#060607",
-        foreground: "#fafafa",
-        cursor: "#fafafa",
-        selectionBackground: "oklch(0.7 0.1 285 / 20%)",
+        background: "#1c1c1e",
+        foreground: "#f5f5f7",
+        cursor: "#f5f5f7",
+        cursorAccent: "#1c1c1e",
+        selectionBackground: "#48484a80",
+        black: "#1c1c1e",
+        brightBlack: "#48484a",
+        white: "#f5f5f7",
+        brightWhite: "#ffffff",
       },
     });
 

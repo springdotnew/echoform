@@ -13,17 +13,17 @@ function EmptyState({ categories, onOpen }: {
   return (
     <div className="flex items-center justify-center h-full w-full">
       <div className="flex flex-col gap-0.5 w-56">
-        <div className="text-[10px] text-muted-foreground/30 uppercase tracking-wider font-medium px-3 mb-1">Categories</div>
+        <div className="text-[10px] text-muted-foreground/50 uppercase tracking-wider font-medium px-3 mb-1">Categories</div>
         {categories.map((category) => {
           const Icon = resolveIcon(category.icon);
           return (
-            <button key={category.name} onClick={() => onOpen(category.name)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-transparent hover:bg-card/80 transition-all duration-150 border border-transparent hover:border-border/30 text-left cursor-pointer group">
-              {Icon ? <Icon size={13} className="text-muted-foreground/50 group-hover:text-foreground/60 shrink-0 transition-colors" /> : <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: category.color }} />}
-              <span className="flex-1 text-foreground/80 text-[13px] group-hover:text-foreground transition-colors">{category.name}</span>
+            <button key={category.name} onClick={() => onOpen(category.name)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-transparent hover:bg-card/80 transition-all duration-150 border border-transparent hover:border-border/40 text-left cursor-pointer group">
+              {Icon ? <Icon size={13} className="text-muted-foreground/70 group-hover:text-foreground/80 shrink-0 transition-colors" /> : <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: category.color }} />}
+              <span className="flex-1 text-foreground/90 text-[13px] group-hover:text-foreground transition-colors">{category.name}</span>
             </button>
           );
         })}
-        <div className="flex items-center justify-center gap-1.5 mt-4 text-[10px] text-muted-foreground/20">
+        <div className="flex items-center justify-center gap-1.5 mt-4 text-[10px] text-muted-foreground/40">
           <CommandIcon size={10} /><span>K to search</span>
         </div>
       </div>
@@ -36,23 +36,37 @@ function TopBar({ title, description, onSearch }: {
   readonly description: string;
   readonly onSearch: () => void;
 }): React.ReactElement {
-  const label = description ? `${title} — ${description}` : title;
-
   return (
-    <div className="h-10 shrink-0 flex items-center justify-center border-b border-border/20 bg-background relative">
-      <button
-        onClick={onSearch}
-        className="flex items-center gap-2 px-3 py-1 rounded-md border border-border/30 bg-card/40 hover:bg-card/70 transition-colors cursor-pointer text-muted-foreground/50 hover:text-muted-foreground/70 max-w-[400px] min-w-[260px]"
-      >
-        <Search size={12} className="shrink-0" />
-        <span className="text-[12px] truncate flex-1 text-left">Search {label}...</span>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <kbd className="text-[10px] bg-background/60 px-1 py-px rounded border border-border/30 font-mono">
-            <CommandIcon size={9} className="inline" />
-          </kbd>
-          <kbd className="text-[10px] bg-background/60 px-1 py-px rounded border border-border/30 font-mono">K</kbd>
+    <div className="h-11 shrink-0 flex items-center border-b border-border/50 bg-background px-4 gap-4">
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="w-5 h-5 rounded bg-card border border-border/50 flex items-center justify-center">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-foreground/80">
+            <path d="M2 4L8 1L14 4V12L8 15L2 12V4Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+          </svg>
         </div>
-      </button>
+        <span className="text-[13px] font-semibold text-foreground tracking-tight">{title}</span>
+        {description && (
+          <span className="text-[11px] text-muted-foreground/70 truncate max-w-[200px]">{description}</span>
+        )}
+      </div>
+
+      <div className="flex-1 flex justify-center">
+        <button
+          onClick={onSearch}
+          className="flex items-center gap-2 px-3 py-1 rounded-lg border border-border/40 bg-card/40 hover:bg-card/70 transition-colors cursor-pointer text-muted-foreground/60 hover:text-muted-foreground/80 max-w-[360px] min-w-[220px] w-full"
+        >
+          <Search size={11} className="shrink-0" />
+          <span className="text-[11px] truncate flex-1 text-left">Search...</span>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <kbd className="text-[9px] bg-background/60 px-1 py-px rounded border border-border/40 font-mono text-muted-foreground/60">
+              <CommandIcon size={8} className="inline" />
+            </kbd>
+            <kbd className="text-[9px] bg-background/60 px-1 py-px rounded border border-border/40 font-mono text-muted-foreground/60">K</kbd>
+          </div>
+        </button>
+      </div>
+
+      <div className="w-[100px] shrink-0" />
     </div>
   );
 }
@@ -77,12 +91,14 @@ function buildSidebarNavigationItems(
     );
 }
 
+function fileIcon(_name: string): string { return "File"; }
+
 function buildTabList(activeCategory: CategoryInfo | undefined): Tab[] {
   if (!activeCategory) return [];
   if (activeCategory.type === "files") {
-    return (activeCategory.openFiles ?? []).map((f) => ({ id: `file::${f.path}`, title: f.name, closable: true }));
+    return (activeCategory.openFiles ?? []).map((f) => ({ id: `file::${f.path}`, title: f.name, closable: true, icon: fileIcon(f.name) }));
   }
-  return activeCategory.tabs.map((t) => ({ id: t.id, title: t.name }));
+  return activeCategory.tabs.map((t) => ({ id: t.id, title: t.name, icon: t.icon ?? "Terminal" }));
 }
 
 function syncTabOrder(previousOrder: readonly string[], currentTabs: readonly Tab[]): string[] {

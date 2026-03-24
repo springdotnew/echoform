@@ -17,8 +17,8 @@ interface CommandPaletteProps {
   readonly onOpenFile: (path: string) => void;
 }
 
-const GROUP_HEADING_CLASS = "[&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:text-muted-foreground/40 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:font-medium";
-const ITEM_CLASS = "flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] text-foreground/80 cursor-pointer data-[selected=true]:bg-background/80 data-[selected=true]:text-foreground transition-colors";
+const GROUP_HEADING_CLASS = "[&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:text-muted-foreground/60 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:font-medium";
+const ITEM_CLASS = "flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-[13px] text-foreground/90 cursor-pointer data-[selected=true]:bg-accent/80 data-[selected=true]:text-foreground transition-colors";
 
 function filterMatch(value: string, searchTerm: string): number {
   return value.toLowerCase().includes(searchTerm.toLowerCase()) ? 1 : 0;
@@ -79,7 +79,7 @@ function CategoriesGroup({
         >
           <CategoryIcon icon={category.icon} color={category.color} />
           <span className="flex-1">{category.name}</span>
-          <span className="text-[10px] text-muted-foreground/30">
+          <span className="text-[10px] text-muted-foreground/50">
             {category.type === "files" ? "files" : `${category.tabs.length} tabs`}
           </span>
         </Command.Item>
@@ -114,7 +114,7 @@ function ProcessesGroup({
           >
             <CategoryIcon icon={tab.icon} color={category.color} />
             <span className="flex-1">{tab.name}</span>
-            <span className="text-[10px] text-muted-foreground/30">{category.name}</span>
+            <span className="text-[10px] text-muted-foreground/50">{category.name}</span>
           </Command.Item>
         )),
       )}
@@ -146,9 +146,9 @@ function FilesGroup({
           onSelect={() => selectAndClose(() => { onSelectCategory(file.category); onSelectTab(`file::${file.path}`); onOpenFile(file.path); }, onClose)}
           className={ITEM_CLASS}
         >
-          <span className="text-muted-foreground/40 text-[12px]">📄</span>
+          <span className="text-muted-foreground/60 text-[12px]">📄</span>
           <span className="flex-1 truncate">{file.name}</span>
-          <span className="text-[10px] text-muted-foreground/30 truncate max-w-[140px]">{file.category}</span>
+          <span className="text-[10px] text-muted-foreground/50 truncate max-w-[140px]">{file.category}</span>
         </Command.Item>
       ))}
     </Command.Group>
@@ -176,16 +176,16 @@ function ActionsGroup({
     <Command.Group heading="Actions" className={GROUP_HEADING_CLASS}>
       {!isRunning && (
         <Command.Item value="start process" onSelect={() => selectAndClose(() => onStartProcess(activeTabId), onClose)} className={ITEM_CLASS}>
-          <span className="text-success">Start</span><span className="text-muted-foreground/40">{activeTab.name}</span>
+          <span className="text-success">Start</span><span className="text-muted-foreground/60">{activeTab.name}</span>
         </Command.Item>
       )}
       {isRunning && (
         <>
           <Command.Item value="restart process" onSelect={() => selectAndClose(() => onRestartProcess(activeTabId), onClose)} className={ITEM_CLASS}>
-            <span className="text-warning">Restart</span><span className="text-muted-foreground/40">{activeTab.name}</span>
+            <span className="text-warning">Restart</span><span className="text-muted-foreground/60">{activeTab.name}</span>
           </Command.Item>
           <Command.Item value="stop process" onSelect={() => selectAndClose(() => onStopProcess(activeTabId), onClose)} className={ITEM_CLASS}>
-            <span className="text-destructive">Stop</span><span className="text-muted-foreground/40">{activeTab.name}</span>
+            <span className="text-destructive">Stop</span><span className="text-muted-foreground/60">{activeTab.name}</span>
           </Command.Item>
         </>
       )}
@@ -224,23 +224,23 @@ export function CommandPalette({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]" onClick={closePalette}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div className="relative w-full max-w-[520px] rounded-xl border border-border/60 bg-card shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
+      <div className="relative w-full max-w-[520px] rounded-xl border border-border/70 bg-card shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <Command className="[&_[cmdk-root]]:bg-transparent" filter={filterMatch}>
-          <div className="flex items-center gap-2 px-3 border-b border-border/40">
-            <Search size={14} className="text-muted-foreground/50 shrink-0" />
+          <div className="flex items-center gap-2 px-3 border-b border-border/50">
+            <Search size={14} className="text-muted-foreground/70 shrink-0" />
             <Command.Input
               ref={inputRef}
               value={search}
               onValueChange={setSearch}
               placeholder="Type a command or search..."
-              className="flex-1 bg-transparent border-none outline-none text-[13px] text-foreground placeholder:text-muted-foreground/40 py-3 font-sans"
+              className="flex-1 bg-transparent border-none outline-none text-[13px] text-foreground placeholder:text-muted-foreground/60 py-3 font-sans"
               autoFocus
             />
-            <kbd className="text-[10px] text-muted-foreground/30 bg-background/50 px-1.5 py-0.5 rounded border border-border/30 font-mono">esc</kbd>
+            <kbd className="text-[10px] text-muted-foreground/50 bg-background/50 px-1.5 py-0.5 rounded border border-border/40 font-mono">esc</kbd>
           </div>
           <Command.List className="max-h-[320px] overflow-y-auto p-1.5">
-            <Command.Empty className="py-6 text-center text-[13px] text-muted-foreground/50">No results found.</Command.Empty>
+            <Command.Empty className="py-6 text-center text-[13px] text-muted-foreground/70">No results found.</Command.Empty>
 
             <CategoriesGroup categories={categories} onSelectCategory={onSelectCategory} onClose={closePalette} />
             <ProcessesGroup categories={categories} onSelectCategory={onSelectCategory} onSelectTab={onSelectTab} onClose={closePalette} />
