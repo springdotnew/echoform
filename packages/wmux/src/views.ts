@@ -36,6 +36,8 @@ const categoryInfo = z.object({
 
 export const WmuxApp = view("WmuxApp", {
   input: {
+    title: z.string(),
+    description: z.string(),
     categories: z.array(categoryInfo),
     activeCategory: z.string(),
     activeTabId: z.string(),

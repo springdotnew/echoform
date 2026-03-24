@@ -40,13 +40,15 @@ interface CategoryDef {
 }
 
 interface WmuxRootProps {
+  readonly title: string;
+  readonly description: string;
   readonly processes: ReadonlyMap<string, ManagedProcess>;
   readonly categoryDefs: readonly CategoryDef[];
 }
 
 // ── Component ──
 
-export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): ReactElement | null {
+export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRootProps): ReactElement | null {
   const View = useViews(views);
   const [activeCategory, setActiveCategory] = useState(categoryDefs[0]?.name ?? "");
   const [activeTabId, setActiveTabId] = useState("");
@@ -115,6 +117,8 @@ export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): ReactEleme
 
   return (
     <View.WmuxApp
+      title={title}
+      description={description}
       categories={categories}
       activeCategory={activeCategory}
       activeTabId={activeTabId}

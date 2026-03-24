@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useCallback, useState, type ReactNode } from "react";
-import { Command as CommandIcon } from "lucide-react";
+import { Command as CommandIcon, Search } from "lucide-react";
 import { resolveIcon } from "../utils/icons";
 import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
@@ -60,9 +60,39 @@ function EmptyState({ categories, onOpen }: {
   );
 }
 
+// ── Top bar ──
+
+function TopBar({ title, description, onSearch }: {
+  readonly title: string;
+  readonly description: string;
+  readonly onSearch: () => void;
+}): React.ReactElement {
+  const label = description ? `${title} — ${description}` : title;
+
+  return (
+    <div className="h-10 shrink-0 flex items-center justify-center border-b border-border/20 bg-background relative">
+      <button
+        onClick={onSearch}
+        className="flex items-center gap-2 px-3 py-1 rounded-md border border-border/30 bg-card/40 hover:bg-card/70 transition-colors cursor-pointer text-muted-foreground/50 hover:text-muted-foreground/70 max-w-[400px] min-w-[260px]"
+      >
+        <Search size={12} className="shrink-0" />
+        <span className="text-[12px] truncate flex-1 text-left">Search {label}...</span>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <kbd className="text-[10px] bg-background/60 px-1 py-px rounded border border-border/30 font-mono">
+            <CommandIcon size={9} className="inline" />
+          </kbd>
+          <kbd className="text-[10px] bg-background/60 px-1 py-px rounded border border-border/30 font-mono">K</kbd>
+        </div>
+      </button>
+    </div>
+  );
+}
+
 // ── Main component ──
 
 export function WmuxApp(props: {
+  readonly title: string;
+  readonly description: string;
   readonly categories: ReadonlyArray<CategoryInfo>;
   readonly activeCategory: string;
   readonly activeTabId: string;
@@ -76,7 +106,7 @@ export function WmuxApp(props: {
   readonly onOpenFile: { readonly mutate: (path: string) => void };
   readonly onCloseFile: { readonly mutate: (path: string) => void };
 }): React.ReactElement {
-  const { categories, activeCategory, activeTabId, children } = props;
+  const { title, description, categories, activeCategory, activeTabId, children } = props;
   const selectCategory = props.onSelectCategory.mutate;
   const selectTab = props.onSelectTab.mutate;
   const startProcess = props.onStartProcess.mutate;
@@ -169,20 +199,23 @@ export function WmuxApp(props: {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen bg-background text-foreground font-sans">
-      <Sidebar
-        categories={categories}
-        activeCategory={activeCategory}
-        activeTabId={activeTabId}
-        collapsedCategories={collapsedCategories}
-        onSelectCategory={selectCategory}
-        onToggleCollapse={toggleCollapse}
-        onSelectTab={selectTab}
-        onToggleDir={toggleDir}
-        onOpenFile={openFile}
-      />
+    <div className="flex flex-col h-screen w-screen bg-background text-foreground font-sans">
+      <TopBar title={title} description={description} onSearch={() => setCmdkOpen(true)} />
 
-      <div className="flex-1 flex flex-col min-w-0 relative">
+      <div className="flex flex-1 min-h-0">
+        <Sidebar
+          categories={categories}
+          activeCategory={activeCategory}
+          activeTabId={activeTabId}
+          collapsedCategories={collapsedCategories}
+          onSelectCategory={selectCategory}
+          onToggleCollapse={toggleCollapse}
+          onSelectTab={selectTab}
+          onToggleDir={toggleDir}
+          onOpenFile={openFile}
+        />
+
+        <div className="flex-1 flex flex-col min-w-0 relative">
         {activeCategory && hasTabs && (
           <TabBar
             tabs={orderedTabs}

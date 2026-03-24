@@ -249,7 +249,7 @@ export function Sidebar({
   onOpenFile,
 }: SidebarProps): ReactElement {
   return (
-    <div className="w-[200px] min-w-[200px] bg-background border-r border-border/30 flex flex-col select-none h-full">
+    <div className="w-[240px] min-w-[240px] bg-background border-r border-border/30 flex flex-col select-none h-full">
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         {categories.map((cat) => (
           <CategorySection

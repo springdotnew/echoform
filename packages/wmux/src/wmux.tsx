@@ -89,7 +89,7 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
 
   Render(
     <Server transport={transport} singleInstance>
-      {() => <WmuxRoot processes={processes} categoryDefs={categoryDefs} />}
+      {() => <WmuxRoot title={config.title ?? "wmux"} description={config.description ?? ""} processes={processes} categoryDefs={categoryDefs} />}
     </Server>,
   );
 

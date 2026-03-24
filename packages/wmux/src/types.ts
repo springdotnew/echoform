@@ -55,6 +55,8 @@ export interface SidebarItem {
 // ── Top-level config ──
 
 export interface WmuxConfig {
+  readonly title?: string;
+  readonly description?: string;
   readonly sidebarItems: readonly SidebarItem[];
   readonly port?: number;
   readonly hostname?: string;
