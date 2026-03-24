@@ -43,7 +43,8 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
           const allowed = await Promise.resolve(validate(socket));
           next(allowed ? undefined : new Error("Connection rejected"));
         } catch (validationError) {
-          next(validationError instanceof Error ? validationError : new Error("Connection validation error"));
+          console.error("echoform: connection validation error", validationError);
+          next(new Error("Connection validation error"));
         }
       });
     }
@@ -67,29 +68,26 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
   const getProps = useCallback((): ServerProps => {
     const { children, singleInstance, instanceRenderHandler, skipCallbackValidation } = props;
 
-    const wrappers = connectionWrappersRef.current;
+    const connectionWrappers = connectionWrappersRef.current;
 
     const transport: Transport<{ readonly connection: Transport<{ readonly disconnect: void }> & { readonly id: string } }> = {
       on: (event, callback) => {
         if (event !== "connection") return;
         const typedCallback = callback as (data: unknown) => void;
         const wrapper = (socket: SocketIO.Socket): void => { typedCallback(socket); };
-        wrappers.set(typedCallback, wrapper);
+        connectionWrappers.set(typedCallback, wrapper);
         server.on("connection", wrapper);
       },
       emit: (event, data) => {
         server.sockets.emit(event as string, data);
       },
       off: (event, callback) => {
-        if (event === "connection") {
-          const typedCallback = callback as (data: unknown) => void;
-          const wrapper = wrappers.get(typedCallback);
-          if (!wrapper) return;
-          server.removeListener("connection", wrapper);
-          wrappers.delete(typedCallback);
-          return;
-        }
-        server.sockets.removeListener(event as string, callback as (...args: unknown[]) => void);
+        if (event !== "connection") return;
+        const typedCallback = callback as (data: unknown) => void;
+        const wrapper = connectionWrappers.get(typedCallback);
+        if (!wrapper) return;
+        server.removeListener("connection", wrapper);
+        connectionWrappers.delete(typedCallback);
       },
     };
 

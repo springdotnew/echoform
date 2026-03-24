@@ -12,10 +12,12 @@ export interface WebSocketTransportOptions {
   readonly authToken?: string;
 }
 
+const AUTH_TOKEN_PARAM = "token";
+
 function buildAuthenticatedUrl(url: string, authToken?: string): string {
   if (!authToken) return url;
   const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}token=${encodeURIComponent(authToken)}`;
+  return `${url}${separator}${AUTH_TOKEN_PARAM}=${encodeURIComponent(authToken)}`;
 }
 
 export function useWebSocketTransport(url: string, options?: WebSocketTransportOptions): WebSocketTransportState {

@@ -29,7 +29,7 @@ function Client<ViewsInterface extends Record<string, unknown> = Record<string, 
     return (): void => {
       socket.close();
     };
-  }, [host, port, socketOptions]);
+  }, [host, port, socketOptions, auth]);
 
   if (!connected || !socketRef.current) {
     return <></>;

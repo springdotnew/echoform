@@ -57,6 +57,12 @@ type ValidResult = { readonly valid: true };
 type InvalidResult = { readonly valid: false; readonly error: string };
 export type ValidationResult = ValidResult | InvalidResult;
 
+function createValidationError(prefix: string, context: string, err: unknown): InvalidResult {
+  const error = `${prefix} (${context}): ${String(err)}`;
+  console.warn(`[echoform] ${error}`);
+  return { valid: false, error };
+}
+
 function toValidationResult(result: StandardSchemaV1.Result<unknown>, context: string): ValidationResult {
   if ("issues" in result && result.issues) {
     const error = `Schema validation failed (${context}):\n${formatIssues(result.issues)}`;
@@ -79,19 +85,13 @@ export function validateSchemaStrict(
   try {
     result = schema["~standard"].validate(value);
   } catch (err) {
-    const error = `Schema validation threw an error (${context}): ${String(err)}`;
-    console.warn(`[echoform] ${error}`);
-    return { valid: false, error };
+    return createValidationError("Schema validation threw an error", context, err);
   }
 
   if (result instanceof Promise) {
     return result
       .then((resolved) => toValidationResult(resolved, context))
-      .catch((err) => {
-        const error = `Async schema validation threw an error (${context}): ${String(err)}`;
-        console.warn(`[echoform] ${error}`);
-        return { valid: false, error } as ValidationResult;
-      });
+      .catch((err) => createValidationError("Async schema validation threw an error", context, err));
   }
 
   return toValidationResult(result, context);

@@ -39,6 +39,7 @@ function createSchema<T>(impl: SchemaImpl<T>): ISchema<T> {
 
 /** Read `count` items from a binary stream. Mutation is scoped: the array never escapes until complete. */
 function readArray<T>(count: number, readItem: (input: ISerialInput) => T, input: ISerialInput): T[] {
+  if (count > MAX_COLLECTION_LENGTH) throw new Error("Collection length exceeds maximum");
   const items: T[] = [];
   for (let i = 0; i < count; i++) {
     items.push(readItem(input));
@@ -72,6 +73,9 @@ const TAG_STRING = 4;
 const TAG_ARRAY = 5;
 const TAG_OBJECT = 6;
 
+const MAX_NESTING_DEPTH = 64;
+const MAX_COLLECTION_LENGTH = 100_000;
+
 function writeSerializableValue(output: ISerialOutput, value: SerializableValue): void {
   if (value === null) {
     u8.write(output, TAG_NULL);
@@ -103,16 +107,18 @@ function writeSerializableValue(output: ISerialOutput, value: SerializableValue)
   }
 }
 
-function readObjectValue(input: ISerialInput, length: number): Record<string, SerializableValue> {
+function readObjectValue(input: ISerialInput, length: number, depth: number): Record<string, SerializableValue> {
+  if (length > MAX_COLLECTION_LENGTH) throw new Error("Object key count exceeds maximum");
   const result: Record<string, SerializableValue> = Object.create(null) as Record<string, SerializableValue>;
   for (let i = 0; i < length; i++) {
     const key = binString.read(input);
-    result[key] = readSerializableValue(input);
+    result[key] = readSerializableValue(input, depth);
   }
   return result;
 }
 
-function readSerializableValue(input: ISerialInput): SerializableValue {
+function readSerializableValue(input: ISerialInput, depth: number): SerializableValue {
+  if (depth > MAX_NESTING_DEPTH) throw new Error("Maximum nesting depth exceeded");
   const tag = u8.read(input);
   switch (tag) {
     case TAG_NULL: return null;
@@ -122,10 +128,10 @@ function readSerializableValue(input: ISerialInput): SerializableValue {
     case TAG_STRING: return binString.read(input);
     case TAG_ARRAY: {
       const len = u32.read(input);
-      return readArray(len, readSerializableValue, input);
+      return readArray(len, (inp) => readSerializableValue(inp, depth + 1), input);
     }
     case TAG_OBJECT: {
-      return readObjectValue(input, u32.read(input));
+      return readObjectValue(input, u32.read(input), depth + 1);
     }
     default:
       return null;
@@ -162,7 +168,7 @@ function measureSerializableValue(value: SerializableValue | typeof MaxValue, me
 
 export const serializableValue = createSchema<SerializableValue>({
   write: writeSerializableValue,
-  read: readSerializableValue,
+  read: (input) => readSerializableValue(input, 0),
   measure: measureSerializableValue,
 });
 
@@ -420,13 +426,14 @@ const respondToEventCodec: EventCodec<WireRespondToEvent> = {
     const data = serializableValue.read(r);
     const uid = binString.read(r);
     const eventUid = binString.read(r);
+    let hasError = false;
     try {
-      const hasError = bool.read(r);
-      if (hasError) {
-        return { data, uid, eventUid, error: binString.read(r) };
-      }
+      hasError = bool.read(r);
     } catch {
-      // Backward compat: old encoders don't write the error field
+      return { data, uid, eventUid };
+    }
+    if (hasError) {
+      return { data, uid, eventUid, error: binString.read(r) };
     }
     return { data, uid, eventUid };
   },
