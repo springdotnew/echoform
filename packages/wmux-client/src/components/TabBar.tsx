@@ -84,6 +84,18 @@ function reorderIds(ids: readonly string[], sourceId: string, targetId: string):
   return [...withoutSource.slice(0, targetIndex), sourceId, ...withoutSource.slice(targetIndex)];
 }
 
+function handleDragEnd(
+  event: Parameters<NonNullable<Parameters<typeof DragDropProvider>[0]["onDragEnd"]>>[0],
+  tabs: readonly Tab[],
+  onReorder: ((ids: string[]) => void) | undefined,
+): void {
+  if (!onReorder || !event.operation.source || !event.operation.target) return;
+  const sourceId = String(event.operation.source.id);
+  const targetId = String(event.operation.target.id);
+  if (sourceId === targetId) return;
+  onReorder(reorderIds(tabs.map((t) => t.id), sourceId, targetId));
+}
+
 export function TabBar({ tabs, activeId, categoryColor, onSelect, onClose, onReorder, processActions }: TabBarProps): ReactElement {
   return (
     <div
@@ -91,13 +103,7 @@ export function TabBar({ tabs, activeId, categoryColor, onSelect, onClose, onReo
       style={{ backgroundColor: `color-mix(in srgb, ${categoryColor} 4%, var(--color-background))` }}
     >
       <DragDropProvider
-        onDragEnd={(event) => {
-          if (!onReorder || !event.operation.source || !event.operation.target) return;
-          const sourceId = String(event.operation.source.id);
-          const targetId = String(event.operation.target.id);
-          if (sourceId === targetId) return;
-          onReorder(reorderIds(tabs.map((t) => t.id), sourceId, targetId));
-        }}
+        onDragEnd={(event) => handleDragEnd(event, tabs, onReorder)}
       >
         {tabs.map((tab, i) => (
           <SortableTab

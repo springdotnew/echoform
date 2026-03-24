@@ -57,8 +57,8 @@ function detectLanguage(name: string): string {
   const lower = name.toLowerCase();
   if (lower === "dockerfile") return "dockerfile";
   if (lower === "makefile") return "makefile";
-  const ext = lower.split(".").pop() ?? "";
-  return EXT_TO_LANG[ext] ?? "plaintext";
+  const fileExtension = lower.split(".").pop() ?? "";
+  return EXT_TO_LANG[fileExtension] ?? "plaintext";
 }
 
 function defineWmuxDarkTheme(monaco: Parameters<NonNullable<Parameters<typeof Editor>[0]["beforeMount"]>>[0]): void {

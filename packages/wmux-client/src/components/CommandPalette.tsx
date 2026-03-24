@@ -54,6 +54,11 @@ function CategoryIcon({ icon, color }: { readonly icon?: string | undefined; rea
   return <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: color }} />;
 }
 
+function selectAndClose(action: () => void, onClose: () => void): void {
+  action();
+  onClose();
+}
+
 function CategoriesGroup({
   categories,
   onSelectCategory,
@@ -69,7 +74,7 @@ function CategoriesGroup({
         <Command.Item
           key={`cat-${category.name}`}
           value={`category ${category.name}`}
-          onSelect={() => { onSelectCategory(category.name); onClose(); }}
+          onSelect={() => selectAndClose(() => onSelectCategory(category.name), onClose)}
           className={ITEM_CLASS}
         >
           <CategoryIcon icon={category.icon} color={category.color} />
@@ -104,7 +109,7 @@ function ProcessesGroup({
           <Command.Item
             key={`tab-${tab.id}`}
             value={`process ${tab.name} ${category.name} ${tab.description ?? ""}`}
-            onSelect={() => { onSelectCategory(category.name); onSelectTab(tab.id); onClose(); }}
+            onSelect={() => selectAndClose(() => { onSelectCategory(category.name); onSelectTab(tab.id); }, onClose)}
             className={ITEM_CLASS}
           >
             <CategoryIcon icon={tab.icon} color={category.color} />
@@ -138,7 +143,7 @@ function FilesGroup({
         <Command.Item
           key={`file-${file.path}`}
           value={`file ${file.name} ${file.path} ${file.category}`}
-          onSelect={() => { onSelectCategory(file.category); onSelectTab(`file::${file.path}`); onOpenFile(file.path); onClose(); }}
+          onSelect={() => selectAndClose(() => { onSelectCategory(file.category); onSelectTab(`file::${file.path}`); onOpenFile(file.path); }, onClose)}
           className={ITEM_CLASS}
         >
           <span className="text-muted-foreground/40 text-[12px]">📄</span>
@@ -170,16 +175,16 @@ function ActionsGroup({
   return (
     <Command.Group heading="Actions" className={GROUP_HEADING_CLASS}>
       {!isRunning && (
-        <Command.Item value="start process" onSelect={() => { onStartProcess(activeTabId); onClose(); }} className={ITEM_CLASS}>
+        <Command.Item value="start process" onSelect={() => selectAndClose(() => onStartProcess(activeTabId), onClose)} className={ITEM_CLASS}>
           <span className="text-success">Start</span><span className="text-muted-foreground/40">{activeTab.name}</span>
         </Command.Item>
       )}
       {isRunning && (
         <>
-          <Command.Item value="restart process" onSelect={() => { onRestartProcess(activeTabId); onClose(); }} className={ITEM_CLASS}>
+          <Command.Item value="restart process" onSelect={() => selectAndClose(() => onRestartProcess(activeTabId), onClose)} className={ITEM_CLASS}>
             <span className="text-warning">Restart</span><span className="text-muted-foreground/40">{activeTab.name}</span>
           </Command.Item>
-          <Command.Item value="stop process" onSelect={() => { onStopProcess(activeTabId); onClose(); }} className={ITEM_CLASS}>
+          <Command.Item value="stop process" onSelect={() => selectAndClose(() => onStopProcess(activeTabId), onClose)} className={ITEM_CLASS}>
             <span className="text-destructive">Stop</span><span className="text-muted-foreground/40">{activeTab.name}</span>
           </Command.Item>
         </>

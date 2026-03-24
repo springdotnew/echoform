@@ -40,15 +40,16 @@ function Spinner(): React.ReactElement {
   return <span className="text-muted-foreground/40 inline-block w-[4ch]">{chars[frame]}</span>;
 }
 
+function extractHost(url: string): string {
+  try { return new URL(url).host; } catch { return url; }
+}
+
 function ConnectingScreen({ wsUrl }: { readonly wsUrl: string }): React.ReactElement {
-  const host = (() => {
-    try { return new URL(wsUrl).host; } catch { return wsUrl; }
-  })();
+  const host = extractHost(wsUrl);
 
   return (
     <div className="flex items-center justify-center h-screen w-screen bg-background font-sans">
       <div className="flex flex-col items-center gap-6 wmux-fade-in">
-        {/* Logo / brand */}
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-card border border-border/40 flex items-center justify-center wmux-pulse-border">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-foreground/80">
@@ -59,7 +60,6 @@ function ConnectingScreen({ wsUrl }: { readonly wsUrl: string }): React.ReactEle
           <span className="text-foreground/90 text-[15px] font-medium tracking-tight">wmux</span>
         </div>
 
-        {/* Terminal-style log */}
         <div className="bg-card/50 border border-border/30 rounded-lg px-5 py-4 w-[340px] overflow-hidden">
           <TerminalLine text={`$ connecting to ${host}`} delay={0} />
           <TerminalLine text="  resolving endpoint..." delay={300} dimmed />
@@ -80,10 +80,7 @@ function ErrorScreen({ message, wsUrl, onRetry }: {
   readonly wsUrl?: string;
   readonly onRetry?: () => void;
 }): React.ReactElement {
-  const host = (() => {
-    if (!wsUrl) return null;
-    try { return new URL(wsUrl).host; } catch { return wsUrl; }
-  })();
+  const host = wsUrl ? extractHost(wsUrl) : null;
 
   return (
     <div className="flex items-center justify-center h-screen w-screen bg-background font-sans">

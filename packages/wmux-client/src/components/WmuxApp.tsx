@@ -62,18 +62,19 @@ interface SidebarNavigationItem {
   readonly tabId: string;
 }
 
+function isNavigableCategory(category: CategoryInfo, collapsedCategories: ReadonlySet<string>): boolean {
+  return !collapsedCategories.has(category.name) && category.type !== "files";
+}
+
 function buildSidebarNavigationItems(
   categories: ReadonlyArray<CategoryInfo>,
   collapsedCategories: ReadonlySet<string>,
 ): readonly SidebarNavigationItem[] {
-  const items: SidebarNavigationItem[] = [];
-  for (const category of categories) {
-    if (collapsedCategories.has(category.name) || category.type === "files") continue;
-    for (const tab of category.tabs) {
-      items.push({ categoryName: category.name, tabId: tab.id });
-    }
-  }
-  return items;
+  return categories
+    .filter((category) => isNavigableCategory(category, collapsedCategories))
+    .flatMap((category) =>
+      category.tabs.map((tab) => ({ categoryName: category.name, tabId: tab.id })),
+    );
 }
 
 function buildTabList(activeCategory: CategoryInfo | undefined): Tab[] {
@@ -101,6 +102,69 @@ function toggleSetItem<T>(source: ReadonlySet<T>, item: T): Set<T> {
   return new Set([...source, item]);
 }
 
+function handleCommandPaletteKey(
+  event: KeyboardEvent,
+  isModifierPressed: boolean,
+  commandPaletteOpen: boolean,
+  setCommandPaletteOpen: (open: boolean | ((prev: boolean) => boolean)) => void,
+): boolean {
+  if (isModifierPressed && event.key === "k") { event.preventDefault(); setCommandPaletteOpen((prev: boolean) => !prev); return true; }
+  if (event.key === "Escape" && commandPaletteOpen) { setCommandPaletteOpen(false); return true; }
+  return false;
+}
+
+function handleCategorySwitchKey(
+  event: KeyboardEvent,
+  isModifierPressed: boolean,
+  categories: ReadonlyArray<CategoryInfo>,
+  selectCategory: (name: string) => void,
+): boolean {
+  if (!isModifierPressed || event.key < "1" || event.key > "9") return false;
+  event.preventDefault();
+  const categoryIndex = parseInt(event.key, 10) - 1;
+  if (categoryIndex < categories.length) selectCategory(categories[categoryIndex]!.name);
+  return true;
+}
+
+function handleTabSwitchKey(
+  event: KeyboardEvent,
+  isModifierPressed: boolean,
+  orderedTabs: readonly Tab[],
+  activeTabId: string,
+  selectTab: (id: string) => void,
+): boolean {
+  if (!isModifierPressed || (event.key !== "[" && event.key !== "]")) return false;
+  event.preventDefault();
+  if (orderedTabs.length === 0) return true;
+  const currentIndex = orderedTabs.findIndex((t) => t.id === activeTabId);
+  const nextIndex = event.key === "]"
+    ? (currentIndex + 1) % orderedTabs.length
+    : (currentIndex - 1 + orderedTabs.length) % orderedTabs.length;
+  selectTab(orderedTabs[nextIndex]!.id);
+  return true;
+}
+
+function handleArrowNavigation(
+  event: KeyboardEvent,
+  commandPaletteOpen: boolean,
+  sidebarItems: readonly SidebarNavigationItem[],
+  activeTabId: string,
+  activeCategory: string,
+  selectCategory: (name: string) => void,
+  selectTab: (id: string) => void,
+): boolean {
+  const isArrowKey = event.key === "ArrowUp" || event.key === "ArrowDown";
+  if (!isArrowKey || isTerminalFocused() || commandPaletteOpen || sidebarItems.length === 0) return false;
+  event.preventDefault();
+  const currentIndex = sidebarItems.findIndex((item) => item.tabId === activeTabId);
+  const delta = event.key === "ArrowDown" ? 1 : -1;
+  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + delta + sidebarItems.length) % sidebarItems.length;
+  const nextItem = sidebarItems[nextIndex]!;
+  if (nextItem.categoryName !== activeCategory) selectCategory(nextItem.categoryName);
+  selectTab(nextItem.tabId);
+  return true;
+}
+
 function useKeyboardShortcuts({
   commandPaletteOpen,
   setCommandPaletteOpen,
@@ -125,43 +189,10 @@ function useKeyboardShortcuts({
   useEffect(() => {
     const handler = (event: KeyboardEvent): void => {
       const isModifierPressed = event.metaKey || event.ctrlKey;
-
-      if (isModifierPressed && event.key === "k") { event.preventDefault(); setCommandPaletteOpen((prev: boolean) => !prev); return; }
-      if (event.key === "Escape" && commandPaletteOpen) { setCommandPaletteOpen(false); return; }
-
-      if (isModifierPressed && event.key >= "1" && event.key <= "9") {
-        event.preventDefault();
-        const categoryIndex = parseInt(event.key, 10) - 1;
-        if (categoryIndex < categories.length) selectCategory(categories[categoryIndex]!.name);
-        return;
-      }
-
-      if (isModifierPressed && (event.key === "[" || event.key === "]")) {
-        event.preventDefault();
-        if (orderedTabs.length === 0) return;
-        const currentIndex = orderedTabs.findIndex((t) => t.id === activeTabId);
-        const nextIndex = event.key === "]"
-          ? (currentIndex + 1) % orderedTabs.length
-          : (currentIndex - 1 + orderedTabs.length) % orderedTabs.length;
-        selectTab(orderedTabs[nextIndex]!.id);
-        return;
-      }
-
-      const isArrowNavigation = (event.key === "ArrowUp" || event.key === "ArrowDown")
-        && !isTerminalFocused()
-        && !commandPaletteOpen
-        && sidebarItems.length > 0;
-      if (!isArrowNavigation) return;
-
-      event.preventDefault();
-      const currentIndex = sidebarItems.findIndex((item) => item.tabId === activeTabId);
-      const delta = event.key === "ArrowDown" ? 1 : -1;
-      const nextIndex = currentIndex === -1
-        ? 0
-        : (currentIndex + delta + sidebarItems.length) % sidebarItems.length;
-      const nextItem = sidebarItems[nextIndex]!;
-      if (nextItem.categoryName !== activeCategory) selectCategory(nextItem.categoryName);
-      selectTab(nextItem.tabId);
+      if (handleCommandPaletteKey(event, isModifierPressed, commandPaletteOpen, setCommandPaletteOpen)) return;
+      if (handleCategorySwitchKey(event, isModifierPressed, categories, selectCategory)) return;
+      if (handleTabSwitchKey(event, isModifierPressed, orderedTabs, activeTabId, selectTab)) return;
+      handleArrowNavigation(event, commandPaletteOpen, sidebarItems, activeTabId, activeCategory, selectCategory, selectTab);
     };
 
     window.addEventListener("keydown", handler);

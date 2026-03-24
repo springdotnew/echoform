@@ -143,6 +143,18 @@ function CategorySection({
 }): ReactElement {
   const isFiles = category.type === "files";
 
+  const handleToggleDir = (path: string): void => {
+    selectCategoryAndAct(isActive, onSelectCategory, () => onToggleDir(path));
+  };
+
+  const handleOpenFile = (path: string): void => {
+    selectCategoryAndAct(isActive, onSelectCategory, () => onOpenFile(path));
+  };
+
+  const handleSelectTab = (tabId: string): void => {
+    selectCategoryAndAct(isActive, onSelectCategory, () => onSelectTab(tabId));
+  };
+
   return (
     <div
       className="border-b border-border/10 last:border-b-0 border-l-2"
@@ -165,8 +177,8 @@ function CategorySection({
             <div className="max-h-[50vh] overflow-y-auto pb-1">
               <FileTree
                 entries={category.fileEntries}
-                onToggleDir={(path) => selectCategoryAndAct(isActive, onSelectCategory, () => onToggleDir(path))}
-                onOpenFile={(path) => selectCategoryAndAct(isActive, onSelectCategory, () => onOpenFile(path))}
+                onToggleDir={handleToggleDir}
+                onOpenFile={handleOpenFile}
               />
             </div>
           )}
@@ -178,7 +190,7 @@ function CategorySection({
                   key={tab.id}
                   tab={tab}
                   isActive={tab.id === activeTabId && isActive}
-                  onSelect={() => selectCategoryAndAct(isActive, onSelectCategory, () => onSelectTab(tab.id))}
+                  onSelect={() => handleSelectTab(tab.id)}
                 />
               ))}
             </div>
