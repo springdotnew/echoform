@@ -1,11 +1,10 @@
-import React from "react";
 import { Render } from "@playfast/echoform-render";
 import { Server } from "@playfast/echoform/server";
 import { createManagedProcess, type ManagedProcess } from "./process";
 import { createWmuxServer } from "./server";
 import { generateToken } from "./token";
 import { WmuxRoot } from "./components/WmuxRoot";
-import type { WmuxConfig, WmuxHandle, TabConfig } from "./types";
+import type { WmuxConfig, WmuxHandle } from "./types";
 
 const BUILT_IN_CLIENT_URL = "https://wmux.play.fast";
 
@@ -26,18 +25,18 @@ function openBrowser(url: string): void {
 
 interface TabDef {
   readonly id: string;
-  readonly description?: string;
-  readonly icon?: string;
+  readonly description?: string | undefined;
+  readonly icon?: string | undefined;
   readonly tabType: "process" | "iframe";
-  readonly url?: string;
+  readonly url?: string | undefined;
 }
 
 interface CategoryDef {
   readonly name: string;
-  readonly icon?: string;
+  readonly icon?: string | undefined;
   readonly type: "process" | "files";
   readonly tabs: readonly TabDef[];
-  readonly fileRoot?: string;
+  readonly fileRoot?: string | undefined;
 }
 
 export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
@@ -45,7 +44,7 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
   const hostname = config.hostname ?? "127.0.0.1";
   const token = config.token ?? generateToken();
   const clientUrl = config.clientUrl
-    ?? process.env.WMUX_CLIENT_URL
+    ?? process.env["WMUX_CLIENT_URL"]
     ?? (BUILT_IN_CLIENT_URL.startsWith("__") ? "http://localhost:5173" : BUILT_IN_CLIENT_URL);
 
   const processes = new Map<string, ManagedProcess>();

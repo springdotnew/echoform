@@ -15,10 +15,10 @@ export interface Transport<Events extends object> {
     event: T,
     handler: (data: Events[T]) => void
   ) => void;
-  readonly off?: <T extends keyof Events>(
+  readonly off?: (<T extends keyof Events>(
     event: T,
     handler: (data: Events[T]) => void
-  ) => void;
+  ) => void) | undefined;
 }
 
 export interface EventResponseData {

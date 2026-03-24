@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { createRef, useState, useEffect, useRef, type RefObject, type ReactElement } from "react";
 import { useViews } from "@playfast/echoform/server";
 import { views } from "../views";
 import type { ManagedProcess } from "../process";
@@ -25,18 +25,18 @@ function categoryColor(name: string | undefined): string {
 
 interface TabDef {
   readonly id: string;
-  readonly description?: string;
-  readonly icon?: string;
+  readonly description?: string | undefined;
+  readonly icon?: string | undefined;
   readonly tabType: "process" | "iframe";
-  readonly url?: string;
+  readonly url?: string | undefined;
 }
 
 interface CategoryDef {
   readonly name: string;
-  readonly icon?: string;
+  readonly icon?: string | undefined;
   readonly type: "process" | "files";
   readonly tabs: readonly TabDef[];
-  readonly fileRoot?: string;
+  readonly fileRoot?: string | undefined;
 }
 
 interface WmuxRootProps {
@@ -46,7 +46,7 @@ interface WmuxRootProps {
 
 // ── Component ──
 
-export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.ReactElement | null {
+export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): ReactElement | null {
   const View = useViews(views);
   const [activeCategory, setActiveCategory] = useState(categoryDefs[0]?.name ?? "");
   const [activeTabId, setActiveTabId] = useState("");
@@ -54,10 +54,10 @@ export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.Reac
   const [fileStates, setFileStates] = useState<Record<string, FileViewerState>>({});
 
   // File viewer action refs (one per file category)
-  const fileRefs = useRef<Record<string, React.RefObject<FileViewerActions | null>>>({});
+  const fileRefs = useRef<Record<string, RefObject<FileViewerActions | null>>>({});
   for (const def of categoryDefs) {
     if (def.type === "files" && !fileRefs.current[def.name]) {
-      fileRefs.current[def.name] = React.createRef<FileViewerActions | null>();
+      fileRefs.current[def.name] = createRef<FileViewerActions | null>();
     }
   }
 
@@ -118,7 +118,7 @@ export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.Reac
       categories={categories}
       activeCategory={activeCategory}
       activeTabId={activeTabId}
-      onSelectCategory={(cat) => {
+      onSelectCategory={(cat: string) => {
         setActiveCategory(cat);
         const def = categoryDefs.find((d) => d.name === cat);
         if (!def) return;
@@ -130,12 +130,12 @@ export function WmuxRoot({ processes, categoryDefs }: WmuxRootProps): React.Reac
         }
       }}
       onSelectTab={setActiveTabId}
-      onStartProcess={(id) => processes.get(id)?.start()}
-      onStopProcess={(id) => processes.get(id)?.stop()}
-      onRestartProcess={(id) => processes.get(id)?.restart()}
-      onToggleDir={(path) => fileRefs.current[activeCategory]?.current?.toggleDir(path)}
-      onOpenFile={(path) => fileRefs.current[activeCategory]?.current?.openFile(path)}
-      onCloseFile={(id) => fileRefs.current[activeCategory]?.current?.closeFile(id)}
+      onStartProcess={(id: string) => processes.get(id)?.start()}
+      onStopProcess={(id: string) => processes.get(id)?.stop()}
+      onRestartProcess={(id: string) => processes.get(id)?.restart()}
+      onToggleDir={(path: string) => fileRefs.current[activeCategory]?.current?.toggleDir(path)}
+      onOpenFile={(path: string) => fileRefs.current[activeCategory]?.current?.openFile(path)}
+      onCloseFile={(id: string) => fileRefs.current[activeCategory]?.current?.closeFile(id)}
     >
       {[...processes.keys()].map((id) => (
         <TerminalSession key={id} proc={processes.get(id)!} />

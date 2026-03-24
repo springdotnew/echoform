@@ -111,16 +111,12 @@ function TabItem({
   return (
     <div
       onClick={onSelect}
-      className={`flex items-center gap-2.5 pl-5 pr-2 py-[7px] cursor-pointer transition-colors rounded-sm mx-1 relative group ${
+      className={`flex items-center gap-2.5 pl-5 pr-2 py-[7px] cursor-pointer transition-colors rounded-sm mx-1 group ${
         isActive
           ? "bg-border/20 text-foreground"
           : "text-muted-foreground/50 hover:bg-border/10 hover:text-foreground/70"
       }`}
     >
-      {isActive && (
-        <div className="absolute left-0.5 top-1.5 bottom-1.5 w-0.5 bg-foreground/20 rounded-r" />
-      )}
-
       {TabIcon
         ? <TabIcon size={14} className="shrink-0" />
         : <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: STATUS_COLORS[tab.status] ?? "#3f3f46" }} />
@@ -171,7 +167,10 @@ function CategorySection({
   const isFiles = category.type === "files";
 
   return (
-    <div className="border-b border-border/10 last:border-b-0">
+    <div
+      className="border-b border-border/10 last:border-b-0 border-l-2"
+      style={{ borderLeftColor: category.color }}
+    >
       <CategoryHeader
         category={category}
         isActive={isActive}

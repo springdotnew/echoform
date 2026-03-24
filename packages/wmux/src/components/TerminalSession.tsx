@@ -1,10 +1,10 @@
-import React, { useEffect } from "react";
+import { useEffect, type ReactElement } from "react";
 import { useViews, useStream } from "@playfast/echoform/server";
 import { views, WmuxTerminal } from "../views";
 import type { ManagedProcess } from "../process";
 import { isCommandConfig } from "../types";
 
-export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): React.ReactElement | null {
+export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): ReactElement | null {
   const View = useViews(views);
   const output = useStream(WmuxTerminal, "output");
 
@@ -24,8 +24,8 @@ export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): Re
       name={proc.name}
       status={proc.status}
       output={output}
-      onInput={(b64) => proc.write(b64)}
-      onResize={({ cols, rows }) => proc.resize(cols, rows)}
+      onInput={(b64: string) => proc.write(b64)}
+      onResize={({ cols, rows }: { cols: number; rows: number }) => proc.resize(cols, rows)}
     />
   );
 }

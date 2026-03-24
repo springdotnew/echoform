@@ -77,8 +77,8 @@ function createCommandProcess(
     const emitter = outputEmitter;
 
     const proc = Bun.spawn(argv, {
-      cwd: config.cwd,
-      env: config.env ? { ...process.env, ...config.env } : undefined,
+      ...(config.cwd != null && { cwd: config.cwd }),
+      ...(config.env != null && { env: { ...process.env, ...config.env } }),
       terminal: {
         cols,
         rows,

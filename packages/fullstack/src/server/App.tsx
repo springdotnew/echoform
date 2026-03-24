@@ -28,7 +28,7 @@ type EventHandler = (...args: ReadonlyArray<SerializableValue>) => SerializableV
 
 interface RegisteredEvent {
   readonly handler: EventHandler;
-  readonly callbackDef?: CallbackDef;
+  readonly callbackDef?: CallbackDef | undefined;
 }
 
 interface AppProps {
