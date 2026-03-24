@@ -58,6 +58,10 @@ body {
 ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
+/* Hidden scrollbar (still scrollable) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* cmdk */
 [cmdk-root] { background: transparent; }
 [cmdk-input] { caret-color: var(--color-foreground); }

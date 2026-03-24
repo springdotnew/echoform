@@ -195,7 +195,7 @@ export function WmuxApp(props: {
           />
         )}
 
-        <div className="flex-1 min-h-0 relative">
+        <div className="flex-1 min-h-0 relative bg-background">
           {[...registry.entries()].map(([id, child]) => (
             <div
               key={id}

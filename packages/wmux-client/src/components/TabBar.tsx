@@ -86,8 +86,8 @@ function ProcessActions({ status, onStart, onStop, onRestart }: NonNullable<TabB
 export function TabBar({ tabs, activeId, categoryColor, onSelect, onClose, onReorder, processActions }: TabBarProps): React.ReactElement {
   return (
     <div
-      className="flex items-center h-8 border-b border-border/20 shrink-0 overflow-x-auto"
-      style={{ backgroundColor: `color-mix(in srgb, ${categoryColor} 6%, #111113)` }}
+      className="flex items-center h-8 border-b border-border/20 shrink-0 overflow-x-auto scrollbar-hide"
+      style={{ backgroundColor: `color-mix(in srgb, ${categoryColor} 4%, var(--color-background))` }}
     >
       <DragDropProvider
         onDragEnd={(event) => {
