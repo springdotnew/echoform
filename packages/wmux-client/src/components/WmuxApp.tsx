@@ -170,15 +170,13 @@ export function WmuxApp(props: {
     onRestart: () => restartProcess(activeTabId),
   } : null;
 
-  // Build flat navigable sidebar item list
+  // Build flat navigable sidebar item list (tabs only, across all visible categories)
   const sidebarItems = useMemo(() => {
-    const items: Array<{ readonly type: "category"; readonly name: string } | { readonly type: "tab"; readonly categoryName: string; readonly tabId: string }> = [];
+    const items: Array<{ readonly categoryName: string; readonly tabId: string }> = [];
     for (const cat of categories) {
-      items.push({ type: "category", name: cat.name });
-      if (!collapsedCategories.has(cat.name) && cat.type !== "files") {
-        for (const tab of cat.tabs) {
-          items.push({ type: "tab", categoryName: cat.name, tabId: tab.id });
-        }
+      if (collapsedCategories.has(cat.name) || cat.type === "files") continue;
+      for (const tab of cat.tabs) {
+        items.push({ categoryName: cat.name, tabId: tab.id });
       }
     }
     return items;
@@ -213,22 +211,14 @@ export function WmuxApp(props: {
       // Arrow key sidebar navigation (only when terminal is not focused)
       if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !isTerminalFocused() && !cmdkOpen && sidebarItems.length > 0) {
         e.preventDefault();
-        const currentIdx = sidebarItems.findIndex((item) =>
-          item.type === "tab"
-            ? item.tabId === activeTabId && item.categoryName === activeCategory
-            : item.name === activeCategory && !sidebarItems.some((s) => s.type === "tab" && s.categoryName === activeCategory && s.tabId === activeTabId),
-        );
+        const currentIdx = sidebarItems.findIndex((item) => item.tabId === activeTabId);
         const delta = e.key === "ArrowDown" ? 1 : -1;
         const nextIdx = currentIdx === -1
           ? 0
           : (currentIdx + delta + sidebarItems.length) % sidebarItems.length;
         const next = sidebarItems[nextIdx]!;
-        if (next.type === "category") {
-          selectCategory(next.name);
-        } else {
-          selectCategory(next.categoryName);
-          selectTab(next.tabId);
-        }
+        if (next.categoryName !== activeCategory) selectCategory(next.categoryName);
+        selectTab(next.tabId);
       }
     };
     window.addEventListener("keydown", handler);
