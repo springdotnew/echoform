@@ -82,9 +82,13 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
 
         if (url.pathname === path) {
           if (options.validateConnection) {
-            const allowed = await Promise.resolve(options.validateConnection(req));
-            if (!allowed) {
-              return new Response("Unauthorized", { status: 401 });
+            try {
+              const allowed = await Promise.resolve(options.validateConnection(req));
+              if (!allowed) {
+                return new Response("Unauthorized", { status: 401 });
+              }
+            } catch {
+              return new Response("Connection validation error", { status: 500 });
             }
           }
           const upgraded = srv.upgrade(req, {

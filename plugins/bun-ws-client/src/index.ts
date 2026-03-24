@@ -12,6 +12,12 @@ export interface WebSocketTransportOptions {
   readonly authToken?: string;
 }
 
+function buildAuthenticatedUrl(url: string, authToken?: string): string {
+  if (!authToken) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}token=${encodeURIComponent(authToken)}`;
+}
+
 export function useWebSocketTransport(url: string, options?: WebSocketTransportOptions): WebSocketTransportState {
   const [state, setState] = useState<WebSocketTransportState>({
     transport: null,
@@ -22,10 +28,8 @@ export function useWebSocketTransport(url: string, options?: WebSocketTransportO
   useEffect(() => {
     let disposed = false;
 
-    const finalUrl = options?.authToken
-      ? `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(options.authToken)}`
-      : url;
-    const ws = new WebSocket(finalUrl);
+    const authenticatedUrl = buildAuthenticatedUrl(url, options?.authToken);
+    const ws = new WebSocket(authenticatedUrl);
     ws.binaryType = "arraybuffer";
 
     const { transport, dispatch, disconnect } = createWebSocketTransport(ws as unknown as WebSocketLike, { checkOpen: true });

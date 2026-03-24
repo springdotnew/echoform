@@ -104,7 +104,7 @@ function writeSerializableValue(output: ISerialOutput, value: SerializableValue)
 }
 
 function readObjectValue(input: ISerialInput, length: number): Record<string, SerializableValue> {
-  const result: Record<string, SerializableValue> = {};
+  const result: Record<string, SerializableValue> = Object.create(null) as Record<string, SerializableValue>;
   for (let i = 0; i < length; i++) {
     const key = binString.read(input);
     result[key] = readSerializableValue(input);
@@ -242,6 +242,7 @@ const EVENT_RESPOND_TO_EVENT = 4;
 const EVENT_REQUEST_EVENT = 5;
 const EVENT_STREAM_CHUNK = 6;
 const EVENT_STREAM_END = 7;
+const EVENT_FALLBACK = 0xFF;
 
 const eventNameToId: Record<string, number> = {
   update_views_tree: EVENT_UPDATE_VIEWS_TREE,
@@ -280,13 +281,13 @@ export function encodeMessage(event: string, data: unknown): Uint8Array {
   if (eventId === undefined) {
     // Unknown event: fall back to JSON-in-binary (event name + serializable data)
     const measurer = new Measurer();
-    measurer.add(1); // tag byte (0xFF = fallback)
+    measurer.add(1); // tag byte (EVENT_FALLBACK = fallback)
     binString.measure(event, measurer);
     serializableValue.measure(data as SerializableValue, measurer);
 
     const buffer = new ArrayBuffer(measurer.size);
     const writer = new BufferWriter(buffer);
-    u8.write(writer, 0xFF);
+    u8.write(writer, EVENT_FALLBACK);
     binString.write(writer, event);
     serializableValue.write(writer, data as SerializableValue);
     return new Uint8Array(buffer);
@@ -312,7 +313,7 @@ export function decodeMessage(bytes: Uint8Array): WireMessage {
   const reader = new BufferReader(bytes.buffer, { byteOffset: bytes.byteOffset });
   const eventId = u8.read(reader);
 
-  if (eventId === 0xFF) {
+  if (eventId === EVENT_FALLBACK) {
     // Fallback: JSON-in-binary
     const event = binString.read(reader);
     const data = serializableValue.read(reader);
@@ -411,8 +412,8 @@ const respondToEventCodec: EventCodec<WireRespondToEvent> = {
     binString.write(w, data.eventUid);
     const hasError = data.error !== undefined;
     bool.write(w, hasError);
-    if (hasError) {
-      binString.write(w, data.error!);
+    if (data.error !== undefined) {
+      binString.write(w, data.error);
     }
   },
   read(r) {

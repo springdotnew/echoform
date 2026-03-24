@@ -22,8 +22,6 @@ import type { ValidationResult } from "../shared/validation";
 import type { CallbackDef, ViewDef } from "../shared/view-builder";
 import type { StandardSchemaV1 } from "../shared/standard-schema";
 
-// ── Types ──
-
 type AnyTransport = Transport<Record<string | number, unknown>>;
 type EventHandler = (...args: ReadonlyArray<SerializableValue>) => SerializableValue | Promise<SerializableValue>;
 
@@ -45,8 +43,6 @@ export interface AppHandle {
   readonly addClient: <T extends Record<string | number, unknown>>(client: Transport<T>) => void;
   readonly removeClient: <T extends Record<string | number, unknown>>(client: Transport<T>) => void;
 }
-
-// ── Helpers (pure, outside component) ──
 
 const IGNORED_PROPS = new Set(["children", "key"]);
 
@@ -152,7 +148,32 @@ function reconcileProps(
 }
 
 function collectEventUids(props: ReadonlyArray<Prop>): ReadonlyArray<EventUid> {
-  return props.filter((p): p is Prop & { type: 'event' } => p.type === "event").map((p) => p.uid);
+  return props.filter((prop): prop is Prop & { type: 'event' } => prop.type === "event").map((prop) => prop.uid);
+}
+
+function authorizeEventUidsForAllClients(
+  authMap: Map<DecompileTransport, Set<EventUid>>,
+  uids: ReadonlyArray<EventUid>,
+): void {
+  for (const [, authSet] of authMap) {
+    for (const uid of uids) authSet.add(uid);
+  }
+}
+
+function deauthorizeEventUidsForAllClients(
+  authMap: Map<DecompileTransport, Set<EventUid>>,
+  uids: ReadonlySet<EventUid>,
+): void {
+  for (const [, authSet] of authMap) {
+    for (const uid of uids) authSet.delete(uid);
+  }
+}
+
+function removeEventHandlers(
+  viewEventsRef: React.RefObject<ReadonlyMap<EventUid, RegisteredEvent>>,
+  eventUids: ReadonlySet<EventUid>,
+): void {
+  viewEventsRef.current = new Map([...viewEventsRef.current].filter(([eventUid]) => !eventUids.has(eventUid)));
 }
 
 function replaceAt<T>(items: ReadonlyArray<T>, index: number, item: T): T[] {
@@ -162,8 +183,6 @@ function replaceAt<T>(items: ReadonlyArray<T>, index: number, item: T): T[] {
 function removeAt<T>(items: ReadonlyArray<T>, index: number): T[] {
   return [...items.slice(0, index), ...items.slice(index + 1)];
 }
-
-// ── Component ──
 
 const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, paused, transportIsClient, skipCallbackValidation }, ref) {
   const serverRef = useRef<DecompileTransport>(decompileTransport(transport));
@@ -250,9 +269,9 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
           return validationResult.then(handleValidation);
         }
         return handleValidation(validationResult);
-      }).catch((error) => {
-        console.error("echoform: event handler error", error);
-        client.emit("respond_to_event", { data: null, uid: currentEventUid, eventUid: requestedEventUid, error: String(error) });
+      }).catch((handlerError) => {
+        console.error("echoform: event handler error", handlerError);
+        client.emit("respond_to_event", { data: null, uid: currentEventUid, eventUid: requestedEventUid, error: "Event handler error" });
       });
     });
 
@@ -294,7 +313,7 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     const viewDef = getViewDef(viewData.name);
     const propNames = Object.keys(viewData.props).filter((propName) => !IGNORED_PROPS.has(propName) && viewData.props[propName] !== undefined);
 
-    const existingViewIndex = existingSharedViewsRef.current.findIndex((v) => v.uid === viewData.uid);
+    const existingViewIndex = existingSharedViewsRef.current.findIndex((view) => view.uid === viewData.uid);
     const existingView = existingViewIndex >= 0 ? existingSharedViewsRef.current[existingViewIndex] : undefined;
 
     if (!existingView) {
@@ -305,10 +324,7 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
       };
       existingSharedViewsRef.current = [...existingSharedViewsRef.current, newView];
       broadcast("update_view", buildViewPayload(newView, props, []));
-      const newEventUids = collectEventUids(props);
-      for (const [, authSet] of clientEventAuthRef.current) {
-        for (const uid of newEventUids) authSet.add(uid);
-      }
+      authorizeEventUidsForAllClients(clientEventAuthRef.current, collectEventUids(props));
       return;
     }
 
@@ -319,17 +335,21 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
 
     existingSharedViewsRef.current = replaceAt(existingSharedViewsRef.current, existingViewIndex, { ...existingView, props: currentProps });
 
+    const deletedEventUids = collectEventUids(propsToDelete);
+    if (deletedEventUids.length > 0) {
+      const deletedSet = new Set(deletedEventUids);
+      removeEventHandlers(viewEventsRef, deletedSet);
+      deauthorizeEventUidsForAllClients(clientEventAuthRef.current, deletedSet);
+    }
+
     if (propsToAdd.length > 0 || propsToDelete.length > 0) {
       broadcast("update_view", buildViewPayload(existingView, propsToAdd, propsToDelete.map((prop) => prop.name)));
-      const newEventUids = collectEventUids(propsToAdd);
-      for (const [, authSet] of clientEventAuthRef.current) {
-        for (const uid of newEventUids) authSet.add(uid);
-      }
+      authorizeEventUidsForAllClients(clientEventAuthRef.current, collectEventUids(propsToAdd));
     }
   }, [registerViewEvent, broadcast]);
 
   const deleteRunningView = useCallback((uid: ViewUid) => {
-    const viewIndex = existingSharedViewsRef.current.findIndex((v) => v.uid === uid);
+    const viewIndex = existingSharedViewsRef.current.findIndex((view) => view.uid === uid);
     if (viewIndex === -1) return;
 
     const deletedView = existingSharedViewsRef.current[viewIndex];
@@ -337,14 +357,9 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
 
     existingSharedViewsRef.current = removeAt(existingSharedViewsRef.current, viewIndex);
 
-    const deleteSet = new Set(
-      deletedView.props.filter((prop): prop is Prop & { type: 'event' } => prop.type === "event").map((prop) => prop.uid),
-    );
-    viewEventsRef.current = new Map([...viewEventsRef.current].filter(([key]) => !deleteSet.has(key)));
-
-    for (const [, authSet] of clientEventAuthRef.current) {
-      for (const uid of deleteSet) authSet.delete(uid);
-    }
+    const deleteSet = new Set(collectEventUids(deletedView.props));
+    removeEventHandlers(viewEventsRef, deleteSet);
+    deauthorizeEventUidsForAllClients(clientEventAuthRef.current, deleteSet);
 
     broadcast("delete_view", { viewUid: uid });
   }, [broadcast]);

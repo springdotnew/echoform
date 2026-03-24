@@ -152,11 +152,12 @@ function applyBrands(event: string, data: unknown): unknown {
       };
     }
     case "respond_to_event": {
-      const responsePayload = data as { readonly data: unknown; readonly uid: string; readonly eventUid: string };
+      const responsePayload = data as { readonly data: unknown; readonly uid: string; readonly eventUid: string; readonly error?: string };
       return {
         data: responsePayload.data,
         eventUid: createEventUid(responsePayload.eventUid),
         uid: createRequestUid(responsePayload.uid),
+        ...(responsePayload.error !== undefined ? { error: responsePayload.error } : {}),
       };
     }
     case "update_view": {

@@ -53,10 +53,9 @@ export function validateSchema(
   }
 }
 
-export interface ValidationResult {
-  readonly valid: boolean;
-  readonly error?: string;
-}
+type ValidResult = { readonly valid: true };
+type InvalidResult = { readonly valid: false; readonly error: string };
+export type ValidationResult = ValidResult | InvalidResult;
 
 function toValidationResult(result: StandardSchemaV1.Result<unknown>, context: string): ValidationResult {
   if ("issues" in result && result.issues) {
