@@ -224,6 +224,7 @@ export function WmuxApp(props: {
         onStartProcess={startProcess}
         onStopProcess={stopProcess}
         onRestartProcess={restartProcess}
+        onOpenFile={openFile}
       />
     </div>
   );

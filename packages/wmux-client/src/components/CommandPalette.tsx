@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, type ReactElement } from "react";
 import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { resolveIcon } from "../utils/icons";
@@ -15,6 +15,11 @@ interface CategoryInfo {
     readonly icon?: string;
     readonly status: string;
   }>;
+  readonly fileEntries?: ReadonlyArray<{
+    readonly path: string;
+    readonly name: string;
+    readonly isDir: boolean;
+  }>;
 }
 
 interface CommandPaletteProps {
@@ -27,6 +32,7 @@ interface CommandPaletteProps {
   readonly onStartProcess: (id: string) => void;
   readonly onStopProcess: (id: string) => void;
   readonly onRestartProcess: (id: string) => void;
+  readonly onOpenFile: (path: string) => void;
 }
 
 export function CommandPalette({
@@ -39,11 +45,17 @@ export function CommandPalette({
   onStartProcess,
   onStopProcess,
   onRestartProcess,
-}: CommandPaletteProps): React.ReactElement | null {
+  onOpenFile,
+}: CommandPaletteProps): ReactElement | null {
   const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!open) setSearch("");
+    if (open) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    } else {
+      setSearch("");
+    }
   }, [open]);
 
   const activeTab = useMemo(() => {
@@ -57,6 +69,10 @@ export function CommandPalette({
   if (!open) return null;
 
   const processCats = categories.filter((c) => c.type === "process");
+  const fileCats = categories.filter((c) => c.type === "files" && c.fileEntries && c.fileEntries.length > 0);
+  const allFiles = fileCats.flatMap((cat) =>
+    (cat.fileEntries ?? []).filter((entry) => !entry.isDir).map((entry) => ({ ...entry, category: cat.name })),
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]" onClick={() => onOpenChange(false)}>
@@ -69,10 +85,12 @@ export function CommandPalette({
           <div className="flex items-center gap-2 px-3 border-b border-border/40">
             <Search size={14} className="text-muted-foreground/50 shrink-0" />
             <Command.Input
+              ref={inputRef}
               value={search}
               onValueChange={setSearch}
               placeholder="Type a command or search..."
               className="flex-1 bg-transparent border-none outline-none text-[13px] text-foreground placeholder:text-muted-foreground/40 py-3 font-sans"
+              autoFocus
             />
             <kbd className="text-[10px] text-muted-foreground/30 bg-background/50 px-1.5 py-0.5 rounded border border-border/30 font-mono">esc</kbd>
           </div>
@@ -116,6 +134,23 @@ export function CommandPalette({
                     );
                   }),
                 )}
+              </Command.Group>
+            )}
+
+            {allFiles.length > 0 && (
+              <Command.Group heading="Files" className="[&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:text-muted-foreground/40 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:font-medium">
+                {allFiles.map((file) => (
+                  <Command.Item
+                    key={`file-${file.path}`}
+                    value={`file ${file.name} ${file.path} ${file.category}`}
+                    onSelect={() => { onSelectCategory(file.category); onSelectTab(`file::${file.path}`); onOpenFile(file.path); onOpenChange(false); }}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] text-foreground/80 cursor-pointer data-[selected=true]:bg-background/80 data-[selected=true]:text-foreground transition-colors"
+                  >
+                    <span className="text-muted-foreground/40 text-[12px]">📄</span>
+                    <span className="flex-1 truncate">{file.name}</span>
+                    <span className="text-[10px] text-muted-foreground/30 truncate max-w-[140px]">{file.category}</span>
+                  </Command.Item>
+                ))}
               </Command.Group>
             )}
 

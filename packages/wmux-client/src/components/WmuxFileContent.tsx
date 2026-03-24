@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactElement, ReactNode } from "react";
 import Editor from "@monaco-editor/react";
 
 interface WmuxFileContentProps {
@@ -6,7 +6,7 @@ interface WmuxFileContentProps {
   readonly path: string;
   readonly name: string;
   readonly content: string;
-  readonly children?: React.ReactNode;
+  readonly children?: ReactNode;
 }
 
 const EXT_TO_LANG: Record<string, string> = {
@@ -28,7 +28,7 @@ function detectLanguage(name: string): string {
   return EXT_TO_LANG[ext] ?? "plaintext";
 }
 
-export function WmuxFileContent({ path, name, content }: WmuxFileContentProps): React.ReactElement {
+export function WmuxFileContent({ path, name, content }: WmuxFileContentProps): ReactElement {
   return (
     <div className="w-full h-full">
       <Editor
@@ -57,12 +57,12 @@ export function WmuxFileContent({ path, name, content }: WmuxFileContentProps): 
             inherit: true,
             rules: [],
             colors: {
-              "editor.background": "#030304",
+              "editor.background": "#060607",
               "editor.foreground": "#e4e4e7",
               "editorLineNumber.foreground": "#27272a",
               "editorLineNumber.activeForeground": "#52525b",
               "editor.lineHighlightBackground": "#111113",
-              "editorGutter.background": "#030304",
+              "editorGutter.background": "#060607",
               "editor.selectionBackground": "#3f3f4640",
               "editorWidget.background": "#111113",
               "editorWidget.border": "#27272a",

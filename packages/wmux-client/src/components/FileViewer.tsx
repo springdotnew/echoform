@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactElement } from "react";
 import { ChevronRight, ChevronDown, File, Folder } from "lucide-react";
 
 interface FileEntry {
@@ -28,7 +28,7 @@ export function FileTree({
   readonly entries: ReadonlyArray<FileEntry>;
   readonly onToggleDir: (path: string) => void;
   readonly onOpenFile: (path: string) => void;
-}): React.ReactElement {
+}): ReactElement {
   return (
     <div className="flex flex-col py-0.5">
       {entries.map((entry) => (

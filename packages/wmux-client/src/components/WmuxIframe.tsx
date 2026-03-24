@@ -1,13 +1,13 @@
-import React from "react";
+import type { ReactElement, ReactNode } from "react";
 
 interface WmuxIframeProps {
   readonly id: string;
   readonly name: string;
   readonly url: string;
-  readonly children?: React.ReactNode;
+  readonly children?: ReactNode;
 }
 
-export function WmuxIframe({ name, url }: WmuxIframeProps): React.ReactElement {
+export function WmuxIframe({ name, url }: WmuxIframeProps): ReactElement {
   return (
     <iframe
       src={url}

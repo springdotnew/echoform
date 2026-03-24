@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Play } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import { toBase64, fromBase64 } from "../utils/base64";
 
@@ -8,9 +9,11 @@ interface WmuxTerminalProps {
   readonly id: string;
   readonly name: string;
   readonly status: string;
+  readonly description?: string;
   readonly output: { readonly subscribe: (listener: (chunk: string) => void) => () => void };
   readonly onInput: { readonly mutate: (data: string) => void };
   readonly onResize: { readonly mutate: (size: { cols: number; rows: number }) => void };
+  readonly onStart?: () => void;
   readonly children?: React.ReactNode;
 }
 
@@ -29,7 +32,7 @@ export function WmuxTerminal(props: WmuxTerminalProps): React.ReactElement {
       fontSize: 14,
       fontFamily: "'JetBrainsMono Nerd Font Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace",
       theme: {
-        background: "#030304",
+        background: "#060607",
         foreground: "#fafafa",
         cursor: "#fafafa",
         selectionBackground: "oklch(0.7 0.1 285 / 20%)",
@@ -90,13 +93,35 @@ export function WmuxTerminal(props: WmuxTerminalProps): React.ReactElement {
   return (
     <div className="w-full h-full relative">
       <div ref={containerRef} className="w-full h-full" data-testid={`terminal-${id}`} />
-      {status !== "running" && (
+      {status === "idle" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/90 z-10">
+          <div className="flex flex-col items-center gap-3 max-w-[320px]">
+            {props.description && (
+              <code className="text-[11px] text-muted-foreground/60 font-mono bg-card/80 px-3 py-1.5 rounded border border-border/30 max-w-full truncate">
+                {props.description}
+              </code>
+            )}
+            {props.onStart && (
+              <button
+                onClick={props.onStart}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-card border border-border/40 text-foreground/80 hover:text-foreground hover:border-border text-xs cursor-pointer transition-colors"
+              >
+                <Play size={10} />
+                Start
+              </button>
+            )}
+            {!props.onStart && (
+              <span className="text-[11px] text-muted-foreground/40">Process not started</span>
+            )}
+          </div>
+        </div>
+      )}
+      {(status === "stopped" || status === "failed") && (
         <div className={`absolute top-0 left-0 right-0 px-3 py-1 text-xs font-sans border-b border-border ${
           status === "failed"
             ? "bg-destructive/10 text-destructive"
             : "bg-secondary/30 text-muted-foreground"
         }`}>
-          {status === "idle" && "Process not started"}
           {status === "stopped" && "Process exited"}
           {status === "failed" && "Process failed"}
         </div>

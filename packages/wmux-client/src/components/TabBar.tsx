@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactElement } from "react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { X, Play, RotateCw, Square } from "lucide-react";
@@ -8,7 +8,7 @@ import { X, Play, RotateCw, Square } from "lucide-react";
 export interface Tab {
   readonly id: string;
   readonly title: string;
-  readonly closable?: boolean;
+  readonly closable?: boolean | undefined;
 }
 
 interface TabBarProps {
@@ -16,14 +16,14 @@ interface TabBarProps {
   readonly activeId: string;
   readonly categoryColor: string;
   readonly onSelect: (id: string) => void;
-  readonly onClose?: (id: string) => void;
-  readonly onReorder?: (ids: string[]) => void;
+  readonly onClose?: ((id: string) => void) | undefined;
+  readonly onReorder?: ((ids: string[]) => void) | undefined;
   readonly processActions?: {
     readonly status: string;
     readonly onStart: () => void;
     readonly onStop: () => void;
     readonly onRestart: () => void;
-  } | null;
+  } | null | undefined;
 }
 
 // ── Sortable tab ──
@@ -39,8 +39,8 @@ function SortableTab({
   readonly index: number;
   readonly active: boolean;
   readonly onSelect: () => void;
-  readonly onClose?: () => void;
-}): React.ReactElement {
+  readonly onClose?: (() => void) | undefined;
+}): ReactElement {
   const { ref, isDragging } = useSortable({ id: tab.id, index });
 
   return (
@@ -68,7 +68,7 @@ function SortableTab({
 
 // ── Process actions ──
 
-function ProcessActions({ status, onStart, onStop, onRestart }: NonNullable<TabBarProps["processActions"]>): React.ReactElement {
+function ProcessActions({ status, onStart, onStop, onRestart }: NonNullable<TabBarProps["processActions"]>): ReactElement {
   const running = status === "running";
   const btn = "flex items-center justify-center w-5 h-5 rounded border-none p-0 bg-transparent text-muted-foreground/50 hover:text-foreground disabled:opacity-20 disabled:cursor-default cursor-pointer transition-colors";
 
@@ -83,7 +83,7 @@ function ProcessActions({ status, onStart, onStop, onRestart }: NonNullable<TabB
 
 // ── Tab bar ──
 
-export function TabBar({ tabs, activeId, categoryColor, onSelect, onClose, onReorder, processActions }: TabBarProps): React.ReactElement {
+export function TabBar({ tabs, activeId, categoryColor, onSelect, onClose, onReorder, processActions }: TabBarProps): ReactElement {
   return (
     <div
       className="flex items-center h-8 border-b border-border/20 shrink-0 overflow-x-auto scrollbar-hide"

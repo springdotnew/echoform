@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactElement } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { STATUS_COLORS } from "../styles/theme";
 import { resolveIcon } from "../utils/icons";
@@ -58,7 +58,7 @@ function CategoryHeader({
   readonly isCollapsed: boolean;
   readonly onSelect: () => void;
   readonly onToggle: () => void;
-}): React.ReactElement {
+}): ReactElement {
   const CatIcon = resolveIcon(category.icon);
   const isFiles = category.type === "files";
   const count = isFiles ? (category.openFiles?.length ?? 0) : category.tabs.length;
@@ -68,14 +68,10 @@ function CategoryHeader({
       onClick={() => { onSelect(); if (isCollapsed) onToggle(); }}
       className={`flex items-center gap-1.5 px-2 py-1.5 text-xs cursor-pointer transition-colors group relative ${
         isActive
-          ? "text-foreground/80 bg-card/40"
-          : "text-muted-foreground/60 hover:text-muted-foreground/80 hover:bg-card/20"
+          ? "text-foreground/90"
+          : "text-muted-foreground/50 hover:text-muted-foreground/70"
       }`}
     >
-      {isActive && (
-        <div className="absolute left-0 top-1 bottom-1 w-0.5 bg-foreground/30 rounded-r" />
-      )}
-
       <span
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         className="flex items-center justify-center w-3.5 h-3.5 cursor-pointer shrink-0 text-muted-foreground/40"
@@ -83,10 +79,10 @@ function CategoryHeader({
         {isCollapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
       </span>
 
-      {CatIcon
-        ? <CatIcon size={12} className="shrink-0" />
-        : <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: category.color }} />
-      }
+      <span
+        className="w-2 h-2 rounded-sm shrink-0 transition-opacity"
+        style={{ background: category.color, opacity: isActive ? 1 : 0.4 }}
+      />
 
       <span className="lowercase tracking-wide font-medium flex-1 truncate text-[12px]">
         {category.name}
@@ -109,7 +105,7 @@ function TabItem({
   readonly tab: TabInfo;
   readonly isActive: boolean;
   readonly onSelect: () => void;
-}): React.ReactElement {
+}): ReactElement {
   const TabIcon = resolveIcon(tab.icon);
 
   return (
@@ -171,7 +167,7 @@ function CategorySection({
   readonly onSelectTab: (id: string) => void;
   readonly onToggleDir: (path: string) => void;
   readonly onOpenFile: (path: string) => void;
-}): React.ReactElement {
+}): ReactElement {
   const isFiles = category.type === "files";
 
   return (
@@ -219,7 +215,7 @@ function CategorySection({
 
 // ── Sidebar footer ──
 
-function SidebarFooter(): React.ReactElement {
+function SidebarFooter(): ReactElement {
   const shortcuts = [
     { key: "⌘K", label: "Command palette" },
     { key: "⌘1-9", label: "Switch category" },
@@ -252,7 +248,7 @@ export function Sidebar({
   onSelectTab,
   onToggleDir,
   onOpenFile,
-}: SidebarProps): React.ReactElement {
+}: SidebarProps): ReactElement {
   return (
     <div className="w-[200px] min-w-[200px] bg-background border-r border-border/30 flex flex-col select-none h-full">
       <div className="flex-1 overflow-y-auto scrollbar-hide">
