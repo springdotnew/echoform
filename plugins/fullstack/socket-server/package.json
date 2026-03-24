@@ -22,7 +22,7 @@
     "react": ">=19.0.0"
   },
   "dependencies": {
-    "socket.io": "4.5.3",
+    "socket.io": "4.6.2",
     "bufferutil": "4.0.7",
     "utf-8-validate": "5.0.10"
   },
