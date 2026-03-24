@@ -1,5 +1,11 @@
 # @playfast/wmux
 
+## 0.2.4
+
+### Patch Changes
+
+- ce4ec65: UI improvements: category color borders, idle process overlay with start button, command palette auto-focus and file search, hidden scrollbars.
+
 ## 0.2.3
 
 ### Patch Changes
