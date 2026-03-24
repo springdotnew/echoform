@@ -4,36 +4,7 @@ import { resolveIcon } from "../utils/icons";
 import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
 import { TabBar, type Tab } from "./TabBar";
-
-// ── Types ──
-
-interface FileEntry {
-  readonly path: string;
-  readonly name: string;
-  readonly isDir: boolean;
-  readonly depth: number;
-  readonly isExpanded: boolean;
-}
-
-interface TabInfo {
-  readonly id: string;
-  readonly name: string;
-  readonly description?: string;
-  readonly icon?: string;
-  readonly status: string;
-}
-
-interface CategoryInfo {
-  readonly name: string;
-  readonly color: string;
-  readonly icon?: string;
-  readonly type: string;
-  readonly tabs: readonly TabInfo[];
-  readonly fileEntries?: readonly FileEntry[];
-  readonly openFiles?: readonly { readonly path: string; readonly name: string }[];
-}
-
-// ── Empty state ──
+import type { CategoryInfo } from "../types";
 
 function EmptyState({ categories, onOpen }: {
   readonly categories: ReadonlyArray<CategoryInfo>;
@@ -43,12 +14,12 @@ function EmptyState({ categories, onOpen }: {
     <div className="flex items-center justify-center h-full w-full">
       <div className="flex flex-col gap-0.5 w-56">
         <div className="text-[10px] text-muted-foreground/30 uppercase tracking-wider font-medium px-3 mb-1">Categories</div>
-        {categories.map((cat) => {
-          const Icon = resolveIcon(cat.icon);
+        {categories.map((category) => {
+          const Icon = resolveIcon(category.icon);
           return (
-            <button key={cat.name} onClick={() => onOpen(cat.name)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-transparent hover:bg-card/80 transition-all duration-150 border border-transparent hover:border-border/30 text-left cursor-pointer group">
-              {Icon ? <Icon size={13} className="text-muted-foreground/50 group-hover:text-foreground/60 shrink-0 transition-colors" /> : <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: cat.color }} />}
-              <span className="flex-1 text-foreground/80 text-[13px] group-hover:text-foreground transition-colors">{cat.name}</span>
+            <button key={category.name} onClick={() => onOpen(category.name)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-transparent hover:bg-card/80 transition-all duration-150 border border-transparent hover:border-border/30 text-left cursor-pointer group">
+              {Icon ? <Icon size={13} className="text-muted-foreground/50 group-hover:text-foreground/60 shrink-0 transition-colors" /> : <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: category.color }} />}
+              <span className="flex-1 text-foreground/80 text-[13px] group-hover:text-foreground transition-colors">{category.name}</span>
             </button>
           );
         })}
@@ -59,8 +30,6 @@ function EmptyState({ categories, onOpen }: {
     </div>
   );
 }
-
-// ── Top bar ──
 
 function TopBar({ title, description, onSearch }: {
   readonly title: string;
@@ -88,7 +57,117 @@ function TopBar({ title, description, onSearch }: {
   );
 }
 
-// ── Main component ──
+interface SidebarNavigationItem {
+  readonly categoryName: string;
+  readonly tabId: string;
+}
+
+function buildSidebarNavigationItems(
+  categories: ReadonlyArray<CategoryInfo>,
+  collapsedCategories: ReadonlySet<string>,
+): readonly SidebarNavigationItem[] {
+  const items: SidebarNavigationItem[] = [];
+  for (const category of categories) {
+    if (collapsedCategories.has(category.name) || category.type === "files") continue;
+    for (const tab of category.tabs) {
+      items.push({ categoryName: category.name, tabId: tab.id });
+    }
+  }
+  return items;
+}
+
+function buildTabList(activeCategory: CategoryInfo | undefined): Tab[] {
+  if (!activeCategory) return [];
+  if (activeCategory.type === "files") {
+    return (activeCategory.openFiles ?? []).map((f) => ({ id: `file::${f.path}`, title: f.name, closable: true }));
+  }
+  return activeCategory.tabs.map((t) => ({ id: t.id, title: t.name }));
+}
+
+function syncTabOrder(previousOrder: readonly string[], currentTabs: readonly Tab[]): string[] {
+  const currentIds = new Set(currentTabs.map((t) => t.id));
+  const kept = previousOrder.filter((id) => currentIds.has(id));
+  const added = currentTabs.map((t) => t.id).filter((id) => !kept.includes(id));
+  return [...kept, ...added];
+}
+
+function isTerminalFocused(): boolean {
+  const activeElement = document.activeElement;
+  return activeElement != null && activeElement.closest(".xterm") != null;
+}
+
+function toggleSetItem<T>(source: ReadonlySet<T>, item: T): Set<T> {
+  if (source.has(item)) return new Set([...source].filter((entry) => entry !== item));
+  return new Set([...source, item]);
+}
+
+function useKeyboardShortcuts({
+  commandPaletteOpen,
+  setCommandPaletteOpen,
+  categories,
+  selectCategory,
+  orderedTabs,
+  activeTabId,
+  selectTab,
+  sidebarItems,
+  activeCategory,
+}: {
+  readonly commandPaletteOpen: boolean;
+  readonly setCommandPaletteOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+  readonly categories: ReadonlyArray<CategoryInfo>;
+  readonly selectCategory: (name: string) => void;
+  readonly orderedTabs: readonly Tab[];
+  readonly activeTabId: string;
+  readonly selectTab: (id: string) => void;
+  readonly sidebarItems: readonly SidebarNavigationItem[];
+  readonly activeCategory: string;
+}): void {
+  useEffect(() => {
+    const handler = (event: KeyboardEvent): void => {
+      const isModifierPressed = event.metaKey || event.ctrlKey;
+
+      if (isModifierPressed && event.key === "k") { event.preventDefault(); setCommandPaletteOpen((prev: boolean) => !prev); return; }
+      if (event.key === "Escape" && commandPaletteOpen) { setCommandPaletteOpen(false); return; }
+
+      if (isModifierPressed && event.key >= "1" && event.key <= "9") {
+        event.preventDefault();
+        const categoryIndex = parseInt(event.key, 10) - 1;
+        if (categoryIndex < categories.length) selectCategory(categories[categoryIndex]!.name);
+        return;
+      }
+
+      if (isModifierPressed && (event.key === "[" || event.key === "]")) {
+        event.preventDefault();
+        if (orderedTabs.length === 0) return;
+        const currentIndex = orderedTabs.findIndex((t) => t.id === activeTabId);
+        const nextIndex = event.key === "]"
+          ? (currentIndex + 1) % orderedTabs.length
+          : (currentIndex - 1 + orderedTabs.length) % orderedTabs.length;
+        selectTab(orderedTabs[nextIndex]!.id);
+        return;
+      }
+
+      const isArrowNavigation = (event.key === "ArrowUp" || event.key === "ArrowDown")
+        && !isTerminalFocused()
+        && !commandPaletteOpen
+        && sidebarItems.length > 0;
+      if (!isArrowNavigation) return;
+
+      event.preventDefault();
+      const currentIndex = sidebarItems.findIndex((item) => item.tabId === activeTabId);
+      const delta = event.key === "ArrowDown" ? 1 : -1;
+      const nextIndex = currentIndex === -1
+        ? 0
+        : (currentIndex + delta + sidebarItems.length) % sidebarItems.length;
+      const nextItem = sidebarItems[nextIndex]!;
+      if (nextItem.categoryName !== activeCategory) selectCategory(nextItem.categoryName);
+      selectTab(nextItem.tabId);
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [commandPaletteOpen, categories, selectCategory, orderedTabs, activeTabId, selectTab, sidebarItems, activeCategory, setCommandPaletteOpen]);
+}
 
 export function WmuxApp(props: {
   readonly title: string;
@@ -117,10 +196,9 @@ export function WmuxApp(props: {
   const closeFile = props.onCloseFile.mutate;
 
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
-  const [cmdkOpen, setCmdkOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [tabOrder, setTabOrder] = useState<string[]>([]);
 
-  // Child registry
   const registry = useMemo(() => {
     const map = new Map<string, ReactNode>();
     for (const child of React.Children.toArray(children) as React.ReactElement[]) {
@@ -130,28 +208,16 @@ export function WmuxApp(props: {
     return map;
   }, [children]);
 
-  // Derived state
-  const activeCat = categories.find((c) => c.name === activeCategory);
-  const isFiles = activeCat?.type === "files";
-  const processTabs = activeCat?.tabs ?? [];
-  const openFiles = activeCat?.openFiles ?? [];
+  const activeCategoryInfo = categories.find((c) => c.name === activeCategory);
+  const isFileCategory = activeCategoryInfo?.type === "files";
+  const processTabs = activeCategoryInfo?.tabs ?? [];
+  const openFiles = activeCategoryInfo?.openFiles ?? [];
 
-  // Build tab list for the tab bar
-  const tabs: Tab[] = isFiles
-    ? openFiles.map((f) => ({ id: `file::${f.path}`, title: f.name, closable: true }))
-    : processTabs.map((t) => ({ id: t.id, title: t.name }));
-
-  // Stable key for tab IDs — only triggers effect when tabs are actually added/removed
+  const tabs = buildTabList(activeCategoryInfo);
   const tabIdsKey = tabs.map((t) => t.id).join("\0");
 
-  // Sync tabOrder when tabs are added or removed
   useEffect(() => {
-    setTabOrder((prev) => {
-      const ids = new Set(tabs.map((t) => t.id));
-      const kept = prev.filter((id) => ids.has(id));
-      const added = tabs.map((t) => t.id).filter((id) => !kept.includes(id));
-      return [...kept, ...added];
-    });
+    setTabOrder((prev) => syncTabOrder(prev, tabs));
   }, [tabIdsKey]);
 
   const orderedTabs = useMemo(() => {
@@ -161,77 +227,38 @@ export function WmuxApp(props: {
 
   const hasTabs = orderedTabs.length > 0;
 
-  // Process actions for active tab
   const activeTabInfo = processTabs.find((t) => t.id === activeTabId);
-  const processActions = !isFiles && activeTabInfo ? {
+  const processActions = !isFileCategory && activeTabInfo ? {
     status: activeTabInfo.status,
     onStart: () => startProcess(activeTabId),
     onStop: () => stopProcess(activeTabId),
     onRestart: () => restartProcess(activeTabId),
   } : null;
 
-  // Build flat navigable sidebar item list (tabs only, across all visible categories)
-  const sidebarItems = useMemo(() => {
-    const items: Array<{ readonly categoryName: string; readonly tabId: string }> = [];
-    for (const cat of categories) {
-      if (collapsedCategories.has(cat.name) || cat.type === "files") continue;
-      for (const tab of cat.tabs) {
-        items.push({ categoryName: cat.name, tabId: tab.id });
-      }
-    }
-    return items;
-  }, [categories, collapsedCategories]);
+  const sidebarItems = useMemo(
+    () => buildSidebarNavigationItems(categories, collapsedCategories),
+    [categories, collapsedCategories],
+  );
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const isTerminalFocused = (): boolean => {
-      const el = document.activeElement;
-      return el != null && el.closest(".xterm") != null;
-    };
-
-    const handler = (e: KeyboardEvent): void => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === "k") { e.preventDefault(); setCmdkOpen((p) => !p); return; }
-      if (e.key === "Escape" && cmdkOpen) { setCmdkOpen(false); return; }
-      if (mod && e.key >= "1" && e.key <= "9") {
-        e.preventDefault();
-        const idx = parseInt(e.key, 10) - 1;
-        if (idx < categories.length) selectCategory(categories[idx]!.name);
-        return;
-      }
-      if (mod && (e.key === "[" || e.key === "]")) {
-        e.preventDefault();
-        if (orderedTabs.length === 0) return;
-        const idx = orderedTabs.findIndex((t) => t.id === activeTabId);
-        const next = e.key === "]" ? (idx + 1) % orderedTabs.length : (idx - 1 + orderedTabs.length) % orderedTabs.length;
-        selectTab(orderedTabs[next]!.id);
-        return;
-      }
-
-      // Arrow key sidebar navigation (only when terminal is not focused)
-      if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !isTerminalFocused() && !cmdkOpen && sidebarItems.length > 0) {
-        e.preventDefault();
-        const currentIdx = sidebarItems.findIndex((item) => item.tabId === activeTabId);
-        const delta = e.key === "ArrowDown" ? 1 : -1;
-        const nextIdx = currentIdx === -1
-          ? 0
-          : (currentIdx + delta + sidebarItems.length) % sidebarItems.length;
-        const next = sidebarItems[nextIdx]!;
-        if (next.categoryName !== activeCategory) selectCategory(next.categoryName);
-        selectTab(next.tabId);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [cmdkOpen, categories, selectCategory, orderedTabs, activeTabId, selectTab, sidebarItems, activeCategory]);
+  useKeyboardShortcuts({
+    commandPaletteOpen,
+    setCommandPaletteOpen,
+    categories,
+    selectCategory,
+    orderedTabs,
+    activeTabId,
+    selectTab,
+    sidebarItems,
+    activeCategory,
+  });
 
   const toggleCollapse = useCallback((name: string) => {
-    setCollapsedCategories((prev) => { const next = new Set(prev); next.has(name) ? next.delete(name) : next.add(name); return next; });
+    setCollapsedCategories((prev) => toggleSetItem(prev, name));
   }, []);
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground font-sans">
-      <TopBar title={title} description={description} onSearch={() => setCmdkOpen(true)} />
+      <TopBar title={title} description={description} onSearch={() => setCommandPaletteOpen(true)} />
 
       <div className="flex flex-1 min-h-0">
         <Sidebar
@@ -251,9 +278,9 @@ export function WmuxApp(props: {
           <TabBar
             tabs={orderedTabs}
             activeId={activeTabId}
-            categoryColor={activeCat?.color ?? "#3f3f46"}
+            categoryColor={activeCategoryInfo?.color ?? "#3f3f46"}
             onSelect={selectTab}
-            onClose={isFiles ? closeFile : undefined}
+            onClose={isFileCategory ? closeFile : undefined}
             onReorder={setTabOrder}
             processActions={processActions}
           />
@@ -280,8 +307,8 @@ export function WmuxApp(props: {
       </div>
 
       <CommandPalette
-        open={cmdkOpen}
-        onOpenChange={setCmdkOpen}
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
         categories={categories}
         activeTabId={activeTabId}
         onSelectCategory={selectCategory}

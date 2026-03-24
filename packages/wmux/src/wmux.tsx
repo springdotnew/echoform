@@ -4,22 +4,22 @@ import { createManagedProcess, type ManagedProcess } from "./process";
 import { createWmuxServer } from "./server";
 import { generateToken } from "./token";
 import { WmuxRoot } from "./components/WmuxRoot";
-import type { WmuxConfig, WmuxHandle } from "./types";
+import type { WmuxConfig, WmuxHandle, SidebarItem } from "./types";
 
 const BUILT_IN_CLIENT_URL = "https://wmux.play.fast";
 
+const PLATFORM_OPEN_COMMANDS: Record<string, readonly string[]> = {
+  darwin: ["open"],
+  linux: ["xdg-open"],
+  win32: ["cmd", "/c", "start"],
+};
+
 function openBrowser(url: string): void {
   try {
-    const platform = process.platform;
-    if (platform === "darwin") {
-      Bun.spawn(["open", url]);
-    } else if (platform === "linux") {
-      Bun.spawn(["xdg-open", url]);
-    } else if (platform === "win32") {
-      Bun.spawn(["cmd", "/c", "start", url]);
-    }
+    const argv = PLATFORM_OPEN_COMMANDS[process.platform];
+    if (argv) Bun.spawn([...argv, url]);
   } catch {
-    // silently ignore — browser open is best-effort
+    // browser open is best-effort
   }
 }
 
@@ -39,6 +39,42 @@ interface CategoryDef {
   readonly fileRoot?: string | undefined;
 }
 
+function buildFileCategoryDef(item: SidebarItem): CategoryDef {
+  return { name: item.category, icon: item.icon, type: "files", tabs: [], fileRoot: item.files };
+}
+
+function buildProcessTabs(
+  item: SidebarItem,
+  processes: Map<string, ManagedProcess>,
+): readonly TabDef[] {
+  const result: TabDef[] = [];
+  for (const tab of item.tabs ?? []) {
+    const id = `${item.category}/${tab.name}`;
+    if (tab.url) {
+      result.push({ id, description: tab.description, icon: tab.icon, tabType: "iframe", url: tab.url });
+    } else if (tab.process) {
+      processes.set(id, createManagedProcess(id, tab.name, tab.process, () => {}));
+      result.push({ id, description: tab.description, icon: tab.icon, tabType: "process" });
+    }
+  }
+  return result;
+}
+
+function buildCategoryDefs(
+  sidebarItems: readonly SidebarItem[],
+  processes: Map<string, ManagedProcess>,
+): readonly CategoryDef[] {
+  return sidebarItems.map((item) => {
+    if (item.files) return buildFileCategoryDef(item);
+    const tabs = buildProcessTabs(item, processes);
+    return { name: item.category, icon: item.icon, type: "process" as const, tabs };
+  });
+}
+
+function resolveHostname(hostname: string): string {
+  return hostname === "0.0.0.0" || hostname === "127.0.0.1" ? "localhost" : hostname;
+}
+
 export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
   const port = config.port ?? 0;
   const hostname = config.hostname ?? "127.0.0.1";
@@ -48,43 +84,19 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
     ?? (BUILT_IN_CLIENT_URL.startsWith("__") ? "http://localhost:5173" : BUILT_IN_CLIENT_URL);
 
   const processes = new Map<string, ManagedProcess>();
-  const categoryDefs: CategoryDef[] = [];
+  const categoryDefs = buildCategoryDefs(config.sidebarItems, processes);
 
-  for (const item of config.sidebarItems) {
-    if (item.files) {
-      categoryDefs.push({ name: item.category, icon: item.icon, type: "files", tabs: [], fileRoot: item.files });
-    } else {
-      const tabs: TabDef[] = [];
-      for (const tab of item.tabs ?? []) {
-        const id = `${item.category}/${tab.name}`;
-        if (tab.url) {
-          tabs.push({ id, description: tab.description, icon: tab.icon, tabType: "iframe", url: tab.url });
-        } else if (tab.process) {
-          processes.set(id, createManagedProcess(id, tab.name, tab.process, () => {}));
-          tabs.push({ id, description: tab.description, icon: tab.icon, tabType: "process" });
-        }
-      }
-      categoryDefs.push({ name: item.category, icon: item.icon, type: "process", tabs });
-    }
-  }
-
-  // Start server
-  const { transport, server, stop: stopServer } = createWmuxServer({
-    port,
-    hostname,
-    token,
-    clientUrl,
-  });
-
+  const { transport, server, stop: stopServer } = createWmuxServer({ port, hostname, token, clientUrl });
   const actualPort = server.port ?? port;
-  const wsUrl = `ws://${hostname === "0.0.0.0" || hostname === "127.0.0.1" ? "localhost" : hostname}:${actualPort}/ws`;
+  const displayHost = resolveHostname(hostname);
+  const wsUrl = `ws://${displayHost}:${actualPort}/ws`;
   const fullClientUrl = `${clientUrl}/#token=${encodeURIComponent(token)}&ws=${encodeURIComponent(wsUrl)}`;
 
   console.log(`\x1b[1m\x1b[32mwmux\x1b[0m → \x1b[4m${fullClientUrl}\x1b[0m`);
   console.log(`\x1b[2m       ws://${hostname}:${actualPort}/ws\x1b[0m`);
 
   if (config.open !== false) {
-    openBrowser(`http://${hostname === "0.0.0.0" || hostname === "127.0.0.1" ? "localhost" : hostname}:${actualPort}/`);
+    openBrowser(`http://${displayHost}:${actualPort}/`);
   }
 
   Render(
@@ -101,10 +113,5 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
   process.on("SIGINT", () => { stop(); process.exit(0); });
   process.on("SIGTERM", () => { stop(); process.exit(0); });
 
-  return {
-    url: fullClientUrl,
-    localUrl: wsUrl,
-    port: actualPort,
-    stop,
-  };
+  return { url: fullClientUrl, localUrl: wsUrl, port: actualPort, stop };
 }

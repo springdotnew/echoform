@@ -33,75 +33,85 @@ export interface ManagedProcess {
   readonly dispose: () => void;
 }
 
+interface CommandProcessState {
+  currentStatus: ProcessStatus;
+  terminal: Terminal | null;
+  outputEmitter: OutputEmitter | null;
+  cols: number;
+  rows: number;
+  restartTimer: ReturnType<typeof setTimeout> | null;
+}
+
+function createInitialCommandState(): CommandProcessState {
+  return { currentStatus: "idle", terminal: null, outputEmitter: null, cols: 80, rows: 24, restartTimer: null };
+}
+
+function clearRestartTimer(state: CommandProcessState): void {
+  if (!state.restartTimer) return;
+  clearTimeout(state.restartTimer);
+  state.restartTimer = null;
+}
+
+function closeTerminal(state: CommandProcessState): void {
+  if (!state.terminal) return;
+  state.terminal.close();
+  state.terminal = null;
+}
+
+function buildArgv(command: string | readonly string[]): string[] {
+  return typeof command === "string" ? ["/bin/sh", "-c", command] : [...command];
+}
+
 function createCommandProcess(
   id: string,
   name: string,
   config: CommandProcessConfig,
   onStatusChange: (status: ProcessStatus) => void,
 ): ManagedProcess {
-  let currentStatus: ProcessStatus = "idle";
-  let terminal: Terminal | null = null;
-  let outputEmitter: OutputEmitter | null = null;
-  let cols = 80;
-  let rows = 24;
-  let restartTimer: ReturnType<typeof setTimeout> | null = null;
+  const state = createInitialCommandState();
 
   const setStatus = (status: ProcessStatus): void => {
-    currentStatus = status;
+    state.currentStatus = status;
     onStatusChange(status);
   };
 
-  const clearRestartTimer = (): void => {
-    if (restartTimer) {
-      clearTimeout(restartTimer);
-      restartTimer = null;
-    }
-  };
-
   const stop = (): void => {
-    clearRestartTimer();
-    if (terminal) {
-      terminal.close();
-      terminal = null;
-    }
+    clearRestartTimer(state);
+    closeTerminal(state);
   };
 
   const start = (): void => {
-    if (currentStatus === "running") return;
-    clearRestartTimer();
+    if (state.currentStatus === "running") return;
+    clearRestartTimer(state);
 
-    const argv = typeof config.command === "string"
-      ? ["/bin/sh", "-c", config.command]
-      : [...config.command];
-
-    const emitter = outputEmitter;
+    const argv = buildArgv(config.command);
+    const emitter = state.outputEmitter;
 
     const proc = Bun.spawn(argv, {
       ...(config.cwd != null && { cwd: config.cwd }),
       ...(config.env != null && { env: { ...process.env, ...config.env } }),
       terminal: {
-        cols,
-        rows,
+        cols: state.cols,
+        rows: state.rows,
         data: (_t: unknown, data: Uint8Array) => {
           emitter?.emit(toBase64(data));
         },
       },
     });
 
-    terminal = proc.terminal!;
+    state.terminal = proc.terminal!;
     setStatus("running");
 
     proc.exited.then((code) => {
-      terminal = null;
-      const newStatus: ProcessStatus = code === 0 ? "stopped" : "failed";
-      setStatus(newStatus);
+      state.terminal = null;
+      const exitStatus: ProcessStatus = code === 0 ? "stopped" : "failed";
+      setStatus(exitStatus);
 
-      if (config.autoRestart && code !== 0) {
-        restartTimer = setTimeout(() => {
-          restartTimer = null;
-          start();
-        }, 1000);
-      }
+      if (!config.autoRestart || code === 0) return;
+      state.restartTimer = setTimeout(() => {
+        state.restartTimer = null;
+        start();
+      }, 1000);
     });
   };
 
@@ -109,29 +119,26 @@ function createCommandProcess(
     id,
     name,
     config,
-    get status() { return currentStatus; },
-    attachOutput(emitter) { outputEmitter = emitter; },
+    get status() { return state.currentStatus; },
+    attachOutput(emitter) { state.outputEmitter = emitter; },
     start,
     stop,
     restart() {
-      outputEmitter?.emit(
+      state.outputEmitter?.emit(
         toBase64(new TextEncoder().encode("\r\n\x1b[2m--- restarting ---\x1b[0m\r\n")),
       );
       stop();
       start();
     },
-    write(b64) { terminal?.write(fromBase64(b64)); },
+    write(b64) { state.terminal?.write(fromBase64(b64)); },
     resize(newCols, newRows) {
-      cols = newCols;
-      rows = newRows;
-      terminal?.resize(newCols, newRows);
+      state.cols = newCols;
+      state.rows = newRows;
+      state.terminal?.resize(newCols, newRows);
     },
     dispose() {
-      clearRestartTimer();
-      if (terminal) {
-        terminal.close();
-        terminal = null;
-      }
+      clearRestartTimer(state);
+      closeTerminal(state);
     },
   };
 }
@@ -150,7 +157,6 @@ function createTerminalProcess(
     onStatusChange(status);
   };
 
-  // Wire output: terminal data → base64 → emitter
   handle.onData((data: Uint8Array) => {
     outputEmitter?.emit(toBase64(data));
   });
@@ -163,20 +169,12 @@ function createTerminalProcess(
     config: { terminal: handle },
     get status() { return currentStatus; },
     attachOutput(emitter) { outputEmitter = emitter; },
-    start() { /* terminal mode is always running */ },
-    stop() {
-      handle.close();
-      setStatus("stopped");
-    },
-    restart() {
-      /* terminal mode does not support restart */
-    },
+    start() {},
+    stop() { handle.close(); setStatus("stopped"); },
+    restart() {},
     write(b64) { handle.write(fromBase64(b64)); },
     resize(cols, rows) { handle.resize(cols, rows); },
-    dispose() {
-      handle.close();
-      setStatus("stopped");
-    },
+    dispose() { handle.close(); setStatus("stopped"); },
   };
 }
 

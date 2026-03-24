@@ -3,8 +3,6 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { X, Play, RotateCw, Square } from "lucide-react";
 
-// ── Types ──
-
 export interface Tab {
   readonly id: string;
   readonly title: string;
@@ -25,8 +23,6 @@ interface TabBarProps {
     readonly onRestart: () => void;
   } | null | undefined;
 }
-
-// ── Sortable tab ──
 
 function SortableTab({
   tab,
@@ -66,22 +62,27 @@ function SortableTab({
   );
 }
 
-// ── Process actions ──
+const ACTION_BUTTON_CLASS = "flex items-center justify-center w-5 h-5 rounded border-none p-0 bg-transparent text-muted-foreground/50 hover:text-foreground disabled:opacity-20 disabled:cursor-default cursor-pointer transition-colors";
 
 function ProcessActions({ status, onStart, onStop, onRestart }: NonNullable<TabBarProps["processActions"]>): ReactElement {
-  const running = status === "running";
-  const btn = "flex items-center justify-center w-5 h-5 rounded border-none p-0 bg-transparent text-muted-foreground/50 hover:text-foreground disabled:opacity-20 disabled:cursor-default cursor-pointer transition-colors";
+  const isRunning = status === "running";
 
   return (
     <div className="flex items-center gap-px px-1.5 border-l border-border/20 h-full ml-auto shrink-0">
-      <button disabled={running} onClick={onStart} title="Start" className={btn}><Play size={10} /></button>
-      <button disabled={!running} onClick={onRestart} title="Restart" className={btn}><RotateCw size={9} /></button>
-      <button disabled={!running} onClick={onStop} title="Stop" className={btn}><Square size={9} /></button>
+      <button disabled={isRunning} onClick={onStart} title="Start" className={ACTION_BUTTON_CLASS}><Play size={10} /></button>
+      <button disabled={!isRunning} onClick={onRestart} title="Restart" className={ACTION_BUTTON_CLASS}><RotateCw size={9} /></button>
+      <button disabled={!isRunning} onClick={onStop} title="Stop" className={ACTION_BUTTON_CLASS}><Square size={9} /></button>
     </div>
   );
 }
 
-// ── Tab bar ──
+function reorderIds(ids: readonly string[], sourceId: string, targetId: string): string[] {
+  const sourceIndex = ids.indexOf(sourceId);
+  const targetIndex = ids.indexOf(targetId);
+  if (sourceIndex === -1 || targetIndex === -1) return [...ids];
+  const withoutSource = [...ids.slice(0, sourceIndex), ...ids.slice(sourceIndex + 1)];
+  return [...withoutSource.slice(0, targetIndex), sourceId, ...withoutSource.slice(targetIndex)];
+}
 
 export function TabBar({ tabs, activeId, categoryColor, onSelect, onClose, onReorder, processActions }: TabBarProps): ReactElement {
   return (
@@ -92,17 +93,10 @@ export function TabBar({ tabs, activeId, categoryColor, onSelect, onClose, onReo
       <DragDropProvider
         onDragEnd={(event) => {
           if (!onReorder || !event.operation.source || !event.operation.target) return;
-          const oldId = String(event.operation.source.id);
-          const newId = String(event.operation.target.id);
-          if (oldId === newId) return;
-          const ids = tabs.map((t) => t.id);
-          const oldIdx = ids.indexOf(oldId);
-          const newIdx = ids.indexOf(newId);
-          if (oldIdx === -1 || newIdx === -1) return;
-          const next = [...ids];
-          next.splice(oldIdx, 1);
-          next.splice(newIdx, 0, oldId);
-          onReorder(next);
+          const sourceId = String(event.operation.source.id);
+          const targetId = String(event.operation.target.id);
+          if (sourceId === targetId) return;
+          onReorder(reorderIds(tabs.map((t) => t.id), sourceId, targetId));
         }}
       >
         {tabs.map((tab, i) => (

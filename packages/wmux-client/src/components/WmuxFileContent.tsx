@@ -20,12 +20,54 @@ const EXT_TO_LANG: Record<string, string> = {
   dockerfile: "dockerfile", makefile: "makefile",
 };
 
+const WMUX_DARK_THEME_COLORS = {
+  "editor.background": "#060607",
+  "editor.foreground": "#e4e4e7",
+  "editorLineNumber.foreground": "#27272a",
+  "editorLineNumber.activeForeground": "#52525b",
+  "editor.lineHighlightBackground": "#111113",
+  "editorGutter.background": "#060607",
+  "editor.selectionBackground": "#3f3f4640",
+  "editorWidget.background": "#111113",
+  "editorWidget.border": "#27272a",
+  "input.background": "#1a1a1e",
+  "input.border": "#27272a",
+  "scrollbarSlider.background": "#27272a80",
+  "scrollbarSlider.hoverBackground": "#3f3f46",
+  "scrollbarSlider.activeBackground": "#52525b",
+};
+
+const EDITOR_OPTIONS = {
+  readOnly: true,
+  minimap: { enabled: false },
+  scrollBeyondLastLine: false,
+  fontSize: 13,
+  fontFamily: "'JetBrainsMono Nerd Font Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace",
+  lineNumbers: "on" as const,
+  renderLineHighlight: "none" as const,
+  overviewRulerLanes: 0,
+  hideCursorInOverviewRuler: true,
+  overviewRulerBorder: false,
+  scrollbar: { verticalScrollbarSize: 4, horizontalScrollbarSize: 4 },
+  padding: { top: 8 },
+  domReadOnly: true,
+};
+
 function detectLanguage(name: string): string {
   const lower = name.toLowerCase();
   if (lower === "dockerfile") return "dockerfile";
   if (lower === "makefile") return "makefile";
   const ext = lower.split(".").pop() ?? "";
   return EXT_TO_LANG[ext] ?? "plaintext";
+}
+
+function defineWmuxDarkTheme(monaco: Parameters<NonNullable<Parameters<typeof Editor>[0]["beforeMount"]>>[0]): void {
+  monaco.editor.defineTheme("wmux-dark", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [],
+    colors: WMUX_DARK_THEME_COLORS,
+  });
 }
 
 export function WmuxFileContent({ path, name, content }: WmuxFileContentProps): ReactElement {
@@ -36,44 +78,8 @@ export function WmuxFileContent({ path, name, content }: WmuxFileContentProps): 
         language={detectLanguage(name)}
         path={path}
         theme="wmux-dark"
-        options={{
-          readOnly: true,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          fontSize: 13,
-          fontFamily: "'JetBrainsMono Nerd Font Mono', 'Geist Mono', ui-monospace, SFMono-Regular, monospace",
-          lineNumbers: "on",
-          renderLineHighlight: "none",
-          overviewRulerLanes: 0,
-          hideCursorInOverviewRuler: true,
-          overviewRulerBorder: false,
-          scrollbar: { verticalScrollbarSize: 4, horizontalScrollbarSize: 4 },
-          padding: { top: 8 },
-          domReadOnly: true,
-        }}
-        beforeMount={(monaco) => {
-          monaco.editor.defineTheme("wmux-dark", {
-            base: "vs-dark",
-            inherit: true,
-            rules: [],
-            colors: {
-              "editor.background": "#060607",
-              "editor.foreground": "#e4e4e7",
-              "editorLineNumber.foreground": "#27272a",
-              "editorLineNumber.activeForeground": "#52525b",
-              "editor.lineHighlightBackground": "#111113",
-              "editorGutter.background": "#060607",
-              "editor.selectionBackground": "#3f3f4640",
-              "editorWidget.background": "#111113",
-              "editorWidget.border": "#27272a",
-              "input.background": "#1a1a1e",
-              "input.border": "#27272a",
-              "scrollbarSlider.background": "#27272a80",
-              "scrollbarSlider.hoverBackground": "#3f3f46",
-              "scrollbarSlider.activeBackground": "#52525b",
-            },
-          });
-        }}
+        options={EDITOR_OPTIONS}
+        beforeMount={defineWmuxDarkTheme}
         loading={<div className="flex items-center justify-center h-full text-muted-foreground/30 text-[12px]">Loading...</div>}
       />
     </div>

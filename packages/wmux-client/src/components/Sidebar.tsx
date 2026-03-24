@@ -3,34 +3,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { STATUS_COLORS } from "../styles/theme";
 import { resolveIcon } from "../utils/icons";
 import { FileTree } from "./FileViewer";
-
-// ── Types ──
-
-interface FileEntry {
-  readonly path: string;
-  readonly name: string;
-  readonly isDir: boolean;
-  readonly depth: number;
-  readonly isExpanded: boolean;
-}
-
-interface TabInfo {
-  readonly id: string;
-  readonly name: string;
-  readonly description?: string;
-  readonly icon?: string;
-  readonly status: string;
-}
-
-interface CategoryInfo {
-  readonly name: string;
-  readonly color: string;
-  readonly icon?: string;
-  readonly type: string;
-  readonly tabs: readonly TabInfo[];
-  readonly fileEntries?: readonly FileEntry[];
-  readonly openFiles?: readonly { readonly path: string; readonly name: string }[];
-}
+import type { CategoryInfo, TabInfo } from "../types";
 
 interface SidebarProps {
   readonly categories: ReadonlyArray<CategoryInfo>;
@@ -44,7 +17,14 @@ interface SidebarProps {
   readonly onOpenFile: (path: string) => void;
 }
 
-// ── Category header ──
+function categoryTabCount(category: CategoryInfo): number {
+  return category.type === "files" ? (category.openFiles?.length ?? 0) : category.tabs.length;
+}
+
+function selectAndExpand(isCollapsed: boolean, onSelect: () => void, onToggle: () => void): void {
+  onSelect();
+  if (isCollapsed) onToggle();
+}
 
 function CategoryHeader({
   category,
@@ -59,13 +39,9 @@ function CategoryHeader({
   readonly onSelect: () => void;
   readonly onToggle: () => void;
 }): ReactElement {
-  const CatIcon = resolveIcon(category.icon);
-  const isFiles = category.type === "files";
-  const count = isFiles ? (category.openFiles?.length ?? 0) : category.tabs.length;
-
   return (
     <div
-      onClick={() => { onSelect(); if (isCollapsed) onToggle(); }}
+      onClick={() => selectAndExpand(isCollapsed, onSelect, onToggle)}
       className={`flex items-center gap-1.5 px-2 py-1.5 text-xs cursor-pointer transition-colors group relative ${
         isActive
           ? "text-foreground/90"
@@ -89,13 +65,11 @@ function CategoryHeader({
       </span>
 
       <span className="text-[10px] text-muted-foreground/30 tabular-nums pr-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        {count}
+        {categoryTabCount(category)}
       </span>
     </div>
   );
 }
-
-// ── Tab item ──
 
 function TabItem({
   tab,
@@ -141,7 +115,10 @@ function TabItem({
   );
 }
 
-// ── Category section ──
+function selectCategoryAndAct(isActive: boolean, onSelectCategory: () => void, action: () => void): void {
+  if (!isActive) onSelectCategory();
+  action();
+}
 
 function CategorySection({
   category,
@@ -188,8 +165,8 @@ function CategorySection({
             <div className="max-h-[50vh] overflow-y-auto pb-1">
               <FileTree
                 entries={category.fileEntries}
-                onToggleDir={(path) => { if (!isActive) onSelectCategory(); onToggleDir(path); }}
-                onOpenFile={(path) => { if (!isActive) onSelectCategory(); onOpenFile(path); }}
+                onToggleDir={(path) => selectCategoryAndAct(isActive, onSelectCategory, () => onToggleDir(path))}
+                onOpenFile={(path) => selectCategoryAndAct(isActive, onSelectCategory, () => onOpenFile(path))}
               />
             </div>
           )}
@@ -201,7 +178,7 @@ function CategorySection({
                   key={tab.id}
                   tab={tab}
                   isActive={tab.id === activeTabId && isActive}
-                  onSelect={() => { if (!isActive) onSelectCategory(); onSelectTab(tab.id); }}
+                  onSelect={() => selectCategoryAndAct(isActive, onSelectCategory, () => onSelectTab(tab.id))}
                 />
               ))}
             </div>
@@ -211,8 +188,6 @@ function CategorySection({
     </div>
   );
 }
-
-// ── Sidebar footer ──
 
 function SidebarFooter(): ReactElement {
   const shortcuts = [
@@ -235,8 +210,6 @@ function SidebarFooter(): ReactElement {
   );
 }
 
-// ── Sidebar ──
-
 export function Sidebar({
   categories,
   activeCategory,
@@ -251,15 +224,15 @@ export function Sidebar({
   return (
     <div className="w-[240px] min-w-[240px] bg-background border-r border-border/30 flex flex-col select-none h-full">
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        {categories.map((cat) => (
+        {categories.map((category) => (
           <CategorySection
-            key={cat.name}
-            category={cat}
-            isActive={cat.name === activeCategory}
-            isCollapsed={collapsedCategories.has(cat.name)}
+            key={category.name}
+            category={category}
+            isActive={category.name === activeCategory}
+            isCollapsed={collapsedCategories.has(category.name)}
             activeTabId={activeTabId}
-            onSelectCategory={() => onSelectCategory(cat.name)}
-            onToggleCollapse={() => onToggleCollapse(cat.name)}
+            onSelectCategory={() => onSelectCategory(category.name)}
+            onToggleCollapse={() => onToggleCollapse(category.name)}
             onSelectTab={onSelectTab}
             onToggleDir={onToggleDir}
             onOpenFile={onOpenFile}

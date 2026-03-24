@@ -16,8 +16,6 @@ const viewComponents = {
   WmuxIframe,
 };
 
-// ── Splash screens ──
-
 function TerminalLine({ text, delay, dimmed }: { readonly text: string; readonly delay: number; readonly dimmed?: boolean }): React.ReactElement {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -175,8 +173,6 @@ function NoParamsScreen(): React.ReactElement {
     </div>
   );
 }
-
-// ── App ──
 
 function App(): React.ReactElement {
   const params = parseHashParams();

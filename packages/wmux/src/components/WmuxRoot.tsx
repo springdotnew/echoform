@@ -7,8 +7,6 @@ import { TerminalSession } from "./TerminalSession";
 import { IframeSession } from "./IframeSession";
 import { FileViewerSession, type FileViewerActions, type FileViewerState } from "./FileViewerSession";
 
-// ── Helpers ──
-
 const CATEGORY_COLORS = [
   "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6",
   "#eab308", "#06b6d4", "#f43f5e", "#84cc16", "#a855f7",
@@ -20,8 +18,6 @@ function categoryColor(name: string | undefined): string {
   for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
   return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length]!;
 }
-
-// ── Types ──
 
 interface TabDef {
   readonly id: string;
@@ -46,7 +42,69 @@ interface WmuxRootProps {
   readonly categoryDefs: readonly CategoryDef[];
 }
 
-// ── Component ──
+function buildFileCategory(definition: CategoryDef, fileState: FileViewerState | undefined) {
+  return {
+    name: definition.name,
+    color: categoryColor(definition.name),
+    icon: definition.icon,
+    type: "files" as const,
+    tabs: [] as { id: string; name: string; description?: string; icon?: string; status: "idle" }[],
+    fileEntries: fileState?.entries ?? [],
+    openFiles: [...(fileState?.openFiles ?? [])],
+  };
+}
+
+function buildProcessCategory(
+  definition: CategoryDef,
+  statuses: Record<string, ProcessStatus>,
+) {
+  return {
+    name: definition.name,
+    color: categoryColor(definition.name),
+    icon: definition.icon,
+    type: "process" as const,
+    tabs: definition.tabs.map((tab) => ({
+      id: tab.id,
+      name: tab.id.split("/").pop()!,
+      description: tab.description,
+      icon: tab.icon,
+      status: tab.tabType === "iframe" ? ("running" as const) : (statuses[tab.id] ?? ("idle" as const)),
+    })),
+  };
+}
+
+function collectProcessStatuses(processes: ReadonlyMap<string, ManagedProcess>): Record<string, ProcessStatus> {
+  const result: Record<string, ProcessStatus> = {};
+  for (const [id, proc] of processes) {
+    result[id] = proc.status;
+  }
+  return result;
+}
+
+function hasStatusChanged(
+  current: Record<string, ProcessStatus>,
+  previous: Record<string, ProcessStatus>,
+  processes: ReadonlyMap<string, ManagedProcess>,
+): boolean {
+  for (const [id] of processes) {
+    if (current[id] !== previous[id]) return true;
+  }
+  return false;
+}
+
+function resolveInitialTabId(definition: CategoryDef, fileStates: Record<string, FileViewerState>): string {
+  if (definition.type === "files") {
+    const openFiles = fileStates[definition.name]?.openFiles ?? [];
+    return openFiles.length > 0 ? `file::${openFiles[0]!.path}` : "";
+  }
+  return definition.tabs.length > 0 ? definition.tabs[0]!.id : "";
+}
+
+function extractIframeTabs(categoryDefs: readonly CategoryDef[]): readonly TabDef[] {
+  return categoryDefs.flatMap((definition) =>
+    definition.tabs.filter((tab) => tab.tabType === "iframe" && tab.url),
+  );
+}
 
 export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRootProps): ReactElement | null {
   const View = useViews(views);
@@ -55,15 +113,13 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
   const [statuses, setStatuses] = useState<Record<string, ProcessStatus>>({});
   const [fileStates, setFileStates] = useState<Record<string, FileViewerState>>({});
 
-  // File viewer action refs (one per file category)
   const fileRefs = useRef<Record<string, RefObject<FileViewerActions | null>>>({});
-  for (const def of categoryDefs) {
-    if (def.type === "files" && !fileRefs.current[def.name]) {
-      fileRefs.current[def.name] = createRef<FileViewerActions | null>();
+  for (const definition of categoryDefs) {
+    if (definition.type === "files" && !fileRefs.current[definition.name]) {
+      fileRefs.current[definition.name] = createRef<FileViewerActions | null>();
     }
   }
 
-  // Stable per-category state handlers (avoid recreating on every render)
   const stateHandlersRef = useRef<Record<string, (s: FileViewerState) => void>>({});
   const getStateHandler = (name: string) => {
     if (!stateHandlersRef.current[name]) {
@@ -73,47 +129,25 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
     return stateHandlersRef.current[name]!;
   };
 
-  // Poll process statuses
   const statusRef = useRef(statuses);
   useEffect(() => {
     const interval = setInterval(() => {
-      let changed = false;
-      const next: Record<string, ProcessStatus> = {};
-      for (const [id, proc] of processes) {
-        next[id] = proc.status;
-        if (proc.status !== statusRef.current[id]) changed = true;
-      }
-      if (changed) { statusRef.current = next; setStatuses(next); }
+      const nextStatuses = collectProcessStatuses(processes);
+      if (!hasStatusChanged(nextStatuses, statusRef.current, processes)) return;
+      statusRef.current = nextStatuses;
+      setStatuses(nextStatuses);
     }, 200);
     return () => clearInterval(interval);
   }, [processes]);
 
   if (!View) return null;
 
-  // Build categories
-  const categories = categoryDefs.map((def) => {
-    if (def.type === "files") {
-      const fs = fileStates[def.name];
-      return {
-        name: def.name, color: categoryColor(def.name), icon: def.icon,
-        type: "files" as const,
-        tabs: [] as { id: string; name: string; description?: string; icon?: string; status: "idle" }[],
-        fileEntries: fs?.entries ?? [],
-        openFiles: [...(fs?.openFiles ?? [])],
-      };
-    }
-    return {
-      name: def.name, color: categoryColor(def.name), icon: def.icon,
-      type: "process" as const,
-      tabs: def.tabs.map((tab) => ({
-        id: tab.id,
-        name: tab.id.split("/").pop()!,
-        description: tab.description,
-        icon: tab.icon,
-        status: tab.tabType === "iframe" ? ("running" as const) : (statuses[tab.id] ?? ("idle" as const)),
-      })),
-    };
+  const categories = categoryDefs.map((definition) => {
+    if (definition.type === "files") return buildFileCategory(definition, fileStates[definition.name]);
+    return buildProcessCategory(definition, statuses);
   });
+
+  const iframeTabs = extractIframeTabs(categoryDefs);
 
   return (
     <View.WmuxApp
@@ -122,16 +156,11 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
       categories={categories}
       activeCategory={activeCategory}
       activeTabId={activeTabId}
-      onSelectCategory={(cat: string) => {
-        setActiveCategory(cat);
-        const def = categoryDefs.find((d) => d.name === cat);
-        if (!def) return;
-        if (def.type === "files") {
-          const open = fileStates[cat]?.openFiles ?? [];
-          setActiveTabId(open.length > 0 ? `file::${open[0]!.path}` : "");
-        } else if (def.tabs.length > 0) {
-          setActiveTabId(def.tabs[0]!.id);
-        }
+      onSelectCategory={(category: string) => {
+        setActiveCategory(category);
+        const definition = categoryDefs.find((d) => d.name === category);
+        if (!definition) return;
+        setActiveTabId(resolveInitialTabId(definition, fileStates));
       }}
       onSelectTab={setActiveTabId}
       onStartProcess={(id: string) => processes.get(id)?.start()}
@@ -144,17 +173,15 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
       {[...processes.keys()].map((id) => (
         <TerminalSession key={id} proc={processes.get(id)!} />
       ))}
-      {categoryDefs.flatMap((def) =>
-        def.tabs.filter((t) => t.tabType === "iframe" && t.url).map((t) => (
-          <IframeSession key={t.id} id={t.id} name={t.id.split("/").pop()!} url={t.url!} />
-        )),
-      )}
-      {categoryDefs.filter((d) => d.type === "files" && d.fileRoot).map((def) => (
+      {iframeTabs.map((tab) => (
+        <IframeSession key={tab.id} id={tab.id} name={tab.id.split("/").pop()!} url={tab.url!} />
+      ))}
+      {categoryDefs.filter((d) => d.type === "files" && d.fileRoot).map((definition) => (
         <FileViewerSession
-          key={def.name}
-          ref={fileRefs.current[def.name]!}
-          root={def.fileRoot!}
-          onStateChange={getStateHandler(def.name)}
+          key={definition.name}
+          ref={fileRefs.current[definition.name]!}
+          root={definition.fileRoot!}
+          onStateChange={getStateHandler(definition.name)}
           onActiveTabChange={setActiveTabId}
         />
       ))}

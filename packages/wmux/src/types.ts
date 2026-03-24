@@ -1,7 +1,5 @@
 export type ProcessStatus = "idle" | "running" | "stopped" | "failed";
 
-// ── Command mode: wmux spawns the process ──
-
 export interface CommandProcessConfig {
   readonly command: string | readonly string[];
   readonly cwd?: string;
@@ -9,8 +7,6 @@ export interface CommandProcessConfig {
   readonly autoStart?: boolean;
   readonly autoRestart?: boolean;
 }
-
-// ── Terminal mode: user provides an existing terminal handle ──
 
 export interface TerminalBridgeHandle {
   readonly write: (data: string | Uint8Array) => void;
@@ -23,8 +19,6 @@ export interface TerminalProcessConfig {
   readonly terminal: TerminalBridgeHandle;
 }
 
-// ── Discriminated union ──
-
 export type ProcessConfig = CommandProcessConfig | TerminalProcessConfig;
 
 export const isCommandConfig = (c: ProcessConfig): c is CommandProcessConfig =>
@@ -32,8 +26,6 @@ export const isCommandConfig = (c: ProcessConfig): c is CommandProcessConfig =>
 
 export const isTerminalConfig = (c: ProcessConfig): c is TerminalProcessConfig =>
   "terminal" in c;
-
-// ── Tab within a sidebar category ──
 
 export interface TabConfig {
   readonly name: string;
@@ -43,16 +35,12 @@ export interface TabConfig {
   readonly url?: string;
 }
 
-// ── Sidebar category ──
-
 export interface SidebarItem {
   readonly category: string;
   readonly icon?: string;
   readonly tabs?: readonly TabConfig[];
   readonly files?: string;
 }
-
-// ── Top-level config ──
 
 export interface WmuxConfig {
   readonly title?: string;
@@ -64,8 +52,6 @@ export interface WmuxConfig {
   readonly token?: string;
   readonly open?: boolean;
 }
-
-// ── Handle returned by wmux() ──
 
 export interface WmuxHandle {
   readonly url: string;
