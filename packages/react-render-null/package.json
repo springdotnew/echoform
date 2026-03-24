@@ -1,6 +1,6 @@
 {
   "name": "@playfast/echoform-render",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "render react tree to nothing!",
   "type": "module",
   "exports": {

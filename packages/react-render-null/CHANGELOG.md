@@ -1,5 +1,11 @@
 # @playfast/echoform-render
 
+## 1.0.3
+
+### Patch Changes
+
+- 784c66d: Add @types/react-reconciler as a dependency so consumers get type definitions.
+
 ## 1.0.2
 
 ### Patch Changes
