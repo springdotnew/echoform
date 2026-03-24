@@ -1,7 +1,7 @@
 import { wmux } from "@playfast/wmux";
 
 await wmux({
-  title: "react-fullstack",
+  title: "echoform",
   description: "local",
   sidebarItems: [
     {

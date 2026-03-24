@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@react-fullstack/root",
+      "name": "@echoform/root",
       "devDependencies": {
         "@changesets/cli": "^2.25.2",
         "@typescript/native-preview": "^7.0.0-dev.20260323.1",

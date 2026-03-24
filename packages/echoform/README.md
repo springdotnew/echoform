@@ -9,7 +9,7 @@
   <a href="https://www.npmjs.com/package/@playfast/echoform"><img alt="NPM Downloads" src="https://img.shields.io/npm/dt/@playfast/echoform?style=for-the-badge"></a>
 </p>
 
-React-Fullstack is a react framework for building React applications with their layout/UI components running on the client and with the connections between them and business logic running on the server.
+echoform is a react framework for building React applications with their layout/UI components running on the client and with the connections between them and business logic running on the server.
 
 
 ## Server-side executing and not rendering
@@ -34,7 +34,7 @@ I recently moved a project of mine called ["web-desktop-environment"](https://gi
 
 # Getting Started - TypeScript
 
-a "React-Fullstack" app is usually made up of three different packages
+a "echoform" app is usually made up of three different packages
 
 - a server package - for the server
 - a client package - for the client react app
