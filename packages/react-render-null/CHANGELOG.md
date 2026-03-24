@@ -1,5 +1,13 @@
 # @playfast/echoform-render
 
+## 1.0.2
+
+### Patch Changes
+
+- 76d027a: Fix exports for NodeNext moduleResolution compatibility. Remove unused Container type from echoform-render.
+- Updated dependencies [76d027a]
+  - @playfast/echoform@1.0.2
+
 ## 1.0.0
 
 ### Minor Changes
