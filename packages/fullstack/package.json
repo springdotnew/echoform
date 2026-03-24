@@ -4,10 +4,26 @@
   "description": "run your react app logic on the server",
   "type": "module",
   "exports": {
-    "./server": "./src/server/index.ts",
-    "./client": "./src/client/index.ts",
-    ".": "./src/shared/index.ts",
-    "./shared": "./src/shared/index.ts"
+    "./server": {
+      "types": "./src/server/index.ts",
+      "import": "./src/server/index.ts",
+      "default": "./src/server/index.ts"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "import": "./src/client/index.ts",
+      "default": "./src/client/index.ts"
+    },
+    ".": {
+      "types": "./src/shared/index.ts",
+      "import": "./src/shared/index.ts",
+      "default": "./src/shared/index.ts"
+    },
+    "./shared": {
+      "types": "./src/shared/index.ts",
+      "import": "./src/shared/index.ts",
+      "default": "./src/shared/index.ts"
+    }
   },
   "files": [
     "src"

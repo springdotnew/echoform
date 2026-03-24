@@ -4,7 +4,11 @@
   "description": "Socket.IO client transport for echoform",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./src/index.tsx",
+      "import": "./src/index.tsx",
+      "default": "./src/index.tsx"
+    }
   },
   "files": [
     "src"

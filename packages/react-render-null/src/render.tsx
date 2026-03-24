@@ -2,7 +2,6 @@ import Reconciler from "react-reconciler";
 import { DefaultEventPriority } from "react-reconciler/constants.js";
 import type { ReactNode } from "react";
 
-type Container = Record<string, unknown>;
 type Instance = Record<string, unknown>;
 type HostContext = Record<string, unknown>;
 

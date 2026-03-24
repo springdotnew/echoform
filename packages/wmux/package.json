@@ -4,8 +4,16 @@
   "description": "Web terminal multiplexer for dev servers",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./views": "./src/views.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./views": {
+      "types": "./src/views.ts",
+      "import": "./src/views.ts",
+      "default": "./src/views.ts"
+    }
   },
   "files": [
     "src"
