@@ -14,7 +14,7 @@ export const StatusBar = ({ prefixActive }: StatusBarProps): ReactNode => (
     {prefixActive ? (
       <>
         <text fg={WARN}>
-          <strong>^B</strong> -
+          <strong>wmux</strong>
         </text>
         <text fg={MUTED}>
           <span fg={ACCENT}>j/k</span> nav
@@ -29,12 +29,21 @@ export const StatusBar = ({ prefixActive }: StatusBarProps): ReactNode => (
           <span fg={ACCENT}>s</span> stop
         </text>
         <text fg={MUTED}>
+          <span fg={ACCENT}>f</span> search
+        </text>
+        <text fg={MUTED}>
+          <span fg={ACCENT}>w</span> web
+        </text>
+        <text fg={MUTED}>
+          <span fg={ACCENT}>{"\u23ce"}</span> exit
+        </text>
+        <text fg={MUTED}>
           <span fg={ACCENT}>q</span> quit
         </text>
       </>
     ) : (
       <text fg={MUTED}>
-        <span fg={ACCENT}>^B</span> tmux prefix
+        <span fg={ACCENT}>^B</span> enter wmux controls
       </text>
     )}
   </box>

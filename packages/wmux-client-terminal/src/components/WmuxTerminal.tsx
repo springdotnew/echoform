@@ -44,7 +44,7 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   const { id, output, status } = props;
   const sendInput = props.onInput.mutate;
   const sendResize = props.onResize.mutate;
-  const { prefixRef, activeTabId } = usePrefixContext();
+  const { prefixRef, searchOpenRef, activeTabId } = usePrefixContext();
 
   const [lines, setLines] = useState<readonly StyledLine[]>([]);
   const { width, height } = useTerminalDimensions();
@@ -65,7 +65,8 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   useKeyboard((key) => {
     if (!isActiveTerminal) return;
     if (key.ctrl && key.name === "b") return; // prefix key, handled by WmuxApp
-    if (prefixRef.current) return;            // next key after prefix, handled by WmuxApp
+    if (prefixRef.current) return;            // control mode active, handled by WmuxApp
+    if (searchOpenRef.current) return;        // search overlay is open
 
     const data = key.sequence;
     if (data) {

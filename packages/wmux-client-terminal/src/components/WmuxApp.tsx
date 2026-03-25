@@ -4,14 +4,23 @@ import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react"
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
 import { PrefixProvider, useTUIContext } from "./FocusContext";
+import { SearchOverlay } from "./SearchOverlay";
 import type { CategoryInfo } from "../types";
 
 const SIDEBAR_WIDTH = 30;
-const PREFIX_TIMEOUT_MS = 2000;
 const BG = "#1c1c1e";
 const HEADER_BG = "#232325";
 const BORDER_COLOR = "#38383a";
 const MUTED = "#98989d";
+
+const openInBrowser = (url: string): void => {
+  try {
+    const cmd = process.platform === "darwin" ? "open" :
+                process.platform === "win32" ? "cmd" : "xdg-open";
+    const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+    Bun.spawn([cmd, ...args]);
+  } catch {}
+};
 
 interface SidebarNavigationItem {
   readonly categoryName: string;
@@ -66,27 +75,23 @@ export const WmuxApp = (props: {
 
   // Prefix key state — ref for synchronous reads across useKeyboard handlers
   const prefixRef = useRef(false);
-  const prefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [prefixVisible, setPrefixVisible] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchOpenRef = useRef(false);
 
   const activatePrefix = useCallback(() => {
     prefixRef.current = true;
     setPrefixVisible(true);
-    if (prefixTimerRef.current) clearTimeout(prefixTimerRef.current);
-    prefixTimerRef.current = setTimeout(() => {
-      prefixRef.current = false;
-      setPrefixVisible(false);
-      prefixTimerRef.current = null;
-    }, PREFIX_TIMEOUT_MS);
   }, []);
 
   const consumePrefix = useCallback(() => {
     prefixRef.current = false;
     setPrefixVisible(false);
-    if (prefixTimerRef.current) {
-      clearTimeout(prefixTimerRef.current);
-      prefixTimerRef.current = null;
-    }
+  }, []);
+
+  const handleSearchClose = useCallback(() => {
+    searchOpenRef.current = false;
+    setSearchOpen(false);
   }, []);
 
   const allNavItems = useMemo(() => buildAllNavigationItems(categories), [categories]);
@@ -108,17 +113,23 @@ export const WmuxApp = (props: {
   }, [allNavItems, activeTabId, activeCategory, selectCategory, selectTab]);
 
   useKeyboard((key) => {
-    // ── Ctrl+B: activate prefix ──────────────────────────
+    // ── Search overlay handles its own keys ──────────────
+    if (searchOpenRef.current) return;
+
+    // ── Ctrl+B: toggle control mode ─────────────────────
     if (key.ctrl && key.name === "b") {
-      activatePrefix();
+      if (prefixRef.current) {
+        consumePrefix();
+      } else {
+        activatePrefix();
+      }
       return;
     }
 
-    // ── Not in prefix mode: all keys pass through to terminal
+    // ── Not in control mode: all keys pass through to terminal
     if (!prefixRef.current) return;
 
-    // ── Prefix mode: interpret next key as TUI command ───
-    consumePrefix();
+    // ── Control mode commands (persistent until Enter/Esc) ──
 
     // Navigation
     if (key.name === "j" || key.name === "down" || key.name === "n") {
@@ -166,19 +177,6 @@ export const WmuxApp = (props: {
     }
 
     // Process controls
-    if (key.name === "enter") {
-      const activeCat = categories.find((c) => c.name === activeCategory);
-      if (!activeCat) return;
-      if (activeCat.type === "files") {
-        const firstFile = (activeCat.fileEntries ?? []).find((e) => !e.isDir);
-        if (firstFile) openFile(firstFile.path);
-        return;
-      }
-      const activeTab = activeCat.tabs.find((t) => t.id === activeTabId);
-      if (activeTab?.status === "idle") startProcess(activeTabId);
-      return;
-    }
-
     if (key.name === "r") {
       const activeCat = categories.find((c) => c.name === activeCategory);
       const activeTab = activeCat?.tabs.find((t) => t.id === activeTabId);
@@ -193,15 +191,43 @@ export const WmuxApp = (props: {
       return;
     }
 
-    // Quit
-    if (key.name === "q") {
-      renderer.destroy();
+    // Search overlay
+    if (key.name === "f") {
+      consumePrefix();
+      searchOpenRef.current = true;
+      setSearchOpen(true);
       return;
     }
 
-    // Ctrl+B Ctrl+B → send literal Ctrl+B to terminal
-    if (key.ctrl && key.name === "b") {
-      // Will be picked up by WmuxTerminal on next event since prefix is now false
+    // Open web URL in browser
+    if (key.name === "w" && webUrl) {
+      openInBrowser(webUrl);
+      return;
+    }
+
+    // Exit control mode (+ start process if idle)
+    if (key.name === "enter" || key.name === "return") {
+      const activeCat = categories.find((c) => c.name === activeCategory);
+      if (activeCat?.type === "files") {
+        const firstFile = (activeCat.fileEntries ?? []).find((e) => !e.isDir);
+        if (firstFile) openFile(firstFile.path);
+      } else {
+        const activeTab = activeCat?.tabs.find((t) => t.id === activeTabId);
+        if (activeTab?.status === "idle") startProcess(activeTabId);
+      }
+      consumePrefix();
+      return;
+    }
+
+    // Exit control mode
+    if (key.name === "escape") {
+      consumePrefix();
+      return;
+    }
+
+    // Quit
+    if (key.name === "q") {
+      renderer.destroy();
       return;
     }
   });
@@ -209,7 +235,7 @@ export const WmuxApp = (props: {
   const activeChild = registry.get(activeTabId);
 
   return (
-    <PrefixProvider prefixRef={prefixRef} activeTabId={activeTabId}>
+    <PrefixProvider prefixRef={prefixRef} searchOpenRef={searchOpenRef} activeTabId={activeTabId}>
       <box
         flexDirection="column"
         width={width}
@@ -240,10 +266,20 @@ export const WmuxApp = (props: {
 
           {/* Content area */}
           <box flexGrow={1} flexDirection="column">
-            {activeChild ?? (
-              <box flexGrow={1} justifyContent="center" alignItems="center">
-                <text fg="#636366">No active tab</text>
-              </box>
+            {searchOpen ? (
+              <SearchOverlay
+                categories={categories}
+                onSelectCategory={selectCategory}
+                onSelectTab={selectTab}
+                onOpenFile={openFile}
+                onClose={handleSearchClose}
+              />
+            ) : (
+              activeChild ?? (
+                <box flexGrow={1} justifyContent="center" alignItems="center">
+                  <text fg="#636366">No active tab</text>
+                </box>
+              )
             )}
           </box>
         </box>

@@ -6,26 +6,30 @@ import { createContext, useContext, useRef, type ReactNode, type MutableRefObjec
 // prefix state synchronously within the same useKeyboard tick.
 
 interface PrefixContextValue {
-  /** True when Ctrl+B was just pressed and the next key is a TUI command */
+  /** True when Ctrl+B was pressed and control mode is active */
   readonly prefixRef: MutableRefObject<boolean>;
+  readonly searchOpenRef: MutableRefObject<boolean>;
   readonly activeTabId: string;
 }
 
 const PrefixContext = createContext<PrefixContextValue>({
   prefixRef: { current: false },
+  searchOpenRef: { current: false },
   activeTabId: "",
 });
 
 export const PrefixProvider = ({
   prefixRef,
+  searchOpenRef,
   activeTabId,
   children,
 }: {
   readonly prefixRef: MutableRefObject<boolean>;
+  readonly searchOpenRef: MutableRefObject<boolean>;
   readonly activeTabId: string;
   readonly children: ReactNode;
 }): ReactNode => (
-  <PrefixContext.Provider value={{ prefixRef, activeTabId }}>
+  <PrefixContext.Provider value={{ prefixRef, searchOpenRef, activeTabId }}>
     {children}
   </PrefixContext.Provider>
 );
