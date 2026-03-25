@@ -1,5 +1,15 @@
 # @playfast/wmux
 
+## 0.2.9
+
+### Patch Changes
+
+- 5049ea0: Add persistent control mode, search overlay, copy mode, and file viewing to wmux TUI client. Minor echoform view-inference fix.
+- Updated dependencies [5049ea0]
+  - @playfast/echoform@1.0.6
+  - @playfast/echoform-render@1.0.6
+  - @playfast/wmux-client-terminal@0.0.3
+
 ## 0.2.8
 
 ### Patch Changes
