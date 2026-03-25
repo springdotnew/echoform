@@ -8,10 +8,12 @@
     "dev:server": "bun server/index.tsx",
     "dev:client": "cd ../../packages/wmux-client && bun run dev",
     "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+    "tui": "bun server/tui.tsx",
     "test": "playwright test"
   },
   "dependencies": {
     "@playfast/wmux": "workspace:*",
+    "@playfast/wmux-client-terminal": "workspace:*",
     "react": "^19.0.0"
   },
   "devDependencies": {

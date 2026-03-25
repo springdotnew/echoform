@@ -1,0 +1,35 @@
+{
+  "name": "@playfast/wmux-client-terminal",
+  "version": "0.0.1",
+  "description": "Terminal UI client for wmux",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsgo -p .",
+    "build": "tsgo -p ."
+  },
+  "dependencies": {
+    "@playfast/echoform": "workspace:*",
+    "@playfast/wmux": "workspace:*",
+    "@opentui/core": "latest",
+    "@opentui/react": "latest"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.0.0"
+  },
+  "author": "shmuelhizmi",
+  "license": "MIT"
+}

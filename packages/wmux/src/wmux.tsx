@@ -113,5 +113,5 @@ export async function wmux(config: WmuxConfig): Promise<WmuxHandle> {
   process.on("SIGINT", () => { stop(); process.exit(0); });
   process.on("SIGTERM", () => { stop(); process.exit(0); });
 
-  return { url: fullClientUrl, localUrl: wsUrl, port: actualPort, stop };
+  return { url: fullClientUrl, localUrl: wsUrl, port: actualPort, token, wsUrl, stop };
 }
