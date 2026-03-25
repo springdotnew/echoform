@@ -107,7 +107,10 @@ function extractIframeTabs(categoryDefs: readonly CategoryDef[]): readonly TabDe
 
 export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRootProps): ReactElement {
   const [activeCategory, setActiveCategory] = useState(categoryDefs[0]?.name ?? "");
-  const [activeTabId, setActiveTabId] = useState("");
+  const [activeTabId, setActiveTabId] = useState(() => {
+    const firstDef = categoryDefs[0];
+    return firstDef ? resolveInitialTabId(firstDef, {}) : "";
+  });
   const [statuses, setStatuses] = useState<Record<string, ProcessStatus>>({});
   const [fileStates, setFileStates] = useState<Record<string, FileViewerState>>({});
 
