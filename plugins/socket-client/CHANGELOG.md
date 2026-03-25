@@ -1,5 +1,13 @@
 # @playfast/echoform-socket-client
 
+## 1.0.4
+
+### Patch Changes
+
+- d8ae8bf: Patch release
+- Updated dependencies [d8ae8bf]
+  - @playfast/echoform@1.0.4
+
 ## 1.0.2
 
 ### Patch Changes

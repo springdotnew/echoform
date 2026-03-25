@@ -1,5 +1,11 @@
 # @demo/dev-server
 
+## 1.0.8
+
+### Patch Changes
+
+- @playfast/wmux@0.2.7
+
 ## 1.0.7
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @playfast/echoform
 
+## 1.0.4
+
+### Patch Changes
+
+- d8ae8bf: Patch release
+
 ## 1.0.2
 
 ### Patch Changes
