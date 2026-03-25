@@ -22,15 +22,16 @@
     "react": ">=19.0.0"
   },
   "dependencies": {
-    "socket.io": "4.5.3",
+    "socket.io": "4.8.3"
+  },
+  "optionalDependencies": {
     "bufferutil": "4.0.7",
     "utf-8-validate": "5.0.10"
   },
   "devDependencies": {
     "@playfast/echoform": "workspace:*",
     "@types/react": "19.0.2",
-    "@types/react-dom": "19.0.2",
-    "@types/socket.io": "2.1.13"
+    "@types/react-dom": "19.0.2"
   },
   "author": "shmuelhizmi",
   "license": "MIT"

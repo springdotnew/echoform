@@ -21,14 +21,7 @@ function reportValidationResult(result: StandardSchemaV1.Result<unknown>, contex
 }
 
 /**
- * Validate a value against a Standard Schema v1 schema.
- *
- * Returns `true` if valid, logs a warning and returns `false` if invalid.
- * Handles both sync and async validation results.
- *
- * @param schema - The Standard Schema v1 schema to validate against.
- * @param value - The value to validate.
- * @param context - A description of where the validation is happening (for logging).
+ * Validate a value against a Standard Schema v1 schema (advisory, logs warnings only).
  */
 export function validateSchema(
   schema: StandardSchemaV1,
@@ -58,4 +51,48 @@ export function validateSchema(
   } else {
     reportValidationResult(result, context);
   }
+}
+
+type ValidResult = { readonly valid: true };
+type InvalidResult = { readonly valid: false; readonly error: string };
+export type ValidationResult = ValidResult | InvalidResult;
+
+function createValidationError(prefix: string, context: string, err: unknown): InvalidResult {
+  const error = `${prefix} (${context}): ${String(err)}`;
+  console.warn(`[echoform] ${error}`);
+  return { valid: false, error };
+}
+
+function toValidationResult(result: StandardSchemaV1.Result<unknown>, context: string): ValidationResult {
+  if ("issues" in result && result.issues) {
+    const error = `Schema validation failed (${context}):\n${formatIssues(result.issues)}`;
+    console.warn(`[echoform] ${error}`);
+    return { valid: false, error };
+  }
+  return { valid: true };
+}
+
+/**
+ * Validate a value against a Standard Schema v1 schema (strict, returns result).
+ * Used for callback input validation where invalid data should be rejected.
+ */
+export function validateSchemaStrict(
+  schema: StandardSchemaV1,
+  value: unknown,
+  context: string,
+): ValidationResult | Promise<ValidationResult> {
+  let result: StandardSchemaV1.Result<unknown> | Promise<StandardSchemaV1.Result<unknown>>;
+  try {
+    result = schema["~standard"].validate(value);
+  } catch (err) {
+    return createValidationError("Schema validation threw an error", context, err);
+  }
+
+  if (result instanceof Promise) {
+    return result
+      .then((resolved) => toValidationResult(resolved, context))
+      .catch((err) => createValidationError("Async schema validation threw an error", context, err));
+  }
+
+  return toValidationResult(result, context);
 }

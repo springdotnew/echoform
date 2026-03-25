@@ -5,25 +5,27 @@ import type {
   ExistingSharedViewData,
   Prop,
   Transport,
+  AnyTransport,
   AppEvents,
   SerializableValue,
   DataProp,
 } from "../shared/types";
-import type { EventUid, ViewUid, StreamUid, PropName } from "../shared/branded.types";
+import type { EventUid, RequestUid, ViewUid, StreamUid, PropName } from "../shared/branded.types";
 import { createEventUid, createPropName } from "../shared/branded.types";
 import type { StreamEmitterHandle } from "../shared/view-inference";
-import { getViewDef } from "./utils";
+import { getViewDef } from "../shared/view-builder";
+import { ViewFactoryContext } from "../shared/view-factory";
+import type { ViewFactory } from "../shared/view-factory";
+import ViewComponent from "./ViewComponent";
 import type { DecompileTransport } from "../shared/decompiled-transport";
 import { decompileTransport } from "../shared/decompiled-transport";
 import { randomId } from "../shared/id";
 import { deeplyEqual } from "../shared/comparison.utils";
-import { validateSchema } from "../shared/validation";
+import { validateSchema, validateSchemaStrict } from "../shared/validation";
+import type { ValidationResult } from "../shared/validation";
 import type { CallbackDef, ViewDef } from "../shared/view-builder";
 import type { StandardSchemaV1 } from "../shared/standard-schema";
 
-// ── Types ──
-
-type AnyTransport = Transport<Record<string | number, unknown>>;
 type EventHandler = (...args: ReadonlyArray<SerializableValue>) => SerializableValue | Promise<SerializableValue>;
 
 interface RegisteredEvent {
@@ -36,6 +38,7 @@ interface AppProps {
   readonly transport: Transport<Record<string | number, unknown>>;
   readonly paused: boolean;
   readonly transportIsClient: boolean;
+  readonly skipCallbackValidation?: boolean;
 }
 
 export interface AppHandle {
@@ -44,7 +47,13 @@ export interface AppHandle {
   readonly removeClient: <T extends Record<string | number, unknown>>(client: Transport<T>) => void;
 }
 
-// ── Helpers (pure, outside component) ──
+interface ViewReconcileContext {
+  readonly registerViewEvent: (handler: EventHandler, cbDef?: CallbackDef) => EventUid;
+  readonly viewEventsRef: React.RefObject<ReadonlyMap<EventUid, RegisteredEvent>>;
+  readonly existingSharedViewsRef: React.RefObject<ReadonlyArray<ExistingSharedViewData>>;
+  readonly clientEventAuthRef: React.RefObject<Map<DecompileTransport, Set<EventUid>>>;
+  readonly broadcast: <Key extends keyof AppEvents>(event: Key, data: AppEvents[Key]) => void;
+}
 
 const IGNORED_PROPS = new Set(["children", "key"]);
 
@@ -125,28 +134,180 @@ function reconcileProps(
   registerEvent: (handler: EventHandler, cbDef?: CallbackDef) => EventUid,
   viewEventsRef: React.RefObject<ReadonlyMap<EventUid, RegisteredEvent>>,
 ): { readonly currentProps: ReadonlyArray<Prop>; readonly propsToAdd: ReadonlyArray<Prop> } {
-  let current = existingProps.filter((prop) => viewData.props[prop.name as string] !== undefined);
-  const toAdd: Prop[] = [];
+  const filtered = existingProps.filter((prop) => viewData.props[prop.name as string] !== undefined);
 
-  for (const name of propNames) {
-    const propName = createPropName(name);
-    const existingPropIndex = current.findIndex((prop) => prop.name === propName);
+  return propNames.reduce<{ readonly currentProps: ReadonlyArray<Prop>; readonly propsToAdd: ReadonlyArray<Prop> }>(
+    (acc, name) => {
+      const propName = createPropName(name);
+      const existingPropIndex = acc.currentProps.findIndex((prop) => prop.name === propName);
 
-    if (existingPropIndex < 0) {
-      const newProp = classifyProp(name, viewData.props[name], viewDef, registerEvent);
-      current = [...current, newProp];
-      toAdd.push(newProp);
-      continue;
+      if (existingPropIndex < 0) {
+        const newProp = classifyProp(name, viewData.props[name], viewDef, registerEvent);
+        return { currentProps: [...acc.currentProps, newProp], propsToAdd: [...acc.propsToAdd, newProp] };
+      }
+
+      const { updated } = reconcileExistingProp(acc.currentProps[existingPropIndex]!, name, propName, viewData.props[name], viewDef, viewEventsRef);
+      if (updated) {
+        return { currentProps: replaceAt(acc.currentProps, existingPropIndex, updated), propsToAdd: [...acc.propsToAdd, updated] };
+      }
+      return acc;
+    },
+    { currentProps: filtered, propsToAdd: [] },
+  );
+}
+
+function collectEventUids(props: ReadonlyArray<Prop>): ReadonlyArray<EventUid> {
+  return props.filter((prop): prop is Prop & { type: 'event' } => prop.type === "event").map((prop) => prop.uid);
+}
+
+function mapAuthSets(
+  authMap: Map<DecompileTransport, Set<EventUid>>,
+  transform: (authSet: Set<EventUid>) => Set<EventUid>,
+): Map<DecompileTransport, Set<EventUid>> {
+  const result = new Map<DecompileTransport, Set<EventUid>>();
+  for (const [client, authSet] of authMap) {
+    result.set(client, transform(authSet));
+  }
+  return result;
+}
+
+function authorizeEventUidsForAllClients(
+  authMap: Map<DecompileTransport, Set<EventUid>>,
+  uids: ReadonlyArray<EventUid>,
+): Map<DecompileTransport, Set<EventUid>> {
+  return mapAuthSets(authMap, (authSet) => new Set([...authSet, ...uids]));
+}
+
+function deauthorizeEventUidsForAllClients(
+  authMap: Map<DecompileTransport, Set<EventUid>>,
+  uids: ReadonlySet<EventUid>,
+): Map<DecompileTransport, Set<EventUid>> {
+  return mapAuthSets(authMap, (authSet) => new Set([...authSet].filter((uid) => !uids.has(uid))));
+}
+
+function removeEventHandlers(
+  viewEventsRef: React.RefObject<ReadonlyMap<EventUid, RegisteredEvent>>,
+  eventUids: ReadonlySet<EventUid>,
+): void {
+  viewEventsRef.current = new Map([...viewEventsRef.current].filter(([eventUid]) => !eventUids.has(eventUid)));
+}
+
+function emitEventResponse(
+  client: DecompileTransport,
+  uid: RequestUid,
+  eventUid: EventUid,
+  data: SerializableValue | null,
+  error?: string,
+): void {
+  client.emit("respond_to_event", error !== undefined
+    ? { data, uid, eventUid, error }
+    : { data, uid, eventUid });
+}
+
+function validateAndExecute(
+  client: DecompileTransport,
+  currentEventUid: RequestUid,
+  requestedEventUid: EventUid,
+  eventArguments: ReadonlyArray<SerializableValue>,
+  registered: RegisteredEvent,
+  executeHandler: () => Promise<void>,
+): Promise<void> {
+  const argValue = eventArguments.length === 1 ? eventArguments[0] : eventArguments;
+  const validationResult = validateSchemaStrict(
+    registered.callbackDef!.input as StandardSchemaV1, argValue, `callback ${requestedEventUid as string}`,
+  );
+
+  const handleResult = (result: ValidationResult): Promise<void> => {
+    if (!result.valid) {
+      emitEventResponse(client, currentEventUid, requestedEventUid, null, "Invalid callback input");
+      return Promise.resolve();
     }
+    return executeHandler();
+  };
 
-    const { updated } = reconcileExistingProp(current[existingPropIndex]!, name, propName, viewData.props[name], viewDef, viewEventsRef);
-    if (updated) {
-      current = replaceAt(current, existingPropIndex, updated);
-      toAdd.push(updated);
-    }
+  if (validationResult instanceof Promise) return validationResult.then(handleResult);
+  return handleResult(validationResult);
+}
+
+function processEventRequest(
+  client: DecompileTransport,
+  eventData: AppEvents['request_event'],
+  viewEventsRef: React.RefObject<ReadonlyMap<EventUid, RegisteredEvent>>,
+  clientEventAuthRef: React.RefObject<Map<DecompileTransport, Set<EventUid>>>,
+  shouldSkipValidation: boolean,
+): Promise<void> | void {
+  const { eventArguments, eventUid: requestedEventUid, uid: currentEventUid } = eventData;
+
+  const authorized = clientEventAuthRef.current.get(client);
+  if (!authorized || !authorized.has(requestedEventUid)) {
+    emitEventResponse(client, currentEventUid, requestedEventUid, null, "Unauthorized event access");
+    return;
   }
 
-  return { currentProps: current, propsToAdd: toAdd };
+  const registered = viewEventsRef.current.get(requestedEventUid);
+  if (!registered) {
+    emitEventResponse(client, currentEventUid, requestedEventUid, null, "Event does not exist");
+    return;
+  }
+
+  const executeHandler = (): Promise<void> =>
+    Promise.resolve(registered.handler(...eventArguments)).then((result) => {
+      emitEventResponse(client, currentEventUid, requestedEventUid, result);
+    });
+
+  if (!registered.callbackDef?.input || shouldSkipValidation) return executeHandler();
+  return validateAndExecute(client, currentEventUid, requestedEventUid, eventArguments, registered, executeHandler);
+}
+
+function handleViewsTreeRequest(
+  client: DecompileTransport,
+  existingSharedViewsRef: React.RefObject<ReadonlyArray<ExistingSharedViewData>>,
+  clientEventAuthRef: React.RefObject<Map<DecompileTransport, Set<EventUid>>>,
+): void {
+  client.emit("update_views_tree", { views: snapshotViews(existingSharedViewsRef.current) });
+  const allEventUids = existingSharedViewsRef.current.flatMap((v) => collectEventUids(v.props));
+  clientEventAuthRef.current = new Map([...clientEventAuthRef.current, [client, new Set(allEventUids)]]);
+}
+
+function createNewSharedView(
+  viewData: ViewData,
+  propNames: ReadonlyArray<string>,
+  viewDef: ViewDef | undefined,
+  ctx: ViewReconcileContext,
+): void {
+  const props = propNames.map((name) => classifyProp(name, viewData.props[name], viewDef, ctx.registerViewEvent));
+  const newView: ExistingSharedViewData = {
+    uid: viewData.uid, name: viewData.name, parentUid: viewData.parentUid,
+    childIndex: viewData.childIndex, isRoot: viewData.isRoot, props,
+  };
+  ctx.existingSharedViewsRef.current = [...ctx.existingSharedViewsRef.current, newView];
+  ctx.broadcast("update_view", buildViewPayload(newView, props, []));
+  ctx.clientEventAuthRef.current = authorizeEventUidsForAllClients(ctx.clientEventAuthRef.current, collectEventUids(props));
+}
+
+function reconcileExistingSharedView(
+  existingView: ExistingSharedViewData,
+  existingViewIndex: number,
+  viewData: ViewData,
+  propNames: ReadonlyArray<string>,
+  viewDef: ViewDef | undefined,
+  ctx: ViewReconcileContext,
+): void {
+  const propsToDelete = existingView.props.filter((prop) => viewData.props[prop.name as string] === undefined);
+  const { currentProps, propsToAdd } = reconcileProps(existingView.props, propNames, viewData, viewDef, ctx.registerViewEvent, ctx.viewEventsRef);
+  ctx.existingSharedViewsRef.current = replaceAt(ctx.existingSharedViewsRef.current, existingViewIndex, { ...existingView, props: currentProps });
+
+  const deletedEventUids = collectEventUids(propsToDelete);
+  if (deletedEventUids.length > 0) {
+    const deletedSet = new Set(deletedEventUids);
+    removeEventHandlers(ctx.viewEventsRef, deletedSet);
+    ctx.clientEventAuthRef.current = deauthorizeEventUidsForAllClients(ctx.clientEventAuthRef.current, deletedSet);
+  }
+
+  if (propsToAdd.length > 0 || propsToDelete.length > 0) {
+    ctx.broadcast("update_view", buildViewPayload(existingView, propsToAdd, propsToDelete.map((prop) => prop.name)));
+    ctx.clientEventAuthRef.current = authorizeEventUidsForAllClients(ctx.clientEventAuthRef.current, collectEventUids(propsToAdd));
+  }
 }
 
 function replaceAt<T>(items: ReadonlyArray<T>, index: number, item: T): T[] {
@@ -157,16 +318,18 @@ function removeAt<T>(items: ReadonlyArray<T>, index: number): T[] {
   return [...items.slice(0, index), ...items.slice(index + 1)];
 }
 
-// ── Component ──
-
-const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, paused, transportIsClient }, ref) {
+const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, paused, transportIsClient, skipCallbackValidation }, ref) {
   const serverRef = useRef<DecompileTransport>(decompileTransport(transport));
   const clientsRef = useRef<ReadonlyArray<DecompileTransport>>([]);
   const clientsMapRef = useRef<Map<Transport<Record<string | number, unknown>>, DecompileTransport>>(new Map());
   const existingSharedViewsRef = useRef<ReadonlyArray<ExistingSharedViewData>>([]);
   const viewEventsRef = useRef<ReadonlyMap<EventUid, RegisteredEvent>>(new Map());
   const cleanUpFunctionsRef = useRef<ReadonlyArray<() => void>>([]);
+  const clientCleanupMapRef = useRef<Map<AnyTransport, () => void>>(new Map());
+  const clientEventAuthRef = useRef<Map<DecompileTransport, Set<EventUid>>>(new Map());
   const eventChainRef = useRef(Promise.resolve());
+  const skipValidationRef = useRef(skipCallbackValidation ?? false);
+  skipValidationRef.current = skipCallbackValidation ?? false;
 
   const registerViewEvent = useCallback((event: EventHandler, callbackDef?: CallbackDef): EventUid => {
     const eventUid = createEventUid(randomId());
@@ -193,84 +356,72 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
 
   const registerSocketListener = useCallback((client: DecompileTransport) => {
     const cleanReqTree = client.on("request_views_tree", () => {
-      client.emit("update_views_tree", { views: snapshotViews(existingSharedViewsRef.current) });
+      handleViewsTreeRequest(client, existingSharedViewsRef, clientEventAuthRef);
     });
 
-    const cleanReqEvent = client.on("request_event", ({
-      eventArguments, eventUid: requestedEventUid, uid: currentEventUid,
-    }: AppEvents['request_event']) => {
-      eventChainRef.current = eventChainRef.current.then(() => {
-        const registered = viewEventsRef.current.get(requestedEventUid);
-        if (!registered) {
-          throw new Error("the client is trying to access an event that does not exist");
-        }
-
-        if (registered.callbackDef?.input) {
-          const argValue = eventArguments.length === 1 ? eventArguments[0] : eventArguments;
-          validateSchema(registered.callbackDef.input as StandardSchemaV1, argValue, `callback ${requestedEventUid as string}`);
-        }
-
-        return Promise.resolve(registered.handler(...eventArguments)).then((result) => {
-          client.emit("respond_to_event", { data: result, uid: currentEventUid, eventUid: requestedEventUid });
-        });
-      }).catch((error) => {
-        console.error("echoform: event handler error", error);
+    const cleanReqEvent = client.on("request_event", (eventData: AppEvents['request_event']) => {
+      const shouldSkipValidation = skipValidationRef.current;
+      eventChainRef.current = eventChainRef.current.then(() =>
+        processEventRequest(client, eventData, viewEventsRef, clientEventAuthRef, shouldSkipValidation)
+      ).catch((handlerError) => {
+        console.error("echoform: event handler error", handlerError);
+        emitEventResponse(client, eventData.uid, eventData.eventUid, null, "Event handler error");
       });
     });
 
-    cleanUpFunctionsRef.current = [...cleanUpFunctionsRef.current, () => { cleanReqTree?.(); cleanReqEvent?.(); }];
+    const cleanup = (): void => { cleanReqTree?.(); cleanReqEvent?.(); };
+    cleanUpFunctionsRef.current = [...cleanUpFunctionsRef.current, cleanup];
+    return cleanup;
   }, []);
 
   const addClient = useCallback(<T extends Record<string | number, unknown>>(client: Transport<T>) => {
     const clientTransport = decompileTransport(client);
-    const key = client as unknown as AnyTransport;
-    clientsMapRef.current = new Map([...clientsMapRef.current, [key, clientTransport]]);
+    const transportKey = client as unknown as AnyTransport;
+    clientsMapRef.current = new Map([...clientsMapRef.current, [transportKey, clientTransport]]);
     clientsRef.current = Array.from(clientsMapRef.current.values());
-    registerSocketListener(clientTransport);
+    clientEventAuthRef.current = new Map([...clientEventAuthRef.current, [clientTransport, new Set<EventUid>()]]);
+    const cleanup = registerSocketListener(clientTransport);
+    clientCleanupMapRef.current = new Map([...clientCleanupMapRef.current, [transportKey, cleanup]]);
   }, [registerSocketListener]);
 
   const removeClient = useCallback(<T extends Record<string | number, unknown>>(client: Transport<T>) => {
-    const key = client as unknown as AnyTransport;
-    const newMap = new Map(clientsMapRef.current);
-    newMap.delete(key);
-    clientsMapRef.current = newMap;
+    const transportKey = client as unknown as AnyTransport;
+    const clientTransport = clientsMapRef.current.get(transportKey);
+
+    if (clientTransport) {
+      clientTransport.destroy();
+      clientEventAuthRef.current = new Map(
+        [...clientEventAuthRef.current].filter(([k]) => k !== clientTransport),
+      );
+    }
+
+    clientCleanupMapRef.current.get(transportKey)?.();
+    clientCleanupMapRef.current = new Map(
+      [...clientCleanupMapRef.current].filter(([k]) => k !== transportKey),
+    );
+    clientsMapRef.current = new Map(
+      [...clientsMapRef.current].filter(([k]) => k !== transportKey),
+    );
     clientsRef.current = Array.from(clientsMapRef.current.values());
   }, []);
 
   const updateRunningView = useCallback((viewData: ViewData) => {
     if (!serverRef.current) return;
-
     const viewDef = getViewDef(viewData.name);
     const propNames = Object.keys(viewData.props).filter((propName) => !IGNORED_PROPS.has(propName) && viewData.props[propName] !== undefined);
-
-    const existingViewIndex = existingSharedViewsRef.current.findIndex((v) => v.uid === viewData.uid);
+    const existingViewIndex = existingSharedViewsRef.current.findIndex((view) => view.uid === viewData.uid);
     const existingView = existingViewIndex >= 0 ? existingSharedViewsRef.current[existingViewIndex] : undefined;
+    const ctx: ViewReconcileContext = { registerViewEvent, viewEventsRef, existingSharedViewsRef, clientEventAuthRef, broadcast };
 
     if (!existingView) {
-      const props = propNames.map((name) => classifyProp(name, viewData.props[name], viewDef, registerViewEvent));
-      const newView: ExistingSharedViewData = {
-        uid: viewData.uid, name: viewData.name, parentUid: viewData.parentUid,
-        childIndex: viewData.childIndex, isRoot: viewData.isRoot, props,
-      };
-      existingSharedViewsRef.current = [...existingSharedViewsRef.current, newView];
-      broadcast("update_view", buildViewPayload(newView, props, []));
+      createNewSharedView(viewData, propNames, viewDef, ctx);
       return;
     }
-
-    const propsToDelete = existingView.props.filter((prop) => viewData.props[prop.name as string] === undefined);
-    const { currentProps, propsToAdd } = reconcileProps(
-      existingView.props, propNames, viewData, viewDef, registerViewEvent, viewEventsRef,
-    );
-
-    existingSharedViewsRef.current = replaceAt(existingSharedViewsRef.current, existingViewIndex, { ...existingView, props: currentProps });
-
-    if (propsToAdd.length > 0 || propsToDelete.length > 0) {
-      broadcast("update_view", buildViewPayload(existingView, propsToAdd, propsToDelete.map((prop) => prop.name)));
-    }
+    reconcileExistingSharedView(existingView, existingViewIndex, viewData, propNames, viewDef, ctx);
   }, [registerViewEvent, broadcast]);
 
   const deleteRunningView = useCallback((uid: ViewUid) => {
-    const viewIndex = existingSharedViewsRef.current.findIndex((v) => v.uid === uid);
+    const viewIndex = existingSharedViewsRef.current.findIndex((view) => view.uid === uid);
     if (viewIndex === -1) return;
 
     const deletedView = existingSharedViewsRef.current[viewIndex];
@@ -278,22 +429,34 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
 
     existingSharedViewsRef.current = removeAt(existingSharedViewsRef.current, viewIndex);
 
-    const deleteSet = new Set(
-      deletedView.props.filter((prop): prop is Prop & { type: 'event' } => prop.type === "event").map((prop) => prop.uid),
-    );
-    viewEventsRef.current = new Map([...viewEventsRef.current].filter(([key]) => !deleteSet.has(key)));
+    const deleteSet = new Set(collectEventUids(deletedView.props));
+    removeEventHandlers(viewEventsRef, deleteSet);
+    clientEventAuthRef.current = deauthorizeEventUidsForAllClients(clientEventAuthRef.current, deleteSet);
 
     broadcast("delete_view", { viewUid: uid });
   }, [broadcast]);
 
   useEffect(() => {
-    if (transportIsClient) {
-      registerSocketListener(serverRef.current);
-    }
-  }, [transportIsClient, transport, addClient]);
+    if (!transportIsClient) return;
+    clientEventAuthRef.current = new Map([...clientEventAuthRef.current, [serverRef.current, new Set<EventUid>()]]);
+    const cleanup = registerSocketListener(serverRef.current);
+    return cleanup;
+  }, [transportIsClient, registerSocketListener]);
 
   useEffect(() => {
-    return () => { for (const cleanup of cleanUpFunctionsRef.current) cleanup(); };
+    return () => {
+      for (const cleanup of cleanUpFunctionsRef.current) cleanup();
+      serverRef.current.destroy();
+      for (const client of clientsMapRef.current.values()) {
+        client.destroy();
+      }
+      clientsMapRef.current = new Map();
+      clientsRef.current = [];
+      clientCleanupMapRef.current = new Map();
+      viewEventsRef.current = new Map();
+      clientEventAuthRef.current = new Map();
+      existingSharedViewsRef.current = [];
+    };
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -308,11 +471,18 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     broadcastStreamChunk, broadcastStreamEnd,
   }), [addClient, removeClient, updateRunningView, deleteRunningView, broadcastStreamChunk, broadcastStreamEnd]);
 
+  const viewFactory = useCallback<ViewFactory>(
+    (name, props) => <ViewComponent name={name} props={props} />,
+    [],
+  );
+
   if (paused) return null;
 
   return (
     <AppContext.Provider value={contextValue}>
-      {children()}
+      <ViewFactoryContext.Provider value={viewFactory}>
+        {children()}
+      </ViewFactoryContext.Provider>
     </AppContext.Provider>
   );
 });

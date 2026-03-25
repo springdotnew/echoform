@@ -17,12 +17,20 @@
       "entry": ["src/render.tsx"],
       "project": ["src/**/*.{ts,tsx}"]
     },
-    "plugins/echoform/socket-server": {
+    "plugins/socket-server": {
       "entry": ["src/index.tsx"],
       "project": ["src/**/*.{ts,tsx}"]
     },
-    "plugins/echoform/socket-client": {
+    "plugins/socket-client": {
       "entry": ["src/index.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "plugins/bun-ws-server": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "plugins/bun-ws-client": {
+      "entry": ["src/index.ts"],
       "project": ["src/**/*.{ts,tsx}"]
     },
     "packages/wmux": {

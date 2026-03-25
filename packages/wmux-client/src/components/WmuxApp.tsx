@@ -3,8 +3,21 @@ import { Command as CommandIcon, Search } from "lucide-react";
 import { resolveIcon } from "../utils/icons";
 import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
-import { TabBar, type Tab } from "./TabBar";
 import type { CategoryInfo } from "../types";
+
+function parseHex(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function mixHexColors(a: string, b: string, t: number): string {
+  const [ar, ag, ab] = parseHex(a);
+  const [br, bg, bb] = parseHex(b);
+  const r = Math.round(ar * t + br * (1 - t));
+  const g = Math.round(ag * t + bg * (1 - t));
+  const bl = Math.round(ab * t + bb * (1 - t));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${bl.toString(16).padStart(2, "0")}`;
+}
 
 function EmptyState({ categories, onOpen }: {
   readonly categories: ReadonlyArray<CategoryInfo>;
@@ -31,13 +44,17 @@ function EmptyState({ categories, onOpen }: {
   );
 }
 
-function TopBar({ title, description, onSearch }: {
+function TopBar({ title, description, onSearch, categoryColor }: {
   readonly title: string;
   readonly description: string;
   readonly onSearch: () => void;
+  readonly categoryColor: string | undefined;
 }): React.ReactElement {
   return (
-    <div className="h-11 shrink-0 flex items-center border-b border-border/50 bg-background px-4 gap-4">
+    <div
+      className="h-11 shrink-0 flex items-center border-b border-border/50 px-4 gap-4 transition-colors duration-300"
+      style={{ backgroundColor: categoryColor ? mixHexColors(categoryColor, "#1c1c1e", 0.15) : undefined }}
+    >
       <div className="flex items-center gap-2 shrink-0">
         <div className="w-5 h-5 rounded bg-card border border-border/50 flex items-center justify-center">
           <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-foreground/80">
@@ -91,23 +108,6 @@ function buildSidebarNavigationItems(
     );
 }
 
-function fileIcon(_name: string): string { return "File"; }
-
-function buildTabList(activeCategory: CategoryInfo | undefined): Tab[] {
-  if (!activeCategory) return [];
-  if (activeCategory.type === "files") {
-    return (activeCategory.openFiles ?? []).map((f) => ({ id: `file::${f.path}`, title: f.name, closable: true, icon: fileIcon(f.name) }));
-  }
-  return activeCategory.tabs.map((t) => ({ id: t.id, title: t.name, icon: t.icon ?? "Terminal" }));
-}
-
-function syncTabOrder(previousOrder: readonly string[], currentTabs: readonly Tab[]): string[] {
-  const currentIds = new Set(currentTabs.map((t) => t.id));
-  const kept = previousOrder.filter((id) => currentIds.has(id));
-  const added = currentTabs.map((t) => t.id).filter((id) => !kept.includes(id));
-  return [...kept, ...added];
-}
-
 function isTerminalFocused(): boolean {
   const activeElement = document.activeElement;
   return activeElement != null && activeElement.closest(".xterm") != null;
@@ -118,13 +118,29 @@ function toggleSetItem<T>(source: ReadonlySet<T>, item: T): Set<T> {
   return new Set([...source, item]);
 }
 
+function navigateSidebarItem(
+  sidebarItems: readonly SidebarNavigationItem[],
+  activeTabId: string,
+  activeCategory: string,
+  selectCategory: (name: string) => void,
+  selectTab: (id: string) => void,
+  delta: number,
+): void {
+  if (sidebarItems.length === 0) return;
+  const currentIndex = sidebarItems.findIndex((item) => item.tabId === activeTabId);
+  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + delta + sidebarItems.length) % sidebarItems.length;
+  const nextItem = sidebarItems[nextIndex]!;
+  if (nextItem.categoryName !== activeCategory) selectCategory(nextItem.categoryName);
+  selectTab(nextItem.tabId);
+}
+
 function handleCommandPaletteKey(
   event: KeyboardEvent,
   isModifierPressed: boolean,
   commandPaletteOpen: boolean,
   setCommandPaletteOpen: (open: boolean | ((prev: boolean) => boolean)) => void,
 ): boolean {
-  if (isModifierPressed && event.key === "k") { event.preventDefault(); setCommandPaletteOpen((prev: boolean) => !prev); return true; }
+  if (isModifierPressed && (event.key === "k" || event.key === "p")) { event.preventDefault(); setCommandPaletteOpen((prev: boolean) => !prev); return true; }
   if (event.key === "Escape" && commandPaletteOpen) { setCommandPaletteOpen(false); return true; }
   return false;
 }
@@ -142,22 +158,38 @@ function handleCategorySwitchKey(
   return true;
 }
 
-function handleTabSwitchKey(
+function handleItemSwitchKey(
   event: KeyboardEvent,
   isModifierPressed: boolean,
-  orderedTabs: readonly Tab[],
+  sidebarItems: readonly SidebarNavigationItem[],
   activeTabId: string,
+  activeCategory: string,
+  selectCategory: (name: string) => void,
   selectTab: (id: string) => void,
 ): boolean {
-  if (!isModifierPressed || (event.key !== "[" && event.key !== "]")) return false;
-  event.preventDefault();
-  if (orderedTabs.length === 0) return true;
-  const currentIndex = orderedTabs.findIndex((t) => t.id === activeTabId);
-  const nextIndex = event.key === "]"
-    ? (currentIndex + 1) % orderedTabs.length
-    : (currentIndex - 1 + orderedTabs.length) % orderedTabs.length;
-  selectTab(orderedTabs[nextIndex]!.id);
-  return true;
+  // Cmd+[ / Cmd+] or Cmd+Shift+[ / Cmd+Shift+]
+  if (isModifierPressed && (event.key === "[" || event.key === "]" || event.key === "{" || event.key === "}")) {
+    event.preventDefault();
+    const isNext = event.key === "]" || event.key === "}";
+    navigateSidebarItem(sidebarItems, activeTabId, activeCategory, selectCategory, selectTab, isNext ? 1 : -1);
+    return true;
+  }
+
+  // Cmd/Ctrl+T → Next item
+  if (isModifierPressed && event.key === "t") {
+    event.preventDefault();
+    navigateSidebarItem(sidebarItems, activeTabId, activeCategory, selectCategory, selectTab, 1);
+    return true;
+  }
+
+  // Ctrl+Tab / Ctrl+Shift+Tab
+  if (event.ctrlKey && event.key === "Tab") {
+    event.preventDefault();
+    navigateSidebarItem(sidebarItems, activeTabId, activeCategory, selectCategory, selectTab, event.shiftKey ? -1 : 1);
+    return true;
+  }
+
+  return false;
 }
 
 function handleArrowNavigation(
@@ -172,12 +204,8 @@ function handleArrowNavigation(
   const isArrowKey = event.key === "ArrowUp" || event.key === "ArrowDown";
   if (!isArrowKey || isTerminalFocused() || commandPaletteOpen || sidebarItems.length === 0) return false;
   event.preventDefault();
-  const currentIndex = sidebarItems.findIndex((item) => item.tabId === activeTabId);
   const delta = event.key === "ArrowDown" ? 1 : -1;
-  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + delta + sidebarItems.length) % sidebarItems.length;
-  const nextItem = sidebarItems[nextIndex]!;
-  if (nextItem.categoryName !== activeCategory) selectCategory(nextItem.categoryName);
-  selectTab(nextItem.tabId);
+  navigateSidebarItem(sidebarItems, activeTabId, activeCategory, selectCategory, selectTab, delta);
   return true;
 }
 
@@ -186,7 +214,6 @@ function useKeyboardShortcuts({
   setCommandPaletteOpen,
   categories,
   selectCategory,
-  orderedTabs,
   activeTabId,
   selectTab,
   sidebarItems,
@@ -196,7 +223,6 @@ function useKeyboardShortcuts({
   readonly setCommandPaletteOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   readonly categories: ReadonlyArray<CategoryInfo>;
   readonly selectCategory: (name: string) => void;
-  readonly orderedTabs: readonly Tab[];
   readonly activeTabId: string;
   readonly selectTab: (id: string) => void;
   readonly sidebarItems: readonly SidebarNavigationItem[];
@@ -207,13 +233,15 @@ function useKeyboardShortcuts({
       const isModifierPressed = event.metaKey || event.ctrlKey;
       if (handleCommandPaletteKey(event, isModifierPressed, commandPaletteOpen, setCommandPaletteOpen)) return;
       if (handleCategorySwitchKey(event, isModifierPressed, categories, selectCategory)) return;
-      if (handleTabSwitchKey(event, isModifierPressed, orderedTabs, activeTabId, selectTab)) return;
+      if (handleItemSwitchKey(event, isModifierPressed, sidebarItems, activeTabId, activeCategory, selectCategory, selectTab)) return;
       handleArrowNavigation(event, commandPaletteOpen, sidebarItems, activeTabId, activeCategory, selectCategory, selectTab);
     };
 
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [commandPaletteOpen, categories, selectCategory, orderedTabs, activeTabId, selectTab, sidebarItems, activeCategory, setCommandPaletteOpen]);
+    // Capture phase fires before browser default shortcut processing,
+    // allowing us to intercept Cmd+T, Cmd+P, Ctrl+Tab in PWA standalone mode
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [commandPaletteOpen, categories, selectCategory, activeTabId, selectTab, sidebarItems, activeCategory, setCommandPaletteOpen]);
 }
 
 export function WmuxApp(props: {
@@ -244,7 +272,29 @@ export function WmuxApp(props: {
 
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [tabOrder, setTabOrder] = useState<string[]>([]);
+
+  const activeCategoryInfo = categories.find((c) => c.name === activeCategory);
+  const activeTabName = useMemo(() => {
+    if (!activeCategoryInfo) return null;
+    if (activeCategoryInfo.type === "files") {
+      const file = (activeCategoryInfo.openFiles ?? []).find((f) => `file::${f.path}` === activeTabId);
+      return file?.name ?? null;
+    }
+    return activeCategoryInfo.tabs.find((t) => t.id === activeTabId)?.name ?? null;
+  }, [activeCategoryInfo, activeTabId]);
+
+  // Update document title and PWA theme-color tint based on active tab
+  useEffect(() => {
+    const parts = [activeTabName, activeCategory, title].filter(Boolean);
+    document.title = parts.length > 0 ? parts.join(" — ") : "wmux";
+  }, [activeTabName, activeCategory, title]);
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) return;
+    const color = activeCategoryInfo?.color;
+    meta.setAttribute("content", color ? mixHexColors(color, "#1c1c1e", 0.15) : "#1c1c1e");
+  }, [activeCategoryInfo?.color]);
 
   const registry = useMemo(() => {
     const map = new Map<string, ReactNode>();
@@ -254,36 +304,6 @@ export function WmuxApp(props: {
     }
     return map;
   }, [children]);
-
-  const activeCategoryInfo = categories.find((c) => c.name === activeCategory);
-  const isFileCategory = activeCategoryInfo?.type === "files";
-  const processTabs = activeCategoryInfo?.tabs ?? [];
-  const openFiles = activeCategoryInfo?.openFiles ?? [];
-
-  const tabs = buildTabList(activeCategoryInfo);
-  const tabIdsKey = tabs.map((t) => t.id).join("\0");
-
-  useEffect(() => {
-    setTabOrder((prev) => syncTabOrder(prev, tabs));
-  }, [tabIdsKey]);
-
-  const orderedTabs = useMemo(() => {
-    const byId = new Map(tabs.map((t) => [t.id, t]));
-    return tabOrder.filter((id) => byId.has(id)).map((id) => byId.get(id)!);
-  }, [tabIdsKey, tabOrder]);
-
-  const hasTabs = orderedTabs.length > 0;
-
-  const activeTabInfo = processTabs.find((t) => t.id === activeTabId);
-  const processActions = useMemo(() => {
-    if (isFileCategory || !activeTabInfo) return null;
-    return {
-      status: activeTabInfo.status,
-      onStart: () => startProcess(activeTabId),
-      onStop: () => stopProcess(activeTabId),
-      onRestart: () => restartProcess(activeTabId),
-    };
-  }, [isFileCategory, activeTabInfo, activeTabId, startProcess, stopProcess, restartProcess]);
 
   const sidebarItems = useMemo(
     () => buildSidebarNavigationItems(categories, collapsedCategories),
@@ -295,7 +315,6 @@ export function WmuxApp(props: {
     setCommandPaletteOpen,
     categories,
     selectCategory,
-    orderedTabs,
     activeTabId,
     selectTab,
     sidebarItems,
@@ -308,7 +327,7 @@ export function WmuxApp(props: {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground font-sans">
-      <TopBar title={title} description={description} onSearch={() => setCommandPaletteOpen(true)} />
+      <TopBar title={title} description={description} onSearch={() => setCommandPaletteOpen(true)} categoryColor={activeCategoryInfo?.color} />
 
       <div className="flex flex-1 min-h-0">
         <Sidebar
@@ -321,39 +340,30 @@ export function WmuxApp(props: {
           onSelectTab={selectTab}
           onToggleDir={toggleDir}
           onOpenFile={openFile}
+          onStartProcess={startProcess}
+          onStopProcess={stopProcess}
+          onRestartProcess={restartProcess}
         />
 
         <div className="flex-1 flex flex-col min-w-0 relative">
-        {activeCategory && hasTabs && (
-          <TabBar
-            tabs={orderedTabs}
-            activeId={activeTabId}
-            categoryColor={activeCategoryInfo?.color ?? "#3f3f46"}
-            onSelect={selectTab}
-            onClose={isFileCategory ? closeFile : undefined}
-            onReorder={setTabOrder}
-            processActions={processActions}
-          />
-        )}
+          <div className="flex-1 min-h-0 relative bg-background">
+            {[...registry.entries()].map(([id, child]) => (
+              <div
+                key={id}
+                className="absolute inset-0"
+                style={{ visibility: id === activeTabId ? "visible" : "hidden", zIndex: id === activeTabId ? 1 : 0 }}
+              >
+                {child}
+              </div>
+            ))}
 
-        <div className="flex-1 min-h-0 relative bg-background">
-          {[...registry.entries()].map(([id, child]) => (
-            <div
-              key={id}
-              className="absolute inset-0"
-              style={{ visibility: id === activeTabId ? "visible" : "hidden", zIndex: id === activeTabId ? 1 : 0 }}
-            >
-              {child}
-            </div>
-          ))}
-
-          {(!activeCategory || !hasTabs) && (
-            <div className="absolute inset-0 z-10">
-              <EmptyState categories={categories} onOpen={selectCategory} />
-            </div>
-          )}
+            {!activeCategory && (
+              <div className="absolute inset-0 z-10">
+                <EmptyState categories={categories} onOpen={selectCategory} />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </div>
 
       <CommandPalette

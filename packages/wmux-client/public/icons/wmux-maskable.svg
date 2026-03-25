@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Maskable icon: full bleed background, content within safe zone (center 80%) -->
+  <rect width="512" height="512" fill="#1c1c1e"/>
+  <g transform="translate(256 256) scale(11)" stroke="#f5f5f7" fill="none" stroke-linejoin="round">
+    <path d="M-6 -4L0 -7L6 -4V4L0 7L-6 4Z" stroke-width="1.4"/>
+    <path d="M-6 -4L0 -1M0 -1L6 -4M0 -1V7" stroke-width="1.4" opacity="0.4"/>
+  </g>
+</svg>

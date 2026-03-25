@@ -239,21 +239,6 @@ function MockTopBar(): React.ReactElement {
   );
 }
 
-function MockTabBar(): React.ReactElement {
-  const tabs = ["api-server", "worker", "scheduler"];
-  return (
-    <div className="flex items-center h-9 border-b border-border/50 shrink-0" style={{ backgroundColor: "color-mix(in srgb, #3b82f6 6%, var(--color-background))" }}>
-      {tabs.map((t) => (
-        <div key={t} className={`relative flex items-center gap-1.5 px-3 h-9 text-[12px] shrink-0 border-r border-border/15 ${t === "api-server" ? "bg-background text-foreground" : "text-muted-foreground/70"}`}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={t === "api-server" ? "text-foreground/80" : "text-muted-foreground/60"}><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6"/></svg>
-          <span>{t}</span>
-          {t === "api-server" && <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-full bg-[#3b82f6]" />}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function MockTerminal(): React.ReactElement {
   return (
     <div className="flex-1 min-h-0 bg-background p-4 font-mono text-[13px] leading-[22px] overflow-hidden">
@@ -277,7 +262,6 @@ function MockEnvironment(): React.ReactElement {
       <div className="flex flex-1 min-h-0">
         <MockSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <MockTabBar />
           <MockTerminal />
         </div>
       </div>

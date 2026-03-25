@@ -1,4 +1,8 @@
+import { useContext, type ReactElement, type ReactNode } from "react";
 import type { StandardSchemaV1 } from "./standard-schema";
+import type { ViewProps } from "./types";
+import type { InferServerProps } from "./view-inference";
+import { ViewFactoryContext } from "./view-factory";
 
 // ---- Branded tag ----
 
@@ -64,6 +68,18 @@ export interface ViewConfig<
 // ---- ViewDefs (registry) ----
 
 export type ViewDefs = Readonly<Record<string, ViewDef>>;
+
+// ---- ViewDef registry ----
+
+const viewDefRegistry = new Map<string, ViewDef>();
+
+export function getViewDef(name: string): ViewDef | undefined {
+  return viewDefRegistry.get(name);
+}
+
+// ---- ServerView type ----
+
+export type ServerView<V extends ViewDef = ViewDef> = V & React.FC<InferServerProps<V>>;
 
 // ---- Schema helpers ----
 
@@ -136,6 +152,8 @@ export function stream<TChunk extends StandardSchemaV1>(
 
 /**
  * Define a view with input schemas, callbacks, and streams.
+ * Returns a React component that can be used directly in server JSX.
+ * Also acts as a ViewDef for type inference with InferClientProps/InferServerProps.
  *
  * ```ts
  * export const MyView = view("MyView", {
@@ -143,6 +161,12 @@ export function stream<TChunk extends StandardSchemaV1>(
  *   callbacks: { onSave: callback({ input: z.string() }) },
  *   streams: { output: stream(z.string()) },
  * });
+ *
+ * // Server: use directly as JSX
+ * <MyView title="Hello" onSave={(text) => save(text)} output={stream} />
+ *
+ * // Client: infer props
+ * type Props = InferClientProps<typeof MyView>;
  * ```
  */
 export function view<
@@ -153,13 +177,27 @@ export function view<
 >(
   name: TName,
   config?: ViewConfig<TInput, TCallbacks, TStreams>,
-): ViewDef<TName, TInput, TCallbacks, TStreams> {
-  return {
+): ServerView<ViewDef<TName, TInput, TCallbacks, TStreams>> {
+  const def = {
     name,
     input: (config?.input ?? {}) as TInput,
     callbacks: (config?.callbacks ?? {}) as TCallbacks,
     streams: (config?.streams ?? {}) as TStreams,
-  } as ViewDef<TName, TInput, TCallbacks, TStreams>;
+  };
+
+  const component = (props: Record<string, unknown>): ReactElement => {
+    const factory = useContext(ViewFactoryContext);
+    if (!factory) throw new Error(`<${name}> must be rendered inside a <Server> component`);
+    return factory(name, props as ViewProps & { readonly children?: ReactNode });
+  };
+  Object.defineProperty(component, "name", { value: name, configurable: true });
+  component.displayName = `View(${name})`;
+  const { name: _, ...defWithoutName } = def;
+  Object.assign(component, defWithoutName);
+
+  viewDefRegistry.set(name, def as unknown as ViewDef);
+
+  return component as unknown as ServerView<ViewDef<TName, TInput, TCallbacks, TStreams>>;
 }
 
 /**

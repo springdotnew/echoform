@@ -20,6 +20,7 @@ export interface DecompileTransport {
     event: Key,
     data?: AppEvents[Key]
   ) => void;
+  readonly destroy: () => void;
 }
 
 /**
@@ -29,22 +30,21 @@ export interface DecompileTransport {
  * - on: receives binary from raw transport, decodes, dispatches to typed handlers
  */
 export function decompileTransport<TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>): DecompileTransport {
-  // Collect handlers per app event name
   const appHandlers = new Map<string, Set<(data: unknown) => void>>();
-
-  // Single listener on the raw transport for binary messages
   let rawListenerAttached = false;
+  let rawHandler: ((data: unknown) => void) | null = null;
+  let destroyed = false;
 
   function ensureRawListener(): void {
     if (rawListenerAttached) return;
     rawListenerAttached = true;
 
-    (transport.on as (event: string, handler: (data: unknown) => void) => void)("__bin__", (raw: unknown) => {
+    rawHandler = (raw: unknown) => {
+      if (destroyed) return;
       try {
         const bytes = raw instanceof Uint8Array ? raw : new Uint8Array(raw as ArrayBuffer);
         const { event, data } = decodeMessage(bytes);
 
-        // Apply branded types to decoded data
         const branded = applyBrands(event, data);
 
         const handlers = appHandlers.get(event);
@@ -56,13 +56,16 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
       } catch (err) {
         console.warn("Failed to decode binary message:", err);
       }
-    });
+    };
+
+    (transport.on as (event: string, handler: (data: unknown) => void) => void)("__bin__", rawHandler);
   }
 
   const on = <Key extends keyof AppEvents>(
     event: Key,
     handler: (data: AppEvents[Key]) => void
   ): (() => void) | undefined => {
+    if (destroyed) return undefined;
     ensureRawListener();
 
     const eventName = event as string;
@@ -84,11 +87,23 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
   };
 
   const emit = <Key extends keyof AppEvents>(event: Key, data?: AppEvents[Key]): void => {
+    if (destroyed) return;
     const bytes = encodeMessage(event as string, data);
     (transport.emit as (event: string, data: unknown) => void)("__bin__", bytes);
   };
 
-  return { on, emit };
+  const destroy = (): void => {
+    if (destroyed) return;
+    destroyed = true;
+    if (rawHandler && transport.off) {
+      (transport.off as (event: string, handler: (data: unknown) => void) => void)("__bin__", rawHandler);
+    }
+    rawHandler = null;
+    rawListenerAttached = false;
+    appHandlers.clear();
+  };
+
+  return { on, emit, destroy };
 }
 
 /**
@@ -152,11 +167,12 @@ function applyBrands(event: string, data: unknown): unknown {
       };
     }
     case "respond_to_event": {
-      const responsePayload = data as { readonly data: unknown; readonly uid: string; readonly eventUid: string };
+      const responsePayload = data as { readonly data: unknown; readonly uid: string; readonly eventUid: string; readonly error?: string };
       return {
         data: responsePayload.data,
         eventUid: createEventUid(responsePayload.eventUid),
         uid: createRequestUid(responsePayload.uid),
+        ...(responsePayload.error !== undefined ? { error: responsePayload.error } : {}),
       };
     }
     case "update_view": {
@@ -180,21 +196,19 @@ function applyBrands(event: string, data: unknown): unknown {
   }
 }
 
-interface UnbrandedProp {
-  readonly name: string;
-  readonly type: "data" | "event" | "stream";
-  readonly data?: unknown;
-  readonly uid?: string;
-}
+type UnbrandedProp =
+  | { readonly name: string; readonly type: "data"; readonly data: unknown }
+  | { readonly name: string; readonly type: "event"; readonly uid: string }
+  | { readonly name: string; readonly type: "stream"; readonly uid: string };
 
 function brandProp(prop: UnbrandedProp): import("./types").Prop {
   if (prop.type === "data") {
     return { name: createPropName(prop.name), type: "data", data: prop.data as import("./types").SerializableValue };
   }
   if (prop.type === "event") {
-    return { name: createPropName(prop.name), type: "event", uid: createEventUid(prop.uid ?? "") };
+    return { name: createPropName(prop.name), type: "event", uid: createEventUid(prop.uid) };
   }
-  return { name: createPropName(prop.name), type: "stream", uid: createStreamUid(prop.uid ?? "") };
+  return { name: createPropName(prop.name), type: "stream", uid: createStreamUid(prop.uid) };
 }
 
 // ---- Convenience emit helpers ----
@@ -203,22 +217,24 @@ type EmitFunctions = {
   readonly [Key in keyof AppEvents]: <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[Key]) => void;
 };
 
+function createEmitFn<Key extends keyof AppEvents>(event: Key) {
+  return <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[Key]): void => {
+    const bytes = encodeMessage(event as string, data);
+    (transport.emit as (event: string, data: unknown) => void)("__bin__", bytes);
+  };
+}
+
 function emitFactory(): EmitFunctions {
-  const events: Array<keyof AppEvents> = [
-    "update_views_tree", "update_view", "delete_view", "request_views_tree",
-    "respond_to_event", "request_event", "stream_chunk", "stream_end",
-  ];
-
-  const result = {} as Record<string, <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[keyof AppEvents]) => void>;
-
-  for (const event of events) {
-    result[event as string] = <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[typeof event]): void => {
-      const decompiled = decompileTransport(transport);
-      decompiled.emit(event, data);
-    };
-  }
-
-  return result as EmitFunctions;
+  return {
+    update_views_tree: createEmitFn("update_views_tree"),
+    update_view: createEmitFn("update_view"),
+    delete_view: createEmitFn("delete_view"),
+    request_views_tree: createEmitFn("request_views_tree"),
+    respond_to_event: createEmitFn("respond_to_event"),
+    request_event: createEmitFn("request_event"),
+    stream_chunk: createEmitFn("stream_chunk"),
+    stream_end: createEmitFn("stream_end"),
+  };
 }
 
 export const emit = emitFactory();

@@ -1,6 +1,5 @@
 import { createRef, useState, useEffect, useRef, useMemo, useCallback, type RefObject, type ReactElement } from "react";
-import { useViews } from "@playfast/echoform/server";
-import { views } from "../views";
+import { WmuxApp } from "../views";
 import type { ManagedProcess } from "../process";
 import type { ProcessStatus } from "../types";
 import { TerminalSession } from "./TerminalSession";
@@ -106,10 +105,12 @@ function extractIframeTabs(categoryDefs: readonly CategoryDef[]): readonly TabDe
   );
 }
 
-export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRootProps): ReactElement | null {
-  const View = useViews(views);
+export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRootProps): ReactElement {
   const [activeCategory, setActiveCategory] = useState(categoryDefs[0]?.name ?? "");
-  const [activeTabId, setActiveTabId] = useState("");
+  const [activeTabId, setActiveTabId] = useState(() => {
+    const firstDef = categoryDefs[0];
+    return firstDef ? resolveInitialTabId(firstDef, {}) : "";
+  });
   const [statuses, setStatuses] = useState<Record<string, ProcessStatus>>({});
   const [fileStates, setFileStates] = useState<Record<string, FileViewerState>>({});
 
@@ -169,10 +170,8 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
   const handleOpenFile = useCallback((path: string) => fileRefs.current[activeCategory]?.current?.openFile(path), [activeCategory]);
   const handleCloseFile = useCallback((id: string) => fileRefs.current[activeCategory]?.current?.closeFile(id), [activeCategory]);
 
-  if (!View) return null;
-
   return (
-    <View.WmuxApp
+    <WmuxApp
       title={title}
       description={description}
       categories={categories}
@@ -202,6 +201,6 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
           onActiveTabChange={setActiveTabId}
         />
       ))}
-    </View.WmuxApp>
+    </WmuxApp>
   );
 }

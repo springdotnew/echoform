@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, type ReactNode } from "react";
-import type { Transport } from "../shared/types";
+import type { Transport, AnyTransport } from "../shared/types";
 import { ViewsRenderer } from "../shared/ViewsRenderer";
 import App, { type AppHandle } from "./App";
-
-type AnyTransport = Transport<Record<string | number, unknown>>;
 
 interface DisconnectEvent {
   readonly disconnect: void;
@@ -20,6 +18,7 @@ export interface ServerProps {
   readonly singleInstance?: boolean;
   readonly transport: ServerTransport;
   readonly instanceRenderHandler?: ServerInstanceRenderHandler;
+  readonly skipCallbackValidation?: boolean;
 }
 
 const setApp = Symbol("setApp");
@@ -76,14 +75,31 @@ export function Server(props: ServerProps): React.ReactElement {
   const { children, singleInstance, transport } = props;
   const appRef = useRef<AppHandle>(null);
   const [clients, setClients] = useState<Readonly<Record<string, Transport<DisconnectEvent>>>>({});
+  const disconnectCleanupRef = useRef<Map<string, { readonly handler: () => void; readonly transport: Transport<DisconnectEvent> }>>(new Map());
 
   useEffect(() => {
-    transport.on("connection", (clientTransport) => {
+    const connectionHandler = (clientTransport: Transport<DisconnectEvent> & { readonly id: string }): void => {
       handleClientConnect(appRef, singleInstance, clientTransport, setClients);
-      clientTransport.on("disconnect", () => {
+      const disconnectHandler = (): void => {
         handleClientDisconnect(appRef, singleInstance, clientTransport, setClients);
-      });
-    });
+        disconnectCleanupRef.current = new Map(
+          [...disconnectCleanupRef.current].filter(([k]) => k !== clientTransport.id),
+        );
+      };
+      clientTransport.on("disconnect", disconnectHandler);
+      disconnectCleanupRef.current = new Map([
+        ...disconnectCleanupRef.current,
+        [clientTransport.id, { handler: disconnectHandler, transport: clientTransport }],
+      ]);
+    };
+    transport.on("connection", connectionHandler);
+    return () => {
+      transport.off?.("connection", connectionHandler);
+      for (const entry of disconnectCleanupRef.current.values()) {
+        entry.transport.off?.("disconnect", entry.handler);
+      }
+      disconnectCleanupRef.current = new Map();
+    };
   }, [singleInstance, transport]);
 
   const clientIds = Object.keys(clients);
@@ -94,6 +110,7 @@ export function Server(props: ServerProps): React.ReactElement {
         paused={!singleInstance}
         transport={transport as unknown as AnyTransport}
         transportIsClient={false}
+        skipCallbackValidation={props.skipCallbackValidation}
         ref={(handle) => {
           (appRef as React.MutableRefObject<AppHandle | null>).current = handle;
           if (props.instanceRenderHandler) {
@@ -113,6 +130,7 @@ export function Server(props: ServerProps): React.ReactElement {
               transportIsClient
               key={id}
               paused={false}
+              skipCallbackValidation={props.skipCallbackValidation}
             >
               {children}
             </App>

@@ -25,6 +25,7 @@ export interface EventResponseData {
   readonly data: SerializableValue;
   readonly uid: RequestUid;
   readonly eventUid: EventUid;
+  readonly error?: string;
 }
 
 export interface EventRequestData {
@@ -103,3 +104,4 @@ export interface ExistingSharedViewData extends ViewDataBase {
 }
 
 export type AppTransport = Transport<AppEvents>;
+export type AnyTransport = Transport<Record<string | number, unknown>>;

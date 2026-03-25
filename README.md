@@ -58,12 +58,11 @@ export const views = createViews({ Dashboard, ProcessTable, LogStream });
 // server/index.tsx
 import os from "os";
 import { Render } from "@playfast/echoform-render";
-import { Server, useViews, useStream } from "@playfast/echoform/server";
+import { Server, useStream } from "@playfast/echoform/server";
 import { createBunWebSocketServer } from "@playfast/echoform-bun-ws-server";
-import { views, LogStream } from "../shared/views";
+import { Dashboard, ProcessTable, LogStream } from "../shared/views";
 
 function Monitor() {
-  const View = useViews(views);
   const log = useStream(LogStream, "lines");
   const [processes, setProcesses] = useState([]);
 
@@ -76,17 +75,15 @@ function Monitor() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!View) return null;
-
   return (
     <>
-      <View.Dashboard
+      <Dashboard
         hostname={os.hostname()}
         cpuUsage={getCpuUsage()}
         memoryUsed={os.totalmem() - os.freemem()}
         memoryTotal={os.totalmem()}
       />
-      <View.ProcessTable
+      <ProcessTable
         processes={processes}
         onKill={(pid) => {
           process.kill(pid, "SIGTERM");
@@ -94,7 +91,7 @@ function Monitor() {
         }}
         onRefresh={() => refresh()}
       />
-      <View.LogStream lines={log} />
+      <LogStream lines={log} />
     </>
   );
 }
@@ -152,16 +149,15 @@ The server reads system data, manages state, handles kill signals. The client is
 
 | Function | Description |
 |----------|-------------|
-| `view(name, config)` | Define a view with input, callbacks, and streams |
+| `view(name, config)` | Define a view — returns a React component usable as JSX on the server |
 | `callback(config?)` | Define a callback with optional input/output schemas |
 | `stream(schema)` | Define a server→client stream with chunk schema |
-| `createViews(record)` | Compose view definitions into a registry |
+| `createViews(record)` | Compose view definitions into a registry (optional, for validation) |
 
 ### Server (`@playfast/echoform/server`)
 
 | Export | Description |
 |--------|-------------|
-| `useViews(viewDefs)` | Get typed view components for rendering |
 | `useStream(viewDef, name)` | Create a `StreamEmitter` for pushing data to clients |
 | `Server` | Root component that manages client connections |
 

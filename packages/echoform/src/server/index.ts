@@ -1,7 +1,6 @@
 export { default as App } from "./App";
 export type { AppHandle } from "./App";
-export { useViews, useStream } from "./utils";
-export type { ViewDefsToServerComponents } from "./utils";
+export { useStream } from "./utils";
 export { AppContext } from "./contexts";
 export type { AppContextValue } from "./contexts";
 export { default as ViewComponent } from "./ViewComponent";

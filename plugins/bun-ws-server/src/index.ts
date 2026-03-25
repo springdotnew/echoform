@@ -32,6 +32,8 @@ export interface BunWebSocketServerOptions {
   readonly port: number;
   readonly hostname?: string;
   readonly path?: string;
+  readonly corsOrigin?: string;
+  readonly validateConnection?: (req: Request) => boolean | Promise<boolean>;
 }
 
 export interface BunWebSocketServer {
@@ -54,8 +56,22 @@ declare const Bun: {
   }): BunServer;
 };
 
+async function validateIncomingConnection(
+  req: Request,
+  validateConnection?: (req: Request) => boolean | Promise<boolean>,
+): Promise<Response | null> {
+  if (!validateConnection) return null;
+  try {
+    const allowed = await Promise.resolve(validateConnection(req));
+    return allowed ? null : new Response("Unauthorized", { status: 401 });
+  } catch {
+    return new Response("Connection validation error", { status: 500 });
+  }
+}
+
 export function createBunWebSocketServer(options: BunWebSocketServerOptions): BunWebSocketServer {
-  const { port, hostname = "0.0.0.0", path = "/ws" } = options;
+  const { port, hostname = "0.0.0.0", path = "/ws", corsOrigin = "*" } = options;
+  const corsHeaders = { "Access-Control-Allow-Origin": corsOrigin } as const;
 
   type ClientEntry = { readonly dispatch: (msg: string | ArrayBuffer | Uint8Array<ArrayBufferLike>) => void; readonly disconnect: () => void };
   const clients = new Map<string, ClientEntry>();
@@ -76,23 +92,23 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
     server = Bun.serve<ClientData>({
       port,
       hostname,
-      fetch(req: Request, srv: BunServer) {
+      async fetch(req: Request, srv: BunServer) {
         const url = new URL(req.url);
 
         if (url.pathname === path) {
+          const rejection = await validateIncomingConnection(req, options.validateConnection);
+          if (rejection) return rejection;
           const upgraded = srv.upgrade(req, {
             data: { id: globalThis.crypto.randomUUID() },
           });
-          if (upgraded) {
-            return undefined;
-          }
+          if (upgraded) return undefined;
           return new Response("WebSocket upgrade failed", { status: 500 });
         }
 
         if (req.method === "OPTIONS") {
           return new Response(null, {
             headers: {
-              "Access-Control-Allow-Origin": "*",
+              ...corsHeaders,
               "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
               "Access-Control-Allow-Headers": "Content-Type",
             },
@@ -100,7 +116,7 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
         }
 
         return new Response("echoform Bun WebSocket Server", {
-          headers: { "Access-Control-Allow-Origin": "*" },
+          headers: corsHeaders,
         });
       },
       websocket: {
@@ -132,6 +148,9 @@ export function createBunWebSocketServer(options: BunWebSocketServerOptions): Bu
   };
 
   const stop = (): void => {
+    for (const client of clients.values()) {
+      client.disconnect();
+    }
     server?.stop();
     server = null;
     clients.clear();
