@@ -13,6 +13,11 @@
       "types": "./src/views.ts",
       "import": "./src/views.ts",
       "default": "./src/views.ts"
+    },
+    "./preset/tui": {
+      "types": "./src/preset/tui.ts",
+      "import": "./src/preset/tui.ts",
+      "default": "./src/preset/tui.ts"
     }
   },
   "files": [
@@ -31,6 +36,7 @@
     "react": ">=19.0.0"
   },
   "devDependencies": {
+    "@playfast/wmux-client-terminal": "workspace:*",
     "@types/bun": "latest",
     "@types/react": "^19.0.0"
   },

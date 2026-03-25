@@ -138,6 +138,7 @@
         "zod": "^4.3.6",
       },
       "devDependencies": {
+        "@playfast/wmux-client-terminal": "workspace:*",
         "@types/bun": "latest",
         "@types/react": "^19.0.0",
       },

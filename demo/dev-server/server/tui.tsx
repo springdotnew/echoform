@@ -1,7 +1,6 @@
-import { wmux } from "@playfast/wmux";
-import { renderWmuxTUI } from "@playfast/wmux-client-terminal";
+import { wmuxTUI } from "@playfast/wmux/preset/tui";
 
-const handle = await wmux({
+const { done } = await wmuxTUI({
   title: "echoform",
   description: "local",
   sidebarItems: [
@@ -37,16 +36,7 @@ const handle = await wmux({
   ],
   port: 4220,
   token: "test-token",
-  open: false,
 });
 
-const tui = await renderWmuxTUI({
-  token: handle.token,
-  wsUrl: handle.wsUrl,
-  webUrl: handle.url,
-});
-
-// Wait for user to quit the TUI (Ctrl+B q), then stop the server
-await tui.done;
-handle.stop();
+await done;
 process.exit(0);
