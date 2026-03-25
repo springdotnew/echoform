@@ -1,5 +1,11 @@
 # @playfast/echoform
 
+## 1.0.5
+
+### Patch Changes
+
+- 0b235d5: Add wmux-client-terminal TUI client and stream replay for late-joining clients
+
 ## 1.0.4
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@playfast/echoform",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "run your react app logic on the server",
   "type": "module",
   "exports": {
