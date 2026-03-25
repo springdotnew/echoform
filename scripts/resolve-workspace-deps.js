@@ -9,6 +9,7 @@ const packages = [
   "packages/echoform",
   "packages/react-render-null",
   "packages/wmux",
+  "packages/wmux-client-terminal",
   "plugins/bun-ws-client",
   "plugins/bun-ws-server",
   "plugins/socket-client",
