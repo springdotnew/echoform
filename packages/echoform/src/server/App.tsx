@@ -437,11 +437,11 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
   }, [broadcast]);
 
   useEffect(() => {
-    if (transportIsClient) {
-      clientEventAuthRef.current = new Map([...clientEventAuthRef.current, [serverRef.current, new Set<EventUid>()]]);
-      registerSocketListener(serverRef.current);
-    }
-  }, [transportIsClient, transport, addClient]);
+    if (!transportIsClient) return;
+    clientEventAuthRef.current = new Map([...clientEventAuthRef.current, [serverRef.current, new Set<EventUid>()]]);
+    const cleanup = registerSocketListener(serverRef.current);
+    return cleanup;
+  }, [transportIsClient, registerSocketListener]);
 
   useEffect(() => {
     return () => {

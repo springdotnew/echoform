@@ -75,17 +75,30 @@ export function Server(props: ServerProps): React.ReactElement {
   const { children, singleInstance, transport } = props;
   const appRef = useRef<AppHandle>(null);
   const [clients, setClients] = useState<Readonly<Record<string, Transport<DisconnectEvent>>>>({});
+  const disconnectCleanupRef = useRef<Map<string, { readonly handler: () => void; readonly transport: Transport<DisconnectEvent> }>>(new Map());
 
   useEffect(() => {
     const connectionHandler = (clientTransport: Transport<DisconnectEvent> & { readonly id: string }): void => {
       handleClientConnect(appRef, singleInstance, clientTransport, setClients);
-      clientTransport.on("disconnect", () => {
+      const disconnectHandler = (): void => {
         handleClientDisconnect(appRef, singleInstance, clientTransport, setClients);
-      });
+        disconnectCleanupRef.current = new Map(
+          [...disconnectCleanupRef.current].filter(([k]) => k !== clientTransport.id),
+        );
+      };
+      clientTransport.on("disconnect", disconnectHandler);
+      disconnectCleanupRef.current = new Map([
+        ...disconnectCleanupRef.current,
+        [clientTransport.id, { handler: disconnectHandler, transport: clientTransport }],
+      ]);
     };
     transport.on("connection", connectionHandler);
     return () => {
       transport.off?.("connection", connectionHandler);
+      for (const entry of disconnectCleanupRef.current.values()) {
+        entry.transport.off?.("disconnect", entry.handler);
+      }
+      disconnectCleanupRef.current = new Map();
     };
   }, [singleInstance, transport]);
 
