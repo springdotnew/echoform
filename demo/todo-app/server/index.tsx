@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from "react";
 import { Render } from "@playfast/echoform-render";
-import { Server, useViews } from "@playfast/echoform/server";
+import { Server } from "@playfast/echoform/server";
 import { createBunWebSocketServer } from "@playfast/echoform-bun-ws-server";
-import { views } from "../shared/views";
+import { TodoApp as TodoAppView, TodoInput, TodoList, TodoItem, FilterButtons } from "../shared/views";
 
 interface TodoItem {
   readonly id: string;
@@ -23,8 +23,6 @@ function shouldShowTodo(todo: TodoItem, filter: TodoFilter): boolean {
 }
 
 function TodoApp(): React.ReactElement | null {
-  const View = useViews(views);
-
   const [todos, setTodos] = useState<ReadonlyArray<TodoItem>>([
     { id: generateId(), text: "Learn echoform", completed: false },
     { id: generateId(), text: "Build something awesome", completed: false },
@@ -60,15 +58,15 @@ function TodoApp(): React.ReactElement | null {
   const completedCount = todos.filter((todo) => todo.completed).length;
 
   return (
-    <View.TodoApp
+    <TodoAppView
       title="Todo List"
       itemCount={todos.length}
       completedCount={completedCount}
     >
-      <View.TodoInput placeholder="What needs to be done?" onAdd={addTodo} />
-      <View.TodoList>
+      <TodoInput placeholder="What needs to be done?" onAdd={addTodo} />
+      <TodoList>
         {filteredTodos.map((todo) => (
-          <View.TodoItem
+          <TodoItem
             key={todo.id}
             id={todo.id}
             text={todo.text}
@@ -77,13 +75,13 @@ function TodoApp(): React.ReactElement | null {
             onDelete={() => deleteTodo(todo.id)}
           />
         ))}
-      </View.TodoList>
-      <View.FilterButtons
+      </TodoList>
+      <FilterButtons
         filter={filter}
         onFilterChange={setFilter}
         onClearCompleted={clearCompleted}
       />
-    </View.TodoApp>
+    </TodoAppView>
   );
 }
 

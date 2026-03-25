@@ -20,6 +20,7 @@ export interface DecompileTransport {
     event: Key,
     data?: AppEvents[Key]
   ) => void;
+  readonly destroy: () => void;
 }
 
 /**
@@ -29,22 +30,21 @@ export interface DecompileTransport {
  * - on: receives binary from raw transport, decodes, dispatches to typed handlers
  */
 export function decompileTransport<TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>): DecompileTransport {
-  // Collect handlers per app event name
   const appHandlers = new Map<string, Set<(data: unknown) => void>>();
-
-  // Single listener on the raw transport for binary messages
   let rawListenerAttached = false;
+  let rawHandler: ((data: unknown) => void) | null = null;
+  let destroyed = false;
 
   function ensureRawListener(): void {
     if (rawListenerAttached) return;
     rawListenerAttached = true;
 
-    (transport.on as (event: string, handler: (data: unknown) => void) => void)("__bin__", (raw: unknown) => {
+    rawHandler = (raw: unknown) => {
+      if (destroyed) return;
       try {
         const bytes = raw instanceof Uint8Array ? raw : new Uint8Array(raw as ArrayBuffer);
         const { event, data } = decodeMessage(bytes);
 
-        // Apply branded types to decoded data
         const branded = applyBrands(event, data);
 
         const handlers = appHandlers.get(event);
@@ -56,13 +56,16 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
       } catch (err) {
         console.warn("Failed to decode binary message:", err);
       }
-    });
+    };
+
+    (transport.on as (event: string, handler: (data: unknown) => void) => void)("__bin__", rawHandler);
   }
 
   const on = <Key extends keyof AppEvents>(
     event: Key,
     handler: (data: AppEvents[Key]) => void
   ): (() => void) | undefined => {
+    if (destroyed) return undefined;
     ensureRawListener();
 
     const eventName = event as string;
@@ -84,11 +87,23 @@ export function decompileTransport<TEvents extends Record<string | number, unkno
   };
 
   const emit = <Key extends keyof AppEvents>(event: Key, data?: AppEvents[Key]): void => {
+    if (destroyed) return;
     const bytes = encodeMessage(event as string, data);
     (transport.emit as (event: string, data: unknown) => void)("__bin__", bytes);
   };
 
-  return { on, emit };
+  const destroy = (): void => {
+    if (destroyed) return;
+    destroyed = true;
+    if (rawHandler && transport.off) {
+      (transport.off as (event: string, handler: (data: unknown) => void) => void)("__bin__", rawHandler);
+    }
+    rawHandler = null;
+    rawListenerAttached = false;
+    appHandlers.clear();
+  };
+
+  return { on, emit, destroy };
 }
 
 /**

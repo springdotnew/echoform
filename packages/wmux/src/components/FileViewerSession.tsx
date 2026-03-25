@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useImperativeHandle, forwardRef } from "react";
-import { useViews } from "@playfast/echoform/server";
-import { views } from "../views";
+import { WmuxFileContent } from "../views";
 import { readdir } from "node:fs/promises";
 import { join, resolve, basename } from "node:path";
 
@@ -77,7 +76,6 @@ interface Props {
 
 export const FileViewerSession = forwardRef<FileViewerActions, Props>(
   function FileViewerSession({ root, onStateChange, onActiveTabChange }, ref) {
-    const View = useViews(views);
     const [dirCache, setDirCache] = useState<Map<string, readonly TreeNode[]>>(new Map());
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [openFiles, setOpenFiles] = useState<Map<string, OpenFile>>(new Map());
@@ -154,7 +152,7 @@ export const FileViewerSession = forwardRef<FileViewerActions, Props>(
     return (
       <>
         {openFilesList.map((file) => (
-          <View.WmuxFileContent
+          <WmuxFileContent
             key={file.path}
             id={`file::${file.path}`}
             path={file.path}

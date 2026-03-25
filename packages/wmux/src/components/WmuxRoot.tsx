@@ -1,6 +1,5 @@
 import { createRef, useState, useEffect, useRef, useMemo, useCallback, type RefObject, type ReactElement } from "react";
-import { useViews } from "@playfast/echoform/server";
-import { views } from "../views";
+import { WmuxApp } from "../views";
 import type { ManagedProcess } from "../process";
 import type { ProcessStatus } from "../types";
 import { TerminalSession } from "./TerminalSession";
@@ -107,7 +106,6 @@ function extractIframeTabs(categoryDefs: readonly CategoryDef[]): readonly TabDe
 }
 
 export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRootProps): ReactElement {
-  const View = useViews(views);
   const [activeCategory, setActiveCategory] = useState(categoryDefs[0]?.name ?? "");
   const [activeTabId, setActiveTabId] = useState("");
   const [statuses, setStatuses] = useState<Record<string, ProcessStatus>>({});
@@ -170,7 +168,7 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
   const handleCloseFile = useCallback((id: string) => fileRefs.current[activeCategory]?.current?.closeFile(id), [activeCategory]);
 
   return (
-    <View.WmuxApp
+    <WmuxApp
       title={title}
       description={description}
       categories={categories}
@@ -200,6 +198,6 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
           onActiveTabChange={setActiveTabId}
         />
       ))}
-    </View.WmuxApp>
+    </WmuxApp>
   );
 }

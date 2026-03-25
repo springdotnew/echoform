@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import * as path from "path";
 import { Render } from "@playfast/echoform-render";
-import { Server, useViews } from "@playfast/echoform/server";
+import { Server } from "@playfast/echoform/server";
 import { createBunWebSocketServer } from "@playfast/echoform-bun-ws-server";
 import {
   listDirectory,
@@ -10,7 +10,7 @@ import {
   getLanguageFromPath,
   validatePath,
 } from "./file-operations";
-import { views } from "../shared/views";
+import { App as AppView, FileTree, TabBar, CodeEditor, ExcalidrawEditor, EmptyEditor, ErrorDisplay } from "../shared/views";
 import type { FileNode, OpenFile } from "../shared/types";
 
 const rootPath = path.resolve(process.argv[2] ?? ".");
@@ -26,8 +26,6 @@ function formatFileError(action: string, err: unknown): string {
 }
 
 function FileEditorApp(): React.ReactElement | null {
-  const View = useViews(views);
-
   const [files, setFiles] = useState<FileNode | null>(null);
   const [openFiles, setOpenFiles] = useState<readonly OpenFile[]>([]);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
@@ -127,17 +125,17 @@ function FileEditorApp(): React.ReactElement | null {
   const activeFile = openFiles.find((file) => file.path === activeFilePath);
 
   return (
-    <View.App rootPath={rootPath} title="File Editor">
-      {error && <View.ErrorDisplay error={error} onDismiss={handleDismissError} />}
+    <AppView rootPath={rootPath} title="File Editor">
+      {error && <ErrorDisplay error={error} onDismiss={handleDismissError} />}
 
-      <View.FileTree
+      <FileTree
         files={files}
         selectedPath={activeFilePath}
         onSelect={handleSelectFile}
         onRefresh={refreshFileTree}
       />
 
-      <View.TabBar
+      <TabBar
         openFiles={openFiles}
         activeFilePath={activeFilePath}
         onSelectTab={handleSelectTab}
@@ -145,14 +143,14 @@ function FileEditorApp(): React.ReactElement | null {
       >
         {activeFile ? (
           activeFile.isExcalidraw ? (
-            <View.ExcalidrawEditor
+            <ExcalidrawEditor
               path={activeFile.path}
               content={activeFile.content}
               onChange={(content) => handleContentChange(activeFile.path, content)}
               onSave={() => handleSave(activeFile.path)}
             />
           ) : (
-            <View.CodeEditor
+            <CodeEditor
               path={activeFile.path}
               content={activeFile.content}
               language={activeFile.language}
@@ -161,10 +159,10 @@ function FileEditorApp(): React.ReactElement | null {
             />
           )
         ) : (
-          <View.EmptyEditor message="Select a file to edit" />
+          <EmptyEditor message="Select a file to edit" />
         )}
-      </View.TabBar>
-    </View.App>
+      </TabBar>
+    </AppView>
   );
 }
 

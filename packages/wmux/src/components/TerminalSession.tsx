@@ -1,11 +1,10 @@
 import { useEffect, useCallback, type ReactElement } from "react";
-import { useViews, useStream } from "@playfast/echoform/server";
-import { views, WmuxTerminal } from "../views";
+import { useStream } from "@playfast/echoform/server";
+import { WmuxTerminal } from "../views";
 import type { ManagedProcess } from "../process";
 import { isCommandConfig } from "../types";
 
 export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): ReactElement {
-  const View = useViews(views);
   const output = useStream(WmuxTerminal, "output");
 
   useEffect(() => {
@@ -20,7 +19,7 @@ export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): Re
   const handleResize = useCallback(({ cols, rows }: { cols: number; rows: number }) => proc.resize(cols, rows), [proc]);
 
   return (
-    <View.WmuxTerminal
+    <WmuxTerminal
       id={proc.id}
       name={proc.name}
       status={proc.status}

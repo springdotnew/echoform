@@ -168,6 +168,7 @@ function Client<TEvents extends Record<string | number, unknown> = Record<string
       unsubscribeStreamChunk?.();
       unsubscribeStreamEnd?.();
       streamListenersRef.current = new Map();
+      transport.destroy();
     };
   }, [requestViewTreeOnMount]);
 

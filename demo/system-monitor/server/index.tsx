@@ -2,9 +2,9 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import * as os from "os";
 import si from "systeminformation";
 import { Render } from "@playfast/echoform-render";
-import { Server, useViews, useStream } from "@playfast/echoform/server";
+import { Server, useStream } from "@playfast/echoform/server";
 import { createBunWebSocketServer } from "@playfast/echoform-bun-ws-server";
-import { views, LogStream } from "../shared/views";
+import { Dashboard, ProcessTable, LogStream } from "../shared/views";
 
 type SortField = "cpu" | "memory" | "name" | "pid";
 
@@ -53,7 +53,6 @@ function sortProcesses(
 }
 
 function MonitorApp(): React.ReactElement | null {
-  const View = useViews(views);
   const logLines = useStream(LogStream, "lines");
 
   const [processes, setProcesses] = useState<ReadonlyArray<ProcessSnapshot>>([]);
@@ -92,7 +91,7 @@ function MonitorApp(): React.ReactElement | null {
 
   return (
     <>
-      <View.Dashboard
+      <Dashboard
         hostname={os.hostname()}
         platform={`${os.type()} ${os.arch()}`}
         uptime={os.uptime()}
@@ -101,14 +100,14 @@ function MonitorApp(): React.ReactElement | null {
         memoryUsed={memoryUsed}
         processCount={processes.length}
       />
-      <View.ProcessTable
+      <ProcessTable
         processes={topProcesses}
         sortBy={sortBy}
         onKill={handleKill}
         onSort={setSortBy}
         onRefresh={refresh}
       />
-      <View.LogStream title="Activity Log" lines={logLines} />
+      <LogStream title="Activity Log" lines={logLines} />
     </>
   );
 }

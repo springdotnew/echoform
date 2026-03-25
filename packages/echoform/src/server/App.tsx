@@ -13,7 +13,10 @@ import type {
 import type { EventUid, RequestUid, ViewUid, StreamUid, PropName } from "../shared/branded.types";
 import { createEventUid, createPropName } from "../shared/branded.types";
 import type { StreamEmitterHandle } from "../shared/view-inference";
-import { getViewDef } from "./utils";
+import { getViewDef } from "../shared/view-builder";
+import { ViewFactoryContext } from "../shared/view-factory";
+import type { ViewFactory } from "../shared/view-factory";
+import ViewComponent from "./ViewComponent";
 import type { DecompileTransport } from "../shared/decompiled-transport";
 import { decompileTransport } from "../shared/decompiled-transport";
 import { randomId } from "../shared/id";
@@ -386,6 +389,7 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     const clientTransport = clientsMapRef.current.get(transportKey);
 
     if (clientTransport) {
+      clientTransport.destroy();
       clientEventAuthRef.current = new Map(
         [...clientEventAuthRef.current].filter(([k]) => k !== clientTransport),
       );
@@ -440,7 +444,19 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
   }, [transportIsClient, transport, addClient]);
 
   useEffect(() => {
-    return () => { for (const cleanup of cleanUpFunctionsRef.current) cleanup(); };
+    return () => {
+      for (const cleanup of cleanUpFunctionsRef.current) cleanup();
+      serverRef.current.destroy();
+      for (const client of clientsMapRef.current.values()) {
+        client.destroy();
+      }
+      clientsMapRef.current = new Map();
+      clientsRef.current = [];
+      clientCleanupMapRef.current = new Map();
+      viewEventsRef.current = new Map();
+      clientEventAuthRef.current = new Map();
+      existingSharedViewsRef.current = [];
+    };
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -455,11 +471,18 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     broadcastStreamChunk, broadcastStreamEnd,
   }), [addClient, removeClient, updateRunningView, deleteRunningView, broadcastStreamChunk, broadcastStreamEnd]);
 
+  const viewFactory = useCallback<ViewFactory>(
+    (name, props) => <ViewComponent name={name} props={props} />,
+    [],
+  );
+
   if (paused) return null;
 
   return (
     <AppContext.Provider value={contextValue}>
-      {children()}
+      <ViewFactoryContext.Provider value={viewFactory}>
+        {children()}
+      </ViewFactoryContext.Provider>
     </AppContext.Provider>
   );
 });

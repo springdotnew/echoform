@@ -1,74 +1,11 @@
-import React, { useContext, useRef } from "react";
-import type { ViewProps } from "../shared/types";
+import { useContext, useRef } from "react";
 import { AppContext } from "./contexts";
-import type { ViewDef, ViewDefs, StreamDef } from "../shared/view-builder";
-import type { InferServerProps, StreamEmitter } from "../shared/view-inference";
+import type { ViewDef, StreamDef } from "../shared/view-builder";
+import type { StreamEmitter } from "../shared/view-inference";
 import { createStreamEmitter } from "../shared/view-inference";
 import { createStreamUid } from "../shared/branded.types";
 import { randomId } from "../shared/id";
 import type { StandardSchemaV1 } from "../shared/standard-schema";
-import ViewComponent from "./ViewComponent";
-
-// ---- Module-level ViewDef registry ----
-
-const viewDefRegistry = new Map<string, ViewDef>();
-
-export function getViewDef(name: string): ViewDef | undefined {
-  return viewDefRegistry.get(name);
-}
-
-// ---- View component cache ----
-
-const viewComponentCache = new Map<string, React.ComponentType<ViewProps>>();
-
-function getOrCreateViewComponent(name: string): React.ComponentType<ViewProps> {
-  const existingComponent = viewComponentCache.get(name);
-  if (existingComponent) {
-    return existingComponent;
-  }
-
-  const NewViewComponent = (props: ViewProps): React.ReactElement => (
-    <ViewComponent name={name} props={props} />
-  );
-  NewViewComponent.displayName = `View(${name})`;
-
-  viewComponentCache.set(name, NewViewComponent);
-  return NewViewComponent;
-}
-
-const viewProxy = new Proxy({} as Record<string, React.ComponentType<ViewProps>>, {
-  get: (_target, name): React.ComponentType<ViewProps> => {
-    if (typeof name !== 'string') {
-      throw new Error('trying to access a view with a non string name');
-    }
-    return getOrCreateViewComponent(name);
-  }
-});
-
-// ---- Hooks ----
-
-/**
- * Get typed view components for rendering on the server.
- *
- * ```ts
- * const View = useViews(views);
- * ```
- */
-export function useViews<V extends ViewDefs>(_viewDefs?: V): ViewDefsToServerComponents<V> {
-  const app = useContext(AppContext);
-
-  if (_viewDefs) {
-    for (const [name, def] of Object.entries(_viewDefs)) {
-      viewDefRegistry.set(name, def);
-    }
-  }
-
-  if (!app) {
-    throw new Error("useViews must be called inside a <Server> component");
-  }
-
-  return viewProxy as unknown as ViewDefsToServerComponents<V>;
-}
 
 /**
  * Create a StreamEmitter for a server-to-client stream prop.
@@ -99,11 +36,3 @@ export function useStream<
 
   return emitterRef.current as StreamEmitter<V["streams"][K] extends StreamDef<infer C> ? StandardSchemaV1.InferInput<C> : never>;
 }
-
-// ---- Type helpers ----
-
-export type ViewDefsToServerComponents<V extends ViewDefs> = {
-  readonly [K in keyof V]: V[K] extends ViewDef
-    ? React.FunctionComponent<InferServerProps<V[K]>>
-    : never;
-};

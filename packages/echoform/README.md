@@ -70,19 +70,18 @@ export const views = createViews({ Home, Login, Prompt });
 // server/index.tsx
 import { useState } from "react";
 import { Render } from "@playfast/echoform-render";
-import { Server, useViews } from "@playfast/echoform/server";
+import { Server } from "@playfast/echoform/server";
 import { createBunWebSocketServer } from "@playfast/echoform-bun-ws-server";
-import { views } from "../shared/views";
+import { Home, Login, Prompt } from "../shared/views";
 
 function App() {
-  const View = useViews(views);
   const [location, setLocation] = useState<"home" | "error" | "login">("login");
   const [name, setName] = useState("");
 
   return (
     <>
       {location === "login" && (
-        <View.Login
+        <Login
           login={({ username, password }) => {
             if (password === "0000") {
               setName(username);
@@ -94,10 +93,10 @@ function App() {
         />
       )}
       {location === "home" && (
-        <View.Home username={name} logout={() => setLocation("login")} />
+        <Home username={name} logout={() => setLocation("login")} />
       )}
       {location === "error" && (
-        <View.Prompt message="Wrong password" onOk={() => setLocation("login")} />
+        <Prompt message="Wrong password" onOk={() => setLocation("login")} />
       )}
     </>
   );
