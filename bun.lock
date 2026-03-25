@@ -14,7 +14,7 @@
     },
     "demo/dev-server": {
       "name": "@demo/dev-server",
-      "version": "1.0.8",
+      "version": "1.0.9",
       "dependencies": {
         "@playfast/wmux": "workspace:*",
         "@playfast/wmux-client-terminal": "workspace:*",
@@ -29,7 +29,7 @@
     },
     "demo/file-editor": {
       "name": "file-editor-demo",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-bun-ws-client": "workspace:*",
@@ -74,7 +74,7 @@
     },
     "demo/todo-app": {
       "name": "todo-app-demo",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-bun-ws-client": "workspace:*",
@@ -97,7 +97,7 @@
     },
     "packages/echoform": {
       "name": "@playfast/echoform",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "dependencies": {
         "crypto-random-string": "5.0.0",
         "fossil-delta": "^2.0.0",
@@ -114,7 +114,7 @@
     },
     "packages/react-render-null": {
       "name": "@playfast/echoform-render",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "dependencies": {
         "@types/react-reconciler": "0.28.9",
         "react-reconciler": "0.31.0",
@@ -125,13 +125,13 @@
         "react": "19.0.0",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.4",
+        "@playfast/echoform": ">=1.0.5",
         "react": ">=19.0.0",
       },
     },
     "packages/wmux": {
       "name": "@playfast/wmux",
-      "version": "0.2.7",
+      "version": "0.2.8",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-render": "workspace:*",
@@ -148,7 +148,7 @@
     },
     "packages/wmux-client": {
       "name": "@playfast/wmux-client",
-      "version": "0.0.9",
+      "version": "0.0.10",
       "dependencies": {
         "@dnd-kit/react": "^0.3.2",
         "@heroui/react": "^3.0.0",
@@ -176,7 +176,7 @@
     },
     "packages/wmux-client-terminal": {
       "name": "@playfast/wmux-client-terminal",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@opentui/core": "latest",
         "@opentui/react": "latest",
@@ -193,33 +193,33 @@
     },
     "plugins/bun-ws-client": {
       "name": "@playfast/echoform-bun-ws-client",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "devDependencies": {
         "@playfast/echoform": "workspace:*",
         "@types/react": "19.0.2",
         "@types/react-dom": "19.0.2",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.4",
+        "@playfast/echoform": ">=1.0.5",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
       },
     },
     "plugins/bun-ws-server": {
       "name": "@playfast/echoform-bun-ws-server",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "devDependencies": {
         "@playfast/echoform": "workspace:*",
         "@types/react": "19.0.2",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.4",
+        "@playfast/echoform": ">=1.0.5",
         "react": ">=19.0.0",
       },
     },
     "plugins/socket-client": {
       "name": "@playfast/echoform-socket-client",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "dependencies": {
         "socket.io-client": "4.8.3",
       },
@@ -229,14 +229,14 @@
         "@types/react-dom": "19.0.2",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.4",
+        "@playfast/echoform": ">=1.0.5",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
       },
     },
     "plugins/socket-server": {
       "name": "@playfast/echoform-socket-server",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "dependencies": {
         "socket.io": "4.8.3",
       },
@@ -250,7 +250,7 @@
         "utf-8-validate": "5.0.10",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.4",
+        "@playfast/echoform": ">=1.0.5",
         "react": ">=19.0.0",
       },
     },

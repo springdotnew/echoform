@@ -5,6 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
 import { PrefixProvider, useTUIContext } from "./FocusContext";
 import { SearchOverlay } from "./SearchOverlay";
+import { LocalFileViewer } from "./LocalFileViewer";
 import type { CategoryInfo } from "../types";
 
 const SIDEBAR_WIDTH = 30;
@@ -30,9 +31,11 @@ interface SidebarNavigationItem {
 const buildAllNavigationItems = (
   categories: ReadonlyArray<CategoryInfo>,
 ): readonly SidebarNavigationItem[] =>
-  categories
-    .filter((c) => c.type !== "files")
-    .flatMap((c) => c.tabs.map((tab) => ({ categoryName: c.name, tabId: tab.id })));
+  categories.flatMap((c) =>
+    c.type === "files"
+      ? (c.openFiles ?? []).map((file) => ({ categoryName: c.name, tabId: `file::${file.path}` }))
+      : c.tabs.map((tab) => ({ categoryName: c.name, tabId: tab.id })),
+  );
 
 const navigateItem = (
   items: readonly SidebarNavigationItem[],
@@ -105,12 +108,24 @@ export const WmuxApp = (props: {
     return map;
   }, [children]);
 
+  const selectFirstInCategory = useCallback((cat: CategoryInfo) => {
+    if (cat.type === "files") {
+      const firstOpen = (cat.openFiles ?? [])[0];
+      if (firstOpen) { selectTab(`file::${firstOpen.path}`); return; }
+      const firstFile = (cat.fileEntries ?? []).find((e) => !e.isDir);
+      if (firstFile) { selectTab(`file::${firstFile.path}`); openFile(firstFile.path); }
+      return;
+    }
+    if (cat.tabs.length > 0) selectTab(cat.tabs[0]!.id);
+  }, [selectTab, openFile]);
+
   const handleNavigate = useCallback((delta: number) => {
     const target = navigateItem(allNavItems, activeTabId, delta);
     if (!target) return;
     if (target.categoryName !== activeCategory) selectCategory(target.categoryName);
     selectTab(target.tabId);
-  }, [allNavItems, activeTabId, activeCategory, selectCategory, selectTab]);
+    if (target.tabId.startsWith("file::")) openFile(target.tabId.slice(6));
+  }, [allNavItems, activeTabId, activeCategory, selectCategory, selectTab, openFile]);
 
   useKeyboard((key) => {
     // ── Search overlay handles its own keys ──────────────
@@ -147,9 +162,7 @@ export const WmuxApp = (props: {
       if (idx < categories.length) {
         const cat = categories[idx]!;
         selectCategory(cat.name);
-        if (cat.type !== "files" && cat.tabs.length > 0) {
-          selectTab(cat.tabs[0]!.id);
-        }
+        selectFirstInCategory(cat);
       }
       return;
     }
@@ -160,9 +173,7 @@ export const WmuxApp = (props: {
       const nextIdx = (catIdx + 1) % categories.length;
       const nextCat = categories[nextIdx]!;
       selectCategory(nextCat.name);
-      if (nextCat.type !== "files" && nextCat.tabs.length > 0) {
-        selectTab(nextCat.tabs[0]!.id);
-      }
+      selectFirstInCategory(nextCat);
       return;
     }
     if (key.name === "[") {
@@ -170,9 +181,7 @@ export const WmuxApp = (props: {
       const prevIdx = (catIdx - 1 + categories.length) % categories.length;
       const prevCat = categories[prevIdx]!;
       selectCategory(prevCat.name);
-      if (prevCat.type !== "files" && prevCat.tabs.length > 0) {
-        selectTab(prevCat.tabs[0]!.id);
-      }
+      selectFirstInCategory(prevCat);
       return;
     }
 
@@ -274,12 +283,14 @@ export const WmuxApp = (props: {
                 onOpenFile={openFile}
                 onClose={handleSearchClose}
               />
+            ) : activeChild ? (
+              activeChild
+            ) : activeTabId.startsWith("file::") ? (
+              <LocalFileViewer filePath={activeTabId.slice(6)} />
             ) : (
-              activeChild ?? (
-                <box flexGrow={1} justifyContent="center" alignItems="center">
-                  <text fg="#636366">No active tab</text>
-                </box>
-              )
+              <box flexGrow={1} justifyContent="center" alignItems="center">
+                <text fg="#636366">No active tab</text>
+              </box>
             )}
           </box>
         </box>
