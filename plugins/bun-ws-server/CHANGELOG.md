@@ -1,5 +1,13 @@
 # @playfast/echoform-bun-ws-server
 
+## 1.0.7
+
+### Patch Changes
+
+- 654cc2d: Persist terminal history across tab switches
+- Updated dependencies [654cc2d]
+  - @playfast/echoform@1.0.7
+
 ## 1.0.6
 
 ### Patch Changes

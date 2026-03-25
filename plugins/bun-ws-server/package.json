@@ -1,6 +1,6 @@
 {
   "name": "@playfast/echoform-bun-ws-server",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Bun WebSocket server transport for echoform",
   "type": "module",
   "exports": {
@@ -18,7 +18,7 @@
     "build": "tsgo -p ."
   },
   "peerDependencies": {
-    "@playfast/echoform": ">=1.0.6",
+    "@playfast/echoform": ">=1.0.7",
     "react": ">=19.0.0"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 {
   "name": "todo-app-demo",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "type": "module",
   "scripts": {

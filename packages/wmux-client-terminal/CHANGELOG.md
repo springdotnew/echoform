@@ -1,5 +1,14 @@
 # @playfast/wmux-client-terminal
 
+## 0.0.4
+
+### Patch Changes
+
+- 654cc2d: Persist terminal history across tab switches
+- Updated dependencies [654cc2d]
+  - @playfast/echoform@1.0.7
+  - @playfast/wmux@0.2.10
+
 ## 0.0.3
 
 ### Patch Changes
