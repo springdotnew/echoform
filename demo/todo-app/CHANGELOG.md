@@ -1,5 +1,15 @@
 # todo-app-demo
 
+## 1.0.5
+
+### Patch Changes
+
+- Updated dependencies [d8ae8bf]
+  - @playfast/echoform@1.0.4
+  - @playfast/echoform-render@1.0.4
+  - @playfast/echoform-bun-ws-client@1.0.4
+  - @playfast/echoform-bun-ws-server@1.0.4
+
 ## 1.0.4
 
 ### Patch Changes

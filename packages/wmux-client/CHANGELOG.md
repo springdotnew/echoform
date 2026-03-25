@@ -1,5 +1,13 @@
 # @playfast/wmux-client
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [d8ae8bf]
+  - @playfast/echoform@1.0.4
+  - @playfast/wmux@0.2.7
+
 ## 0.0.8
 
 ### Patch Changes

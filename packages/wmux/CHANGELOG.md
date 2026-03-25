@@ -1,5 +1,13 @@
 # @playfast/wmux
 
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies [d8ae8bf]
+  - @playfast/echoform@1.0.4
+  - @playfast/echoform-render@1.0.4
+
 ## 0.2.6
 
 ### Patch Changes
