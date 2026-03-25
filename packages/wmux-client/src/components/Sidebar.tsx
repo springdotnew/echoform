@@ -1,7 +1,8 @@
 import { useCallback, type ReactElement } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, Play, RotateCw, Square } from "lucide-react";
 import { STATUS_COLORS } from "../styles/theme";
 import { resolveIcon } from "../utils/icons";
+import { isStandaloneMode, usePwaInstall } from "../utils/pwa";
 import { FileTree } from "./FileViewer";
 import type { CategoryInfo, TabInfo } from "../types";
 
@@ -15,6 +16,9 @@ interface SidebarProps {
   readonly onSelectTab: (id: string) => void;
   readonly onToggleDir: (path: string) => void;
   readonly onOpenFile: (path: string) => void;
+  readonly onStartProcess: (id: string) => void;
+  readonly onStopProcess: (id: string) => void;
+  readonly onRestartProcess: (id: string) => void;
 }
 
 function categoryTabCount(category: CategoryInfo): number {
@@ -73,21 +77,50 @@ function CategoryHeader({
   );
 }
 
+const PROCESS_BTN = "flex items-center justify-center w-4 h-4 rounded-sm bg-transparent border-none p-0 text-muted-foreground/40 hover:text-foreground disabled:opacity-20 disabled:cursor-default cursor-pointer transition-colors";
+
+function ProcessButtons({
+  tab,
+  onStart,
+  onStop,
+  onRestart,
+}: {
+  readonly tab: TabInfo;
+  readonly onStart: () => void;
+  readonly onStop: () => void;
+  readonly onRestart: () => void;
+}): ReactElement {
+  const isRunning = tab.status === "running";
+  return (
+    <div className="flex items-center gap-px shrink-0 opacity-0 group-hover/tab:opacity-100 transition-opacity">
+      {!isRunning && <button disabled={isRunning} onClick={(e) => { e.stopPropagation(); onStart(); }} title="Start" className={PROCESS_BTN}><Play size={9} /></button>}
+      {isRunning && <button onClick={(e) => { e.stopPropagation(); onRestart(); }} title="Restart" className={PROCESS_BTN}><RotateCw size={9} /></button>}
+      {isRunning && <button onClick={(e) => { e.stopPropagation(); onStop(); }} title="Stop" className={PROCESS_BTN}><Square size={9} /></button>}
+    </div>
+  );
+}
+
 function TabItem({
   tab,
   isActive,
   onSelect,
+  onStart,
+  onStop,
+  onRestart,
 }: {
   readonly tab: TabInfo;
   readonly isActive: boolean;
   readonly onSelect: () => void;
+  readonly onStart: () => void;
+  readonly onStop: () => void;
+  readonly onRestart: () => void;
 }): ReactElement {
   const TabIcon = resolveIcon(tab.icon);
 
   return (
     <div
       onClick={onSelect}
-      className={`flex items-center gap-2.5 pl-7 pr-3 py-2 cursor-pointer transition-colors rounded-md mx-1.5 group ${
+      className={`flex items-center gap-2.5 pl-7 pr-3 py-2 cursor-pointer transition-colors rounded-md mx-1.5 group/tab ${
         isActive
           ? "bg-accent/60 text-foreground"
           : "text-muted-foreground/70 hover:bg-accent/30 hover:text-foreground/90"
@@ -106,6 +139,8 @@ function TabItem({
           </div>
         )}
       </div>
+
+      <ProcessButtons tab={tab} onStart={onStart} onStop={onStop} onRestart={onRestart} />
 
       <span
         className="w-[6px] h-[6px] rounded-full shrink-0"
@@ -130,6 +165,9 @@ function CategorySection({
   onSelectTab,
   onToggleDir,
   onOpenFile,
+  onStartProcess,
+  onStopProcess,
+  onRestartProcess,
 }: {
   readonly category: CategoryInfo;
   readonly isActive: boolean;
@@ -140,6 +178,9 @@ function CategorySection({
   readonly onSelectTab: (id: string) => void;
   readonly onToggleDir: (path: string) => void;
   readonly onOpenFile: (path: string) => void;
+  readonly onStartProcess: (id: string) => void;
+  readonly onStopProcess: (id: string) => void;
+  readonly onRestartProcess: (id: string) => void;
 }): ReactElement {
   const isFiles = category.type === "files";
 
@@ -191,6 +232,9 @@ function CategorySection({
                   tab={tab}
                   isActive={tab.id === activeTabId && isActive}
                   onSelect={() => handleSelectTab(tab.id)}
+                  onStart={() => onStartProcess(tab.id)}
+                  onStop={() => onStopProcess(tab.id)}
+                  onRestart={() => onRestartProcess(tab.id)}
                 />
               ))}
             </div>
@@ -201,15 +245,43 @@ function CategorySection({
   );
 }
 
-function SidebarFooter(): ReactElement {
+function InstallBanner({ onInstall }: { readonly onInstall: () => void }): ReactElement {
   return (
-    <div className="border-t border-border/40 px-3 py-2 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <span className="text-[10px] text-muted-foreground/50 font-mono">⌘K</span>
-        <span className="text-[10px] text-muted-foreground/50 font-mono">↑↓</span>
-        <span className="text-[10px] text-muted-foreground/50 font-mono">⌘[]</span>
+    <div className="border-t border-border/40 px-3 py-2">
+      <button
+        onClick={onInstall}
+        className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md bg-[#0a84ff]/10 border border-[#0a84ff]/20 hover:bg-[#0a84ff]/20 hover:border-[#0a84ff]/30 transition-colors cursor-pointer text-left"
+      >
+        <Download size={12} className="text-[#0a84ff] shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] text-foreground/90 font-medium leading-tight">Install app</div>
+          <div className="text-[9px] text-muted-foreground/60 leading-tight mt-0.5">Better shortcuts & controls</div>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function SidebarFooter(): ReactElement {
+  const { canInstall, install } = usePwaInstall();
+
+  return (
+    <div className="mt-auto shrink-0">
+      {canInstall && <InstallBanner onInstall={install} />}
+      <div className="border-t border-border/40 px-3 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-muted-foreground/50 font-mono">⌘K</span>
+          <span className="text-[10px] text-muted-foreground/50 font-mono">↑↓</span>
+          <span className="text-[10px] text-muted-foreground/50 font-mono">⌘[]</span>
+          {isStandaloneMode && (
+            <>
+              <span className="text-[10px] text-muted-foreground/50 font-mono">^Tab</span>
+              <span className="text-[10px] text-muted-foreground/50 font-mono">⌘T</span>
+            </>
+          )}
+        </div>
+        <span className="text-[9px] text-muted-foreground/40">wmux</span>
       </div>
-      <span className="text-[9px] text-muted-foreground/40">wmux</span>
     </div>
   );
 }
@@ -224,6 +296,9 @@ export function Sidebar({
   onSelectTab,
   onToggleDir,
   onOpenFile,
+  onStartProcess,
+  onStopProcess,
+  onRestartProcess,
 }: SidebarProps): ReactElement {
   return (
     <div className="w-[240px] min-w-[240px] bg-[#232325] border-r border-border/50 flex flex-col select-none h-full">
@@ -240,6 +315,9 @@ export function Sidebar({
             onSelectTab={onSelectTab}
             onToggleDir={onToggleDir}
             onOpenFile={onOpenFile}
+            onStartProcess={onStartProcess}
+            onStopProcess={onStopProcess}
+            onRestartProcess={onRestartProcess}
           />
         ))}
 

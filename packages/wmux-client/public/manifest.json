@@ -1,0 +1,22 @@
+{
+  "name": "wmux",
+  "short_name": "wmux",
+  "description": "Web-based terminal multiplexer for dev environments",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1c1c1e",
+  "theme_color": "#1c1c1e",
+  "icons": [
+    {
+      "src": "/icons/wmux.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/wmux-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
