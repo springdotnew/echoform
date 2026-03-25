@@ -28,10 +28,15 @@ export interface CallbackConfig<
 
 // ---- StreamDef ----
 
+export interface StreamOptions {
+  readonly replay?: number | undefined;
+}
+
 export interface StreamDef<
   TChunk extends StandardSchemaV1 = StandardSchemaV1,
 > {
   readonly chunk: TChunk;
+  readonly replay?: number | undefined;
 }
 
 // ---- ViewDef ----
@@ -138,15 +143,21 @@ export function callback<
 /**
  * Define a server-to-client stream with a chunk schema.
  *
+ * Optionally pass `{ replay: N }` to buffer the last N chunks server-side.
+ * New clients receive the buffered chunks on connect (ReplaySubject pattern).
+ *
  * ```ts
- * stream(z.object({ data: z.string() }))
+ * stream(z.string())                      // no replay
+ * stream(z.string(), { replay: 1000 })    // buffer last 1000 chunks
  * ```
  */
 export function stream<TChunk extends StandardSchemaV1>(
   chunkSchema: TChunk,
+  options?: StreamOptions,
 ): StreamDef<TChunk> {
   return {
     chunk: chunkSchema,
+    ...(options?.replay !== undefined ? { replay: options.replay } : {}),
   };
 }
 

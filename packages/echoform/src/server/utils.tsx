@@ -10,6 +10,9 @@ import type { StandardSchemaV1 } from "../shared/standard-schema";
 /**
  * Create a StreamEmitter for a server-to-client stream prop.
  *
+ * If the stream was defined with `{ replay: N }`, the emitter automatically
+ * buffers the last N chunks and replays them to newly connected clients.
+ *
  * ```ts
  * const output = useStream(TerminalDef, "output");
  * output.emit({ data: "hello" });
@@ -27,11 +30,19 @@ export function useStream<
 
   if (!emitterRef.current) {
     const uid = createStreamUid(randomId());
-    emitterRef.current = createStreamEmitter(
+    const streamDef = _viewDef.streams[_streamName] as StreamDef | undefined;
+    const replaySize = streamDef?.replay;
+    const emitter = createStreamEmitter(
       uid,
       (streamUid, chunk) => app?.broadcastStreamChunk(streamUid, chunk),
       (streamUid) => app?.broadcastStreamEnd(streamUid),
+      replaySize,
     );
+    emitterRef.current = emitter;
+
+    if (replaySize !== undefined && replaySize > 0) {
+      app?.registerStreamBuffer(uid, emitter.getBuffer);
+    }
   }
 
   return emitterRef.current as StreamEmitter<V["streams"][K] extends StreamDef<infer C> ? StandardSchemaV1.InferInput<C> : never>;

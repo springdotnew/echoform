@@ -191,6 +191,10 @@ function applyBrands(event: string, data: unknown): unknown {
       const endPayload = data as { readonly streamUid: string };
       return { streamUid: createStreamUid(endPayload.streamUid) };
     }
+    case "stream_replay": {
+      const replayPayload = data as { readonly streamUid: string; readonly chunks: ReadonlyArray<unknown> };
+      return { streamUid: createStreamUid(replayPayload.streamUid), chunks: replayPayload.chunks };
+    }
     default:
       return data;
   }
@@ -234,6 +238,7 @@ function emitFactory(): EmitFunctions {
     request_event: createEmitFn("request_event"),
     stream_chunk: createEmitFn("stream_chunk"),
     stream_end: createEmitFn("stream_end"),
+    stream_replay: createEmitFn("stream_replay"),
   };
 }
 

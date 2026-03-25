@@ -65,6 +65,7 @@ function Client<TEvents extends Record<string | number, unknown> = Record<string
   const [runningViews, setRunningViews] = useState<ReadonlyArray<ExistingSharedViewData>>([]);
   const transportRef = useRef(decompileTransport(rawTransport));
   const streamListenersRef = useRef<Map<StreamUid, Set<(chunk: SerializableValue) => void>>>(new Map());
+  const pendingReplayRef = useRef<Map<StreamUid, ReadonlyArray<SerializableValue>>>(new Map());
 
   const createEvent = useCallback((eventUid: EventUid, ...args: ReadonlyArray<SerializableValue>): Promise<SerializableValue> => {
     return new Promise((resolve, reject) => {
@@ -105,6 +106,16 @@ function Client<TEvents extends Record<string | number, unknown> = Record<string
     const newSet = new Set(existing);
     newSet.add(listener);
     streamListenersRef.current = new Map([...streamListenersRef.current, [streamUid, newSet]]);
+
+    const pending = pendingReplayRef.current.get(streamUid);
+    if (pending) {
+      const updated = new Map(pendingReplayRef.current);
+      updated.delete(streamUid);
+      pendingReplayRef.current = updated;
+      for (const chunk of pending) {
+        listener(chunk);
+      }
+    }
 
     return () => {
       const current = streamListenersRef.current.get(streamUid);
@@ -151,11 +162,28 @@ function Client<TEvents extends Record<string | number, unknown> = Record<string
       streamListenersRef.current = newMap;
     };
 
+    const streamReplayHandler = ({ streamUid, chunks }: AppEvents['stream_replay']): void => {
+      const listeners = streamListenersRef.current.get(streamUid);
+      if (listeners && listeners.size > 0) {
+        for (const chunk of chunks) {
+          for (const listener of listeners) {
+            listener(chunk);
+          }
+        }
+      } else {
+        pendingReplayRef.current = new Map([
+          ...pendingReplayRef.current,
+          [streamUid, chunks],
+        ]);
+      }
+    };
+
     const unsubscribeViewsTree = transport.on("update_views_tree", updateViewsTreeHandler);
     const unsubscribeUpdateView = transport.on("update_view", updateViewHandler);
     const unsubscribeDeleteView = transport.on("delete_view", deleteViewHandler);
     const unsubscribeStreamChunk = transport.on("stream_chunk", streamChunkHandler);
     const unsubscribeStreamEnd = transport.on("stream_end", streamEndHandler);
+    const unsubscribeStreamReplay = transport.on("stream_replay", streamReplayHandler);
 
     if (requestViewTreeOnMount) {
       transport.emit("request_views_tree");
@@ -167,7 +195,9 @@ function Client<TEvents extends Record<string | number, unknown> = Record<string
       unsubscribeDeleteView?.();
       unsubscribeStreamChunk?.();
       unsubscribeStreamEnd?.();
+      unsubscribeStreamReplay?.();
       streamListenersRef.current = new Map();
+      pendingReplayRef.current = new Map();
       transport.destroy();
     };
   }, [requestViewTreeOnMount]);

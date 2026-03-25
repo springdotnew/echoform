@@ -27,17 +27,30 @@ export interface StreamReceiver<T> {
 
 export interface StreamEmitterHandle<T = unknown> extends StreamEmitter<T> {
   readonly uid: StreamUid;
+  readonly getBuffer: () => ReadonlyArray<SerializableValue>;
 }
 
 export function createStreamEmitter<T>(
   uid: StreamUid,
   onChunk: (streamUid: StreamUid, chunk: SerializableValue) => void,
   onEnd: (streamUid: StreamUid) => void,
+  restoreSize?: number | undefined,
 ): StreamEmitterHandle<T> {
+  const buffer: SerializableValue[] = [];
+  const capacity = restoreSize ?? 0;
+
   return {
     uid,
-    emit: (chunk: T) => onChunk(uid, chunk as SerializableValue),
+    emit: (chunk: T) => {
+      const serialized = chunk as SerializableValue;
+      if (capacity > 0) {
+        if (buffer.length >= capacity) buffer.shift();
+        buffer.push(serialized);
+      }
+      onChunk(uid, serialized);
+    },
     end: () => onEnd(uid),
+    getBuffer: () => [...buffer],
   };
 }
 

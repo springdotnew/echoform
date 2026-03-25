@@ -13,6 +13,7 @@ import type {
 import type { EventUid, RequestUid, ViewUid, StreamUid, PropName } from "../shared/branded.types";
 import { createEventUid, createPropName } from "../shared/branded.types";
 import type { StreamEmitterHandle } from "../shared/view-inference";
+import type { StreamBufferGetter } from "./contexts";
 import { getViewDef } from "../shared/view-builder";
 import { ViewFactoryContext } from "../shared/view-factory";
 import type { ViewFactory } from "../shared/view-factory";
@@ -263,10 +264,17 @@ function handleViewsTreeRequest(
   client: DecompileTransport,
   existingSharedViewsRef: React.RefObject<ReadonlyArray<ExistingSharedViewData>>,
   clientEventAuthRef: React.RefObject<Map<DecompileTransport, Set<EventUid>>>,
+  streamBufferRegistryRef: React.RefObject<Map<StreamUid, StreamBufferGetter>>,
 ): void {
   client.emit("update_views_tree", { views: snapshotViews(existingSharedViewsRef.current) });
   const allEventUids = existingSharedViewsRef.current.flatMap((v) => collectEventUids(v.props));
   clientEventAuthRef.current = new Map([...clientEventAuthRef.current, [client, new Set(allEventUids)]]);
+
+  for (const [streamUid, getBuffer] of streamBufferRegistryRef.current) {
+    const chunks = getBuffer();
+    if (chunks.length === 0) continue;
+    client.emit("stream_replay", { streamUid, chunks });
+  }
 }
 
 function createNewSharedView(
@@ -328,6 +336,7 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
   const clientCleanupMapRef = useRef<Map<AnyTransport, () => void>>(new Map());
   const clientEventAuthRef = useRef<Map<DecompileTransport, Set<EventUid>>>(new Map());
   const eventChainRef = useRef(Promise.resolve());
+  const streamBufferRegistryRef = useRef<Map<StreamUid, StreamBufferGetter>>(new Map());
   const skipValidationRef = useRef(skipCallbackValidation ?? false);
   skipValidationRef.current = skipCallbackValidation ?? false;
 
@@ -352,11 +361,24 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
 
   const broadcastStreamEnd = useCallback((streamUid: StreamUid): void => {
     broadcast("stream_end", { streamUid });
+    const updated = new Map(streamBufferRegistryRef.current);
+    updated.delete(streamUid);
+    streamBufferRegistryRef.current = updated;
   }, [broadcast]);
+
+  const registerStreamBuffer = useCallback((streamUid: StreamUid, getBuffer: StreamBufferGetter): void => {
+    streamBufferRegistryRef.current = new Map([...streamBufferRegistryRef.current, [streamUid, getBuffer]]);
+  }, []);
+
+  const unregisterStreamBuffer = useCallback((streamUid: StreamUid): void => {
+    const updated = new Map(streamBufferRegistryRef.current);
+    updated.delete(streamUid);
+    streamBufferRegistryRef.current = updated;
+  }, []);
 
   const registerSocketListener = useCallback((client: DecompileTransport) => {
     const cleanReqTree = client.on("request_views_tree", () => {
-      handleViewsTreeRequest(client, existingSharedViewsRef, clientEventAuthRef);
+      handleViewsTreeRequest(client, existingSharedViewsRef, clientEventAuthRef, streamBufferRegistryRef);
     });
 
     const cleanReqEvent = client.on("request_event", (eventData: AppEvents['request_event']) => {
@@ -433,8 +455,12 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     removeEventHandlers(viewEventsRef, deleteSet);
     clientEventAuthRef.current = deauthorizeEventUidsForAllClients(clientEventAuthRef.current, deleteSet);
 
+    for (const prop of deletedView.props) {
+      if (prop.type === "stream") unregisterStreamBuffer(prop.uid);
+    }
+
     broadcast("delete_view", { viewUid: uid });
-  }, [broadcast]);
+  }, [broadcast, unregisterStreamBuffer]);
 
   useEffect(() => {
     if (!transportIsClient) return;
@@ -469,7 +495,8 @@ const App = forwardRef<AppHandle, AppProps>(function App({ children, transport, 
     views: snapshotViews(existingSharedViewsRef.current),
     addClient, removeClient, updateRunningView, deleteRunningView,
     broadcastStreamChunk, broadcastStreamEnd,
-  }), [addClient, removeClient, updateRunningView, deleteRunningView, broadcastStreamChunk, broadcastStreamEnd]);
+    registerStreamBuffer, unregisterStreamBuffer,
+  }), [addClient, removeClient, updateRunningView, deleteRunningView, broadcastStreamChunk, broadcastStreamEnd, registerStreamBuffer, unregisterStreamBuffer]);
 
   const viewFactory = useCallback<ViewFactory>(
     (name, props) => <ViewComponent name={name} props={props} />,
