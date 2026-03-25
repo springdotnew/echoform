@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, type ReactNode } from "react";
-import type { Transport } from "../shared/types";
+import type { Transport, AnyTransport } from "../shared/types";
 import { ViewsRenderer } from "../shared/ViewsRenderer";
 import App, { type AppHandle } from "./App";
-
-type AnyTransport = Transport<Record<string | number, unknown>>;
 
 interface DisconnectEvent {
   readonly disconnect: void;

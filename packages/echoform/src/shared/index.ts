@@ -3,6 +3,7 @@ export { decompileTransport, emit } from "./decompiled-transport";
 export { encodeMessage, decodeMessage } from "./binary-protocol";
 export type {
   AppEvents,
+  AnyTransport,
   AppTransport,
   ExistingSharedViewData,
   Prop,

@@ -4,7 +4,7 @@ import { connect, type Socket, type ManagerOptions, type SocketOptions } from "s
 import type { Transport } from "@playfast/echoform/shared";
 import { emit } from "@playfast/echoform/shared";
 
-interface Props<ViewsInterface extends Record<string, unknown> = Record<string, unknown>> {
+interface Props {
   readonly port: number;
   readonly host: string;
   readonly views: Readonly<Record<string, React.ComponentType<Record<string, unknown>>>>;
@@ -12,7 +12,7 @@ interface Props<ViewsInterface extends Record<string, unknown> = Record<string, 
   readonly auth?: Readonly<Record<string, string>>;
 }
 
-function Client<ViewsInterface extends Record<string, unknown> = Record<string, unknown>>(props: Props<ViewsInterface>): React.ReactElement {
+function Client(props: Props): React.ReactElement {
   const { host, port, views, socketOptions, auth } = props;
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -45,3 +45,4 @@ function Client<ViewsInterface extends Record<string, unknown> = Record<string, 
 
 export { Client };
 export type { Props as ClientProps };
+

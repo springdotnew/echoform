@@ -181,21 +181,19 @@ function applyBrands(event: string, data: unknown): unknown {
   }
 }
 
-interface UnbrandedProp {
-  readonly name: string;
-  readonly type: "data" | "event" | "stream";
-  readonly data?: unknown;
-  readonly uid?: string;
-}
+type UnbrandedProp =
+  | { readonly name: string; readonly type: "data"; readonly data: unknown }
+  | { readonly name: string; readonly type: "event"; readonly uid: string }
+  | { readonly name: string; readonly type: "stream"; readonly uid: string };
 
 function brandProp(prop: UnbrandedProp): import("./types").Prop {
   if (prop.type === "data") {
     return { name: createPropName(prop.name), type: "data", data: prop.data as import("./types").SerializableValue };
   }
   if (prop.type === "event") {
-    return { name: createPropName(prop.name), type: "event", uid: createEventUid(prop.uid ?? "") };
+    return { name: createPropName(prop.name), type: "event", uid: createEventUid(prop.uid) };
   }
-  return { name: createPropName(prop.name), type: "stream", uid: createStreamUid(prop.uid ?? "") };
+  return { name: createPropName(prop.name), type: "stream", uid: createStreamUid(prop.uid) };
 }
 
 // ---- Convenience emit helpers ----
@@ -204,22 +202,24 @@ type EmitFunctions = {
   readonly [Key in keyof AppEvents]: <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[Key]) => void;
 };
 
+function createEmitFn<Key extends keyof AppEvents>(event: Key) {
+  return <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[Key]): void => {
+    const bytes = encodeMessage(event as string, data);
+    (transport.emit as (event: string, data: unknown) => void)("__bin__", bytes);
+  };
+}
+
 function emitFactory(): EmitFunctions {
-  const events: Array<keyof AppEvents> = [
-    "update_views_tree", "update_view", "delete_view", "request_views_tree",
-    "respond_to_event", "request_event", "stream_chunk", "stream_end",
-  ];
-
-  const result = {} as Record<string, <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[keyof AppEvents]) => void>;
-
-  for (const event of events) {
-    result[event as string] = <TEvents extends Record<string | number, unknown>>(transport: Transport<TEvents>, data?: AppEvents[typeof event]): void => {
-      const decompiled = decompileTransport(transport);
-      decompiled.emit(event, data);
-    };
-  }
-
-  return result as EmitFunctions;
+  return {
+    update_views_tree: createEmitFn("update_views_tree"),
+    update_view: createEmitFn("update_view"),
+    delete_view: createEmitFn("delete_view"),
+    request_views_tree: createEmitFn("request_views_tree"),
+    respond_to_event: createEmitFn("respond_to_event"),
+    request_event: createEmitFn("request_event"),
+    stream_chunk: createEmitFn("stream_chunk"),
+    stream_end: createEmitFn("stream_end"),
+  };
 }
 
 export const emit = emitFactory();

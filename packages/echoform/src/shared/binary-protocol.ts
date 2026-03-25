@@ -48,7 +48,11 @@ function createSchema<T>(impl: SchemaImpl<T>): ISchema<T> {
 
 const numSchema = createSchema<number>({
   write(output, value) { binString.write(output, String(value)); },
-  read(input) { return Number(binString.read(input)); },
+  read(input) {
+    const n = Number(binString.read(input));
+    if (!Number.isFinite(n)) throw new Error("Invalid number value in binary protocol");
+    return n;
+  },
   measure(value, measurer) {
     if (value === MaxValue) return measurer.unbounded;
     return binString.measure(String(value as number), measurer);
@@ -78,7 +82,8 @@ function readBoundedArray<T>(count: number, readItem: (input: ISerialInput) => T
   return items;
 }
 
-function writeSerializableValue(output: ISerialOutput, value: SerializableValue): void {
+function writeSerializableValue(output: ISerialOutput, value: SerializableValue, depth: number): void {
+  if (depth > MAX_NESTING_DEPTH) throw new Error("Maximum nesting depth exceeded");
   if (value === null) { u8.write(output, TAG_NULL); return; }
   if (value === undefined) { u8.write(output, TAG_UNDEFINED); return; }
   if (typeof value === "boolean") { u8.write(output, TAG_BOOL); bool.write(output, value); return; }
@@ -88,7 +93,7 @@ function writeSerializableValue(output: ISerialOutput, value: SerializableValue)
   if (Array.isArray(value)) {
     u8.write(output, TAG_ARRAY);
     u32.write(output, value.length);
-    for (const item of value) writeSerializableValue(output, item as SerializableValue);
+    for (const item of value) writeSerializableValue(output, item as SerializableValue, depth + 1);
     return;
   }
 
@@ -97,7 +102,7 @@ function writeSerializableValue(output: ISerialOutput, value: SerializableValue)
   u32.write(output, entries.length);
   for (const [key, entryValue] of entries) {
     binString.write(output, key);
-    writeSerializableValue(output, entryValue);
+    writeSerializableValue(output, entryValue, depth + 1);
   }
 }
 
@@ -126,8 +131,9 @@ function readSerializableValue(input: ISerialInput, depth: number): Serializable
   }
 }
 
-function measureSerializableValue(value: SerializableValue | typeof MaxValue, measurer: IMeasurer): IMeasurer {
+function measureSerializableValue(value: SerializableValue | typeof MaxValue, measurer: IMeasurer, depth: number): IMeasurer {
   if (value === MaxValue) return measurer.unbounded;
+  if (depth > MAX_NESTING_DEPTH) throw new Error("Maximum nesting depth exceeded");
   if (value === null || value === undefined) return measurer.add(1);
   if (typeof value === "boolean") return measurer.add(1 + 1);
   if (typeof value === "number") { measurer.add(1); return numSchema.measure(value as number, measurer); }
@@ -135,7 +141,7 @@ function measureSerializableValue(value: SerializableValue | typeof MaxValue, me
 
   if (Array.isArray(value)) {
     measurer.add(1 + 4);
-    for (const item of value) measureSerializableValue(item as SerializableValue, measurer);
+    for (const item of value) measureSerializableValue(item as SerializableValue, measurer, depth + 1);
     return measurer;
   }
 
@@ -143,15 +149,15 @@ function measureSerializableValue(value: SerializableValue | typeof MaxValue, me
   measurer.add(1 + 4);
   for (const [key, entryValue] of entries) {
     binString.measure(key, measurer);
-    measureSerializableValue(entryValue, measurer);
+    measureSerializableValue(entryValue, measurer, depth + 1);
   }
   return measurer;
 }
 
 export const serializableValue = createSchema<SerializableValue>({
-  write: writeSerializableValue,
+  write: (output, value) => writeSerializableValue(output, value, 0),
   read: (input) => readSerializableValue(input, 0),
-  measure: measureSerializableValue,
+  measure: (value, measurer) => measureSerializableValue(value, measurer, 0),
 });
 
 // ---- Prop schema: custom because wire order is name→tag→payload (not tag-first) ----
@@ -343,7 +349,10 @@ export function decodeMessage(bytes: Uint8Array): WireMessage {
   }
 
   const event = idToEventName[eventId];
-  if (!event) return { event: "unknown", data: undefined };
+  if (!event) {
+    console.warn(`[echoform] Unknown binary event ID: ${eventId}`);
+    return { event: "unknown", data: undefined };
+  }
 
   return { event, data: eventSchemas[eventId]?.read(reader) };
 }

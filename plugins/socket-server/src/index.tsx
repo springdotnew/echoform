@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import SocketIO from "socket.io";
 import type { Transport } from "@playfast/echoform/shared";
 import type { Server as ServerBase, ServerProps } from "@playfast/echoform/server";
@@ -65,12 +65,9 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
     };
   }, [server]);
 
-  const getProps = useCallback((): ServerProps => {
-    const { children, singleInstance, instanceRenderHandler, skipCallbackValidation } = props;
-
+  const transport = useMemo((): Transport<{ readonly connection: Transport<{ readonly disconnect: void }> & { readonly id: string } }> => {
     const connectionWrappers = connectionWrappersRef.current;
-
-    const transport: Transport<{ readonly connection: Transport<{ readonly disconnect: void }> & { readonly id: string } }> = {
+    return {
       on: (event, callback) => {
         if (event !== "connection") return;
         const typedCallback = callback as (data: unknown) => void;
@@ -90,17 +87,18 @@ function SocketServer(props: SocketServerComponentProps): React.ReactElement {
         connectionWrappers.delete(typedCallback);
       },
     };
+  }, [server]);
 
-    return {
-      transport: transport as ServerProps['transport'],
-      singleInstance,
-      children,
-      instanceRenderHandler,
-      skipCallbackValidation,
-    };
-  }, [props.children, props.singleInstance, props.instanceRenderHandler, server]);
-
-  return <ServerBase {...getProps()} />;
+  return (
+    <ServerBase
+      transport={transport as ServerProps['transport']}
+      singleInstance={props.singleInstance}
+      instanceRenderHandler={props.instanceRenderHandler}
+      skipCallbackValidation={props.skipCallbackValidation}
+    >
+      {props.children}
+    </ServerBase>
+  );
 }
 
 function createSocketServer(Server: typeof ServerBase): React.FC<Props> {

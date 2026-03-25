@@ -104,3 +104,4 @@ export interface ExistingSharedViewData extends ViewDataBase {
 }
 
 export type AppTransport = Transport<AppEvents>;
+export type AnyTransport = Transport<Record<string | number, unknown>>;
