@@ -40,8 +40,13 @@ const handle = await wmux({
   open: false,
 });
 
-await renderWmuxTUI({
+const tui = await renderWmuxTUI({
   token: handle.token,
   wsUrl: handle.wsUrl,
   webUrl: handle.url,
 });
+
+// Wait for user to quit the TUI (Ctrl+B q), then stop the server
+await tui.done;
+handle.stop();
+process.exit(0);
