@@ -70,7 +70,7 @@ type InferServerCallback<C extends object> =
     : never;
 
 /** Client-side callback handle. */
-export interface ClientCallback<TInput, TOutput, TViewName extends string = string, TCallbackName extends string = string> {
+export interface ClientCallback<TInput, TOutput, _TViewName extends string = string, _TCallbackName extends string = string> {
   readonly mutate: [TInput] extends [void]
     ? () => Promise<TOutput>
     : (input: TInput) => Promise<TOutput>;

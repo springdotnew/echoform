@@ -44,7 +44,7 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   const { id, output, status } = props;
   const sendInput = props.onInput.mutate;
   const sendResize = props.onResize.mutate;
-  const { prefixRef, searchOpenRef, copyModeRef, activeTabId, copyMode } = usePrefixContext();
+  const { prefixRef, searchOpenRef, copyModeRef, terminalContentRef, activeTabId, copyMode } = usePrefixContext();
 
   const [lines, setLines] = useState<readonly StyledLine[]>([]);
   const { width, height } = useTerminalDimensions();
@@ -86,6 +86,13 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   useEffect(() => {
     return output.subscribe(handleOutput);
   }, [output, handleOutput]);
+
+  // Keep terminal content ref in sync for copy mode
+  useEffect(() => {
+    if (activeTabId === id) {
+      terminalContentRef.current = lines.map((line) => line.segments.map((seg) => seg.text).join("")).join("\n");
+    }
+  }, [lines, activeTabId, id, terminalContentRef]);
 
   useEffect(() => {
     const contentWidth = Math.max(10, width - SIDEBAR_WIDTH - 2);

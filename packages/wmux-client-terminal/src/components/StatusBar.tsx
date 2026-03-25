@@ -18,7 +18,7 @@ export const StatusBar = ({ prefixActive, copyMode }: StatusBarProps): ReactNode
           <strong>COPY</strong>
         </text>
         <text fg={MUTED}>
-          select text with mouse
+          <span fg={ACCENT}>c</span> copy buffer
         </text>
         <text fg={MUTED}>
           <span fg={ACCENT}>esc</span> exit

@@ -85,6 +85,7 @@ export const WmuxApp = (props: {
   const copyModeRef = useRef(false);
   const copyPrefixRef = useRef(false);
   const copyPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const terminalContentRef = useRef("");
 
   const activatePrefix = useCallback(() => {
     prefixRef.current = true;
@@ -150,8 +151,12 @@ export const WmuxApp = (props: {
     // ── Search overlay handles its own keys ──────────────
     if (searchOpenRef.current) return;
 
-    // ── Copy mode: only Escape exits ────────────────────
+    // ── Copy mode: 'c' copies, Escape exits ────────────
     if (copyModeRef.current) {
+      if (key.name === "c") {
+        renderer.copyToClipboardOSC52(terminalContentRef.current);
+        exitCopyMode();
+      }
       if (key.name === "escape") exitCopyMode();
       return;
     }
@@ -298,10 +303,10 @@ export const WmuxApp = (props: {
     }
   });
 
-  const activeChild = registry.get(activeTabId);
+  const hasActiveChild = registry.has(activeTabId);
 
   return (
-    <PrefixProvider prefixRef={prefixRef} searchOpenRef={searchOpenRef} copyModeRef={copyModeRef} activeTabId={activeTabId} copyMode={copyMode}>
+    <PrefixProvider prefixRef={prefixRef} searchOpenRef={searchOpenRef} copyModeRef={copyModeRef} terminalContentRef={terminalContentRef} activeTabId={activeTabId} copyMode={copyMode}>
       <box
         flexDirection="column"
         width={width}
@@ -330,7 +335,7 @@ export const WmuxApp = (props: {
             width={SIDEBAR_WIDTH}
           />
 
-          {/* Content area */}
+          {/* Content area — all children stay mounted, inactive ones hidden */}
           <box flexGrow={1} flexDirection="column">
             {searchOpen ? (
               <SearchOverlay
@@ -340,14 +345,21 @@ export const WmuxApp = (props: {
                 onOpenFile={openFile}
                 onClose={handleSearchClose}
               />
-            ) : activeChild ? (
-              activeChild
-            ) : activeTabId.startsWith("file::") ? (
-              <LocalFileViewer filePath={activeTabId.slice(6)} />
-            ) : (
-              <box flexGrow={1} justifyContent="center" alignItems="center">
-                <text fg="#636366">No active tab</text>
-              </box>
+            ) : null}
+            {React.Children.map(children, (child) => {
+              const childId = ((child as React.ReactElement).props as { id?: string }).id;
+              if (!childId) return null;
+              if (searchOpen || childId !== activeTabId) return null;
+              return child;
+            })}
+            {!searchOpen && !hasActiveChild && (
+              activeTabId.startsWith("file::") ? (
+                <LocalFileViewer filePath={activeTabId.slice(6)} />
+              ) : (
+                <box flexGrow={1} justifyContent="center" alignItems="center">
+                  <text fg="#636366">No active tab</text>
+                </box>
+              )
             )}
           </box>
         </box>
