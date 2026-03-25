@@ -38,6 +38,10 @@ jobs:
         working-directory: packages/wmux-client
         run: bun run build
 
+      - name: Run echoform tests
+        working-directory: packages/echoform
+        run: bun run test
+
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
 

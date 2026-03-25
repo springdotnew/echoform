@@ -14,7 +14,7 @@
     },
     "demo/dev-server": {
       "name": "@demo/dev-server",
-      "version": "1.0.7",
+      "version": "1.0.8",
       "dependencies": {
         "@playfast/wmux": "workspace:*",
         "react": "^19.0.0",
@@ -28,7 +28,7 @@
     },
     "demo/file-editor": {
       "name": "file-editor-demo",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-bun-ws-client": "workspace:*",
@@ -73,7 +73,7 @@
     },
     "demo/todo-app": {
       "name": "todo-app-demo",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-bun-ws-client": "workspace:*",
@@ -96,13 +96,14 @@
     },
     "packages/echoform": {
       "name": "@playfast/echoform",
-      "version": "1.0.2",
+      "version": "1.0.4",
       "dependencies": {
         "crypto-random-string": "5.0.0",
         "fossil-delta": "^2.0.0",
         "typed-binary": "^4.3.3",
       },
       "devDependencies": {
+        "@playfast/echoform-render": "workspace:*",
         "@types/react": "19.0.2",
         "react": "19.0.0",
       },
@@ -112,7 +113,7 @@
     },
     "packages/react-render-null": {
       "name": "@playfast/echoform-render",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "dependencies": {
         "@types/react-reconciler": "0.28.9",
         "react-reconciler": "0.31.0",
@@ -123,13 +124,13 @@
         "react": "19.0.0",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.2",
+        "@playfast/echoform": ">=1.0.4",
         "react": ">=19.0.0",
       },
     },
     "packages/wmux": {
       "name": "@playfast/wmux",
-      "version": "0.2.6",
+      "version": "0.2.7",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-render": "workspace:*",
@@ -145,7 +146,7 @@
     },
     "packages/wmux-client": {
       "name": "@playfast/wmux-client",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "dependencies": {
         "@dnd-kit/react": "^0.3.2",
         "@heroui/react": "^3.0.0",
@@ -173,33 +174,33 @@
     },
     "plugins/bun-ws-client": {
       "name": "@playfast/echoform-bun-ws-client",
-      "version": "1.0.2",
+      "version": "1.0.4",
       "devDependencies": {
         "@playfast/echoform": "workspace:*",
         "@types/react": "19.0.2",
         "@types/react-dom": "19.0.2",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.2",
+        "@playfast/echoform": ">=1.0.4",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
       },
     },
     "plugins/bun-ws-server": {
       "name": "@playfast/echoform-bun-ws-server",
-      "version": "1.0.2",
+      "version": "1.0.4",
       "devDependencies": {
         "@playfast/echoform": "workspace:*",
         "@types/react": "19.0.2",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.2",
+        "@playfast/echoform": ">=1.0.4",
         "react": ">=19.0.0",
       },
     },
     "plugins/socket-client": {
       "name": "@playfast/echoform-socket-client",
-      "version": "1.0.2",
+      "version": "1.0.4",
       "dependencies": {
         "socket.io-client": "4.8.3",
       },
@@ -209,14 +210,14 @@
         "@types/react-dom": "19.0.2",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.2",
+        "@playfast/echoform": ">=1.0.4",
         "react": ">=19.0.0",
         "react-dom": ">=19.0.0",
       },
     },
     "plugins/socket-server": {
       "name": "@playfast/echoform-socket-server",
-      "version": "1.0.2",
+      "version": "1.0.4",
       "dependencies": {
         "socket.io": "4.8.3",
       },
@@ -230,7 +231,7 @@
         "utf-8-validate": "5.0.10",
       },
       "peerDependencies": {
-        "@playfast/echoform": ">=1.0.2",
+        "@playfast/echoform": ">=1.0.4",
         "react": ">=19.0.0",
       },
     },

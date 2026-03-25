@@ -30,7 +30,8 @@
   ],
   "scripts": {
     "typecheck": "tsgo -p .",
-    "build": "tsgo -p ."
+    "build": "tsgo -p .",
+    "test": "bun test tests/"
   },
   "peerDependencies": {
     "react": ">=19.0.0"
@@ -41,6 +42,7 @@
     "typed-binary": "^4.3.3"
   },
   "devDependencies": {
+    "@playfast/echoform-render": "workspace:*",
     "@types/react": "19.0.2",
     "react": "19.0.0"
   },
