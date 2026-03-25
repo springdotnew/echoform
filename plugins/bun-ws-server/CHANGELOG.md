@@ -1,5 +1,13 @@
 # @playfast/echoform-bun-ws-server
 
+## 1.0.6
+
+### Patch Changes
+
+- 5049ea0: Add persistent control mode, search overlay, copy mode, and file viewing to wmux TUI client. Minor echoform view-inference fix.
+- Updated dependencies [5049ea0]
+  - @playfast/echoform@1.0.6
+
 ## 1.0.5
 
 ### Patch Changes
