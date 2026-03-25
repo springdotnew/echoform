@@ -1,5 +1,6 @@
 /** @jsxImportSource @opentui/react */
 import type { ReactNode } from "react";
+import { usePrefixContext } from "./FocusContext";
 
 interface WmuxFileContentProps {
   readonly id: string;
@@ -9,7 +10,9 @@ interface WmuxFileContentProps {
   readonly children?: ReactNode;
 }
 
-export const WmuxFileContent = ({ name, content }: WmuxFileContentProps): ReactNode => {
+export const WmuxFileContent = ({ id, name, content }: WmuxFileContentProps): ReactNode => {
+  const { activeTabId } = usePrefixContext();
+  if (activeTabId !== id) return null;
   const lines = content.split("\n");
   const gutterWidth = String(lines.length).length + 1;
 

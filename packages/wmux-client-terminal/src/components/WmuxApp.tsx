@@ -335,9 +335,9 @@ export const WmuxApp = (props: {
             width={SIDEBAR_WIDTH}
           />
 
-          {/* Content area — all children stay mounted, inactive ones hidden */}
+          {/* Content area — children stay mounted, return null when inactive */}
           <box flexGrow={1} flexDirection="column">
-            {searchOpen ? (
+            {searchOpen && (
               <SearchOverlay
                 categories={categories}
                 onSelectCategory={selectCategory}
@@ -345,13 +345,8 @@ export const WmuxApp = (props: {
                 onOpenFile={openFile}
                 onClose={handleSearchClose}
               />
-            ) : null}
-            {React.Children.map(children, (child) => {
-              const childId = ((child as React.ReactElement).props as { id?: string }).id;
-              if (!childId) return null;
-              if (searchOpen || childId !== activeTabId) return null;
-              return child;
-            })}
+            )}
+            {children}
             {!searchOpen && !hasActiveChild && (
               activeTabId.startsWith("file::") ? (
                 <LocalFileViewer filePath={activeTabId.slice(6)} />

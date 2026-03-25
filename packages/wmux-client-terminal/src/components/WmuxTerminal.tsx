@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { fromBase64, toBase64 } from "../utils/base64";
-import { TerminalBuffer, type StyledLine, type StyledSegment } from "../utils/ansi";
+import { getOrCreateBuffer, type StyledLine, type StyledSegment } from "../utils/ansi";
 import { usePrefixContext } from "./FocusContext";
 
 const SIDEBAR_WIDTH = 30;
@@ -49,15 +49,11 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   const [lines, setLines] = useState<readonly StyledLine[]>([]);
   const { width, height } = useTerminalDimensions();
   const sentResizeRef = useRef<string>("");
-  const termBufRef = useRef<TerminalBuffer | null>(null);
 
-  const getTerminalBuffer = useCallback((): TerminalBuffer => {
-    if (!termBufRef.current) {
-      const cols = Math.max(10, width - SIDEBAR_WIDTH - 2);
-      termBufRef.current = new TerminalBuffer(cols);
-    }
-    return termBufRef.current;
-  }, [width]);
+  const getTerminalBuffer = useCallback(() => {
+    const cols = Math.max(10, width - SIDEBAR_WIDTH - 2);
+    return getOrCreateBuffer(id, cols);
+  }, [width, id]);
 
   const isActiveTerminal = activeTabId === id && status === "running";
 
@@ -105,6 +101,9 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
     buf.resize(contentWidth, contentHeight);
     sendResize({ cols: contentWidth, rows: contentHeight });
   }, [width, height, sendResize, getTerminalBuffer]);
+
+  // Component stays mounted for state persistence — return null when not visible
+  if (activeTabId !== id) return null;
 
   if (status === "idle") {
     return (

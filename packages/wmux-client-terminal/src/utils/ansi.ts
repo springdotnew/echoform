@@ -488,3 +488,23 @@ export const parseAnsiOutput = (raw: string): readonly StyledLine[] => {
 export const createDefaultState = (): { fg: undefined; bg: undefined; bold: false; italic: false; underline: false } => ({
   fg: undefined, bg: undefined, bold: false, italic: false, underline: false,
 });
+
+// ── Persistent buffer registry ──────────────────────────────
+// Buffers survive component unmount/remount so terminal history
+// is preserved across tab switches.
+
+const bufferRegistry = new Map<string, TerminalBuffer>();
+
+export const getOrCreateBuffer = (id: string, cols?: number): TerminalBuffer => {
+  const existing = bufferRegistry.get(id);
+  if (existing) return existing;
+  const buf = new TerminalBuffer(cols);
+  bufferRegistry.set(id, buf);
+  return buf;
+};
+
+export const resetBuffer = (id: string, cols?: number): TerminalBuffer => {
+  const buf = new TerminalBuffer(cols);
+  bufferRegistry.set(id, buf);
+  return buf;
+};
