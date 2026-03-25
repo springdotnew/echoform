@@ -1,5 +1,11 @@
 # @playfast/echoform
 
+## 1.0.7
+
+### Patch Changes
+
+- 654cc2d: Persist terminal history across tab switches
+
 ## 1.0.6
 
 ### Patch Changes
