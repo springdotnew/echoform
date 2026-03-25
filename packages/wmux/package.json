@@ -13,6 +13,11 @@
       "types": "./src/views.ts",
       "import": "./src/views.ts",
       "default": "./src/views.ts"
+    },
+    "./preset/tui": {
+      "types": "./src/preset/tui.ts",
+      "import": "./src/preset/tui.ts",
+      "default": "./src/preset/tui.ts"
     }
   },
   "files": [
@@ -25,6 +30,7 @@
   "dependencies": {
     "@playfast/echoform": "workspace:*",
     "@playfast/echoform-render": "workspace:*",
+    "@playfast/wmux-client-terminal": "workspace:*",
     "zod": "^4.3.6"
   },
   "peerDependencies": {

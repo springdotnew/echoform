@@ -57,5 +57,7 @@ export interface WmuxHandle {
   readonly url: string;
   readonly localUrl: string;
   readonly port: number;
+  readonly token: string;
+  readonly wsUrl: string;
   readonly stop: () => void;
 }
