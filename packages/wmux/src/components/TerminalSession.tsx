@@ -4,7 +4,7 @@ import { views, WmuxTerminal } from "../views";
 import type { ManagedProcess } from "../process";
 import { isCommandConfig } from "../types";
 
-export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): ReactElement | null {
+export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): ReactElement {
   const View = useViews(views);
   const output = useStream(WmuxTerminal, "output");
 
@@ -18,8 +18,6 @@ export function TerminalSession({ proc }: { readonly proc: ManagedProcess }): Re
 
   const handleInput = useCallback((b64: string) => proc.write(b64), [proc]);
   const handleResize = useCallback(({ cols, rows }: { cols: number; rows: number }) => proc.resize(cols, rows), [proc]);
-
-  if (!View) return null;
 
   return (
     <View.WmuxTerminal

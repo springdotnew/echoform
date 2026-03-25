@@ -87,8 +87,6 @@ function MonitorApp(): React.ReactElement | null {
     }
   }, []);
 
-  if (!View) return null;
-
   const sorted = sortProcesses(processes, sortBy);
   const topProcesses = sorted.slice(0, 50);
 

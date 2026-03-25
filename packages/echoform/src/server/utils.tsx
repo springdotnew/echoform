@@ -54,7 +54,7 @@ const viewProxy = new Proxy({} as Record<string, React.ComponentType<ViewProps>>
  * const View = useViews(views);
  * ```
  */
-export function useViews<V extends ViewDefs>(_viewDefs?: V): ViewDefsToServerComponents<V> | null {
+export function useViews<V extends ViewDefs>(_viewDefs?: V): ViewDefsToServerComponents<V> {
   const app = useContext(AppContext);
 
   if (_viewDefs) {
@@ -64,7 +64,7 @@ export function useViews<V extends ViewDefs>(_viewDefs?: V): ViewDefsToServerCom
   }
 
   if (!app) {
-    return null;
+    throw new Error("useViews must be called inside a <Server> component");
   }
 
   return viewProxy as unknown as ViewDefsToServerComponents<V>;

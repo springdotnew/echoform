@@ -76,8 +76,6 @@ function Monitor() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!View) return null;
-
   return (
     <>
       <View.Dashboard

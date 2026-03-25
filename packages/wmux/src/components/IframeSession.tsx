@@ -6,8 +6,7 @@ export function IframeSession({ id, name, url }: {
   readonly id: string;
   readonly name: string;
   readonly url: string;
-}): ReactElement | null {
+}): ReactElement {
   const View = useViews(views);
-  if (!View) return null;
   return <View.WmuxIframe id={id} name={name} url={url} />;
 }

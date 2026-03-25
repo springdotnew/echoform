@@ -5,6 +5,20 @@ import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
 import type { CategoryInfo } from "../types";
 
+function parseHex(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function mixHexColors(a: string, b: string, t: number): string {
+  const [ar, ag, ab] = parseHex(a);
+  const [br, bg, bb] = parseHex(b);
+  const r = Math.round(ar * t + br * (1 - t));
+  const g = Math.round(ag * t + bg * (1 - t));
+  const bl = Math.round(ab * t + bb * (1 - t));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${bl.toString(16).padStart(2, "0")}`;
+}
+
 function EmptyState({ categories, onOpen }: {
   readonly categories: ReadonlyArray<CategoryInfo>;
   readonly onOpen: (name: string) => void;
@@ -30,13 +44,17 @@ function EmptyState({ categories, onOpen }: {
   );
 }
 
-function TopBar({ title, description, onSearch }: {
+function TopBar({ title, description, onSearch, categoryColor }: {
   readonly title: string;
   readonly description: string;
   readonly onSearch: () => void;
+  readonly categoryColor: string | undefined;
 }): React.ReactElement {
   return (
-    <div className="h-11 shrink-0 flex items-center border-b border-border/50 bg-background px-4 gap-4">
+    <div
+      className="h-11 shrink-0 flex items-center border-b border-border/50 px-4 gap-4 transition-colors duration-300"
+      style={{ backgroundColor: categoryColor ? mixHexColors(categoryColor, "#1c1c1e", 0.15) : undefined }}
+    >
       <div className="flex items-center gap-2 shrink-0">
         <div className="w-5 h-5 rounded bg-card border border-border/50 flex items-center justify-center">
           <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-foreground/80">
@@ -255,6 +273,29 @@ export function WmuxApp(props: {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
+  const activeCategoryInfo = categories.find((c) => c.name === activeCategory);
+  const activeTabName = useMemo(() => {
+    if (!activeCategoryInfo) return null;
+    if (activeCategoryInfo.type === "files") {
+      const file = (activeCategoryInfo.openFiles ?? []).find((f) => `file::${f.path}` === activeTabId);
+      return file?.name ?? null;
+    }
+    return activeCategoryInfo.tabs.find((t) => t.id === activeTabId)?.name ?? null;
+  }, [activeCategoryInfo, activeTabId]);
+
+  // Update document title and PWA theme-color tint based on active tab
+  useEffect(() => {
+    const parts = [activeTabName, activeCategory, title].filter(Boolean);
+    document.title = parts.length > 0 ? parts.join(" — ") : "wmux";
+  }, [activeTabName, activeCategory, title]);
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) return;
+    const color = activeCategoryInfo?.color;
+    meta.setAttribute("content", color ? mixHexColors(color, "#1c1c1e", 0.15) : "#1c1c1e");
+  }, [activeCategoryInfo?.color]);
+
   const registry = useMemo(() => {
     const map = new Map<string, ReactNode>();
     for (const child of React.Children.toArray(children) as React.ReactElement[]) {
@@ -286,7 +327,7 @@ export function WmuxApp(props: {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground font-sans">
-      <TopBar title={title} description={description} onSearch={() => setCommandPaletteOpen(true)} />
+      <TopBar title={title} description={description} onSearch={() => setCommandPaletteOpen(true)} categoryColor={activeCategoryInfo?.color} />
 
       <div className="flex flex-1 min-h-0">
         <Sidebar

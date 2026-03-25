@@ -9,204 +9,154 @@
   <a href="https://www.npmjs.com/package/@playfast/echoform"><img alt="NPM Downloads" src="https://img.shields.io/npm/dt/@playfast/echoform?style=for-the-badge"></a>
 </p>
 
-echoform is a react framework for building React applications with their layout/UI components running on the client and with the connections between them and business logic running on the server.
+Build web UIs where all logic stays on the server. The browser is just a screen.
 
+echoform is for dev tools, local apps, and anywhere you want a web interface without building an API layer. You write React on the server — state, callbacks, streaming — and echoform handles the rest.
 
-## Server-side executing and not rendering
-"echoform" is the exact opposite of server-side-rendering in "echoform" instead of rendering your app in the server and running it in the client you actually render the app in the client ( plus manage user UI logic ) and run it ( manage the app business-logic ) in the server.   
-for example, user UI interactions will run on the client while logic related stuff like layout changes and data fetching will run on the server
+## How it works
 
-## All the benefits of React now in your server :)
-using React in your server will make it much less static and much more reactive a lot like the move in the client from JQuery like libraries to web frameworks like React or Vue.   
-React components will make your code much more reusable plus stuff like the [React context API](https://reactjs.org/docs/context.html) will make your code data flow much more organized. and the most important part of using React in your server - you could use the entire collection of React libraries ( at least the non-dom related part of them :} ) in your server!!!
+The opposite of server-side rendering: the client renders UI components, the server runs business logic. State management, data fetching, and layout decisions happen on the server. User interactions (clicks, input) run on the client and are forwarded to the server as callbacks.
 
-## Speed advantages and limits over regular React apps
-"echoform" can even have some speed advantages compare to regular React applications because pages do not need to fetch data using HTTP every load.  
-the regular data flow goes something like that  
-`user action` -> `layout-change` -> `new component data HTTP fetching` -> `layout-update`  
-now with "echoform" the data flow should look more like that  
-`user client action` -> `server socket action request` -> `server tells the client via socket to update itself with new data`  
-in cases where a new data is needed to update the view layout the "echoform" way of updating the layout should be much faster but in places where a layout change occurs with no new data "echoform" can actually be slower
+Data flow:
+`client action` → `server callback` → `server state update` → `client view update` (over WebSocket)
+
+This eliminates the HTTP request/response cycle for data fetching — the server pushes updates directly. For data-heavy views this is faster than traditional React apps. For purely client-side interactions with no server state, a traditional approach may be faster.
 
 ## Use cases
-I recently moved a project of mine called ["web-desktop-environment"](https://github.com/shmuelhizmi/web-desktop-environment) to "echoform".  
-["web-desktop-environment"](https://github.com/shmuelhizmi/web-desktop-environment) was a great example of a project that really benefited a lot from using "echoform" since he needs a tight connection between the server and the client and apart from that moving his entire server logic to react components made the server codebase much more user-readable and organized.
+["web-desktop-environment"](https://github.com/shmuelhizmi/web-desktop-environment) is a project built on top of "echoform" that benefits from the tight connection between server and client. Moving the entire server logic to React components made the codebase more readable and organized.
 
-# Getting Started - TypeScript
+[@playfast/wmux](https://www.npmjs.com/package/@playfast/wmux) is a web terminal multiplexer for dev servers built with "echoform". It uses server-side React components to manage PTY terminals, iframe tabs, and file browsing sessions, streaming terminal output to the client via echoform's stream primitives while handling user input through callbacks — all over a single WebSocket connection.
 
-a "echoform" app is usually made up of three different packages
+# Getting Started
 
-- a server package - for the server
-- a client package - for the client react app
-- a shared package - for sharing the views component types use in both the server and client
+An echoform app has three parts: a **shared** view contract, a **server** that runs logic, and a **client** that renders UI.
 
-we are going to start by creating a shared package for declaring all of our layout client components that the server is going to tell the client to render
-
-Example:
-
-```ts
-// shared/src/index.ts
-
-import { View } from "@playfast/echoform/shared";
-
-export const Views = {
-  Home: {} as View<{ username: string; logout: () => void }>, // Home layout component and its props
-  Login: {} as View<{ login: (username: string, password: string) => void }>, // Login layout component and its props
-  Prompt: {} as View<{ message: string; onOk: () => void }>, // Prompt layout component and its props
-  Gif: {} as View<{ url: string }>, // a Gif component and its props
-};
+```bash
+bun add @playfast/echoform @playfast/echoform-render
+bun add @playfast/echoform-bun-ws-server  # server transport
+bun add @playfast/echoform-bun-ws-client   # client transport
+bun add zod  # or valibot, arktype — any Standard Schema library
 ```
 
-next, after we finished declaring all of our client components in our shared package we are going to move on to the server
+### 1. Define the contract
+
+```ts
+// shared/views.ts
+import { view, callback, createViews } from "@playfast/echoform";
+import { z } from "zod";
+
+export const Home = view("Home", {
+  input: { username: z.string() },
+  callbacks: { logout: callback() },
+});
+
+export const Login = view("Login", {
+  callbacks: {
+    login: callback({ input: z.object({ username: z.string(), password: z.string() }) }),
+  },
+});
+
+export const Prompt = view("Prompt", {
+  input: { message: z.string() },
+  callbacks: { onOk: callback() },
+});
+
+export const views = createViews({ Home, Login, Prompt });
+```
+
+### 2. Server — all logic lives here
 
 ```tsx
-// server/src/index
-import React from "react";
+// server/index.tsx
+import { useState } from "react";
 import { Render } from "@playfast/echoform-render";
-import { ViewsProvider } from "@playfast/echoform/server";
-import { Views } from "shared-package"; // import our shared package
-import { Server } from "@playfast/echoform-socket-server";
+import { Server, useViews } from "@playfast/echoform/server";
+import { createBunWebSocketServer } from "@playfast/echoform-bun-ws-server";
+import { views } from "../shared/views";
 
+function App() {
+  const View = useViews(views);
+  const [location, setLocation] = useState<"home" | "error" | "login">("login");
+  const [name, setName] = useState("");
 
-const App = () => {
-  const [location, setLocation] = useState<"home" | "error" | "login">("login"); // example state for the current layout
-  const [name, setName] = useState(""); // exampke state for the user name
   return (
-    <ViewsProvider<typeof Views>>
-      {" "}
-      {/* View Provider that provide as with all of our shared views  */}
-      {({ Home, Login, Prompt, Gif }) => {
-        return (
-          <>
-            {location === "login" && ( // log in view
-              <Login
-                login={(username, password) => {
-                  if (password === "0000") {
-                    // the secret password is 0000 if the user give it to us log him in
-                    setName(username);
-                    setLocation("home");
-                  } else {
-                    setLocation("error");
-                  }
-                }}
-              />
-            )}
-            {location === "home" && ( // home view
-              <Home
-                logout={() => setLocation("login") /* log out of the account */}
-                username={name}
-              >
-                <Gif url="url_to_gif.gif" />
-              </Home>
-            )}
-            {location === "error" && ( // error prompt view in case of a worong password
-              <Prompt
-                message={"worng password"}
-                onOk={() => setLocation("login")}
-              />
-            )}
-          </>
-        );
-      }}
-    </ViewsProvider>
+    <>
+      {location === "login" && (
+        <View.Login
+          login={({ username, password }) => {
+            if (password === "0000") {
+              setName(username);
+              setLocation("home");
+            } else {
+              setLocation("error");
+            }
+          }}
+        />
+      )}
+      {location === "home" && (
+        <View.Home username={name} logout={() => setLocation("login")} />
+      )}
+      {location === "error" && (
+        <View.Prompt message="Wrong password" onOk={() => setLocation("login")} />
+      )}
+    </>
   );
-};
+}
+
+const { transport, start } = createBunWebSocketServer({ port: 8485, path: "/ws" });
+start();
 
 Render(
-  // run the server on port 8485
-  <Server port={8485} views={Views}>
-    {() => <App /> /* on each connection to the server create an app */}
+  <Server transport={transport}>
+    {() => <App />}
   </Server>
 );
 ```
 
-after we finished adding all of our business logic to the server its now time to create some views
+### 3. Client — just renders what the server sends
 
 ```tsx
-// client/src/index
+// client/index.tsx
+import { Client } from "@playfast/echoform/client";
+import { useWebSocketTransport } from "@playfast/echoform-bun-ws-client";
+import type { InferClientProps } from "@playfast/echoform/client";
+import { Home as HomeDef, Login as LoginDef, Prompt as PromptDef } from "../shared/views";
 
-import React from "react";
-import ReactDOM from "react-dom";
-import { Component } from "@playfast/echoform/client";
-import { Client } from "@playfast/echoform-socket-client"
-import { Views } from "shared-package";
-
-// home layout component
-class Home extends Component<typeof Views["Home"]> {
-  render() {
-    return (
-      <div>
-        <h1>Hello - {this.props.username}</h1>
-        {this.props.children}
-        <button onClick={() => this.props.logout()}>logout</button>
-      </div>
-    );
-  }
+function Home({ username, logout }: InferClientProps<typeof HomeDef>) {
+  return (
+    <div>
+      <h1>Hello - {username}</h1>
+      <button onClick={() => logout.mutate()}>Logout</button>
+    </div>
+  );
 }
 
-// prompt layout component
-class Prompt extends Component<typeof Views["Prompt"]> {
-  render() {
-    return (
-      <div>
-        <h1>{this.props.message}</h1>
-        {this.props.children}
-        <button onClick={() => this.props.onOk()}>ok</button>
-      </div>
-    );
-  }
+function Login({ login }: InferClientProps<typeof LoginDef>) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  return (
+    <div>
+      <input type="text" onChange={(e) => setUsername(e.target.value)} placeholder="username" />
+      <input type="password" onChange={(e) => setPassword(e.target.value)} placeholder="password" />
+      <button onClick={() => login.mutate({ username, password })}>Log In</button>
+    </div>
+  );
 }
 
-// login layout component
-class Login extends Component<
-  typeof Views["Login"],
-  { username: string; password: string }
-> {
-  render() {
-    return (
-      <div>
-        <input
-          type="text"
-          onChange={(e) => this.setState({ username: e.target.value })}
-          placeholder="username"
-        />
-        <input
-          type="text"
-          onChange={(e) => this.setState({ password: e.target.value })}
-          placeholder="password"
-        />
-        <button
-          onClick={() =>
-            this.props.login(this.state.username, this.state.password)
-          }
-        >
-          LogIn
-        </button>
-      </div>
-    );
-  }
+function Prompt({ message, onOk }: InferClientProps<typeof PromptDef>) {
+  return (
+    <div>
+      <h1>{message}</h1>
+      <button onClick={() => onOk.mutate()}>OK</button>
+    </div>
+  );
 }
 
-// gif component
-class Gif extends Component<typeof Views["Gif"]> {
-  render() {
-    return (
-      <div>
-        <img src={this.props.url} />
-      </div>
-    );
-  }
+function App() {
+  const { transport } = useWebSocketTransport("ws://localhost:8485/ws");
+  if (!transport) return <div>Connecting...</div>;
+  return <Client transport={transport} views={{ Home, Login, Prompt }} />;
 }
-
-ReactDOM.render(
-  // connect to our server running on localhost:8485
-  <Client<typeof Views>
-    host="localhost"
-    port={8485}
-    views={{ Home, Login, Prompt, Gif }}
-  />,
-  document.getElementById("root")
-);
 ```
 
-and we are now finished you should now have a react application the can run on a server : )
+Callbacks use `.mutate()` on the client and return promises. Streams use `.subscribe()`. See the [root README](../../README.md) for a full example with streams.

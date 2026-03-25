@@ -106,7 +106,7 @@ function extractIframeTabs(categoryDefs: readonly CategoryDef[]): readonly TabDe
   );
 }
 
-export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRootProps): ReactElement | null {
+export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRootProps): ReactElement {
   const View = useViews(views);
   const [activeCategory, setActiveCategory] = useState(categoryDefs[0]?.name ?? "");
   const [activeTabId, setActiveTabId] = useState("");
@@ -168,8 +168,6 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
   const handleToggleDir = useCallback((path: string) => fileRefs.current[activeCategory]?.current?.toggleDir(path), [activeCategory]);
   const handleOpenFile = useCallback((path: string) => fileRefs.current[activeCategory]?.current?.openFile(path), [activeCategory]);
   const handleCloseFile = useCallback((id: string) => fileRefs.current[activeCategory]?.current?.closeFile(id), [activeCategory]);
-
-  if (!View) return null;
 
   return (
     <View.WmuxApp

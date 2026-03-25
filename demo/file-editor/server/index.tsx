@@ -124,10 +124,6 @@ function FileEditorApp(): React.ReactElement | null {
     setError(null);
   }, []);
 
-  if (!View) {
-    return null;
-  }
-
   const activeFile = openFiles.find((file) => file.path === activeFilePath);
 
   return (

@@ -56,10 +56,6 @@ function TodoApp(): React.ReactElement | null {
     setTodos((prev) => prev.filter((todo) => !todo.completed));
   }, []);
 
-  if (!View) {
-    return null;
-  }
-
   const filteredTodos = todos.filter((todo) => shouldShowTodo(todo, filter));
   const completedCount = todos.filter((todo) => todo.completed).length;
 

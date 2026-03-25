@@ -151,8 +151,6 @@ export const FileViewerSession = forwardRef<FileViewerActions, Props>(
 
     const openFilesList = useMemo(() => [...openFiles.values()], [openFiles]);
 
-    if (!View) return null;
-
     return (
       <>
         {openFilesList.map((file) => (
