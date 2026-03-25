@@ -9,10 +9,10 @@ const packages = [
   "packages/echoform",
   "packages/react-render-null",
   "packages/wmux",
-  "plugins/echoform/bun-ws-client",
-  "plugins/echoform/bun-ws-server",
-  "plugins/echoform/socket-client",
-  "plugins/echoform/socket-server",
+  "plugins/bun-ws-client",
+  "plugins/bun-ws-server",
+  "plugins/socket-client",
+  "plugins/socket-server",
 ];
 
 const versions = new Map();
