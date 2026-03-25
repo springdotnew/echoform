@@ -1,3 +1,4 @@
+/** @jsxImportSource @opentui/react */
 import type { ReactNode } from "react";
 import type { CategoryInfo, TabInfo, FileEntry } from "../types";
 

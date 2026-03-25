@@ -1,3 +1,4 @@
+/** @jsxImportSource @opentui/react */
 import { createContext, useContext, useRef, type ReactNode, type MutableRefObject } from "react";
 
 // ── Prefix key context ─────────────────────────────────────

@@ -1,3 +1,4 @@
+/** @jsxImportSource @opentui/react */
 import React, { useState, useCallback, useMemo, useRef, type ReactNode } from "react";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { Sidebar } from "./Sidebar";

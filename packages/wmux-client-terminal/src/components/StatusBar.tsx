@@ -1,3 +1,4 @@
+/** @jsxImportSource @opentui/react */
 import type { ReactNode } from "react";
 
 const MUTED = "#636366";

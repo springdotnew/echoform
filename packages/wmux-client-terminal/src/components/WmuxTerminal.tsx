@@ -1,3 +1,4 @@
+/** @jsxImportSource @opentui/react */
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { fromBase64, toBase64 } from "../utils/base64";

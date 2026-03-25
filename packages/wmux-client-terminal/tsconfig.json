@@ -1,7 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "jsxImportSource": "@opentui/react",
     "types": ["bun"]
   },
   "include": ["src"]
