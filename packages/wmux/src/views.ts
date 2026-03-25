@@ -65,7 +65,7 @@ export const WmuxTerminal = view("WmuxTerminal", {
     onResize: callback({ input: z.object({ cols: z.number(), rows: z.number() }) }),
   },
   streams: {
-    output: stream(z.string()),
+    output: stream(z.string(), { replay: 1000 }),
   },
 });
 

@@ -54,6 +54,10 @@ export interface AppEvents {
   readonly stream_end: {
     readonly streamUid: StreamUid;
   };
+  readonly stream_replay: {
+    readonly streamUid: StreamUid;
+    readonly chunks: ReadonlyArray<SerializableValue>;
+  };
 }
 
 export interface ViewDataBase {

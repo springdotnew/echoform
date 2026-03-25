@@ -230,6 +230,7 @@ const EVENT_RESPOND_TO_EVENT = 4;
 const EVENT_REQUEST_EVENT = 5;
 const EVENT_STREAM_CHUNK = 6;
 const EVENT_STREAM_END = 7;
+const EVENT_STREAM_REPLAY = 8;
 const EVENT_FALLBACK = 0xFF;
 
 const updateViewsTreeSchema = object({ views: dynamicArrayOf(existingViewDataSchema) });
@@ -238,6 +239,7 @@ const deleteViewSchema = object({ viewUid: binString });
 const requestEventSchema = object({ eventArguments: dynamicArrayOf(serializableValue), uid: binString, eventUid: binString });
 const streamChunkSchema = object({ streamUid: binString, chunk: serializableValue });
 const streamEndSchema = object({ streamUid: binString });
+const streamReplaySchema = object({ streamUid: binString, chunks: dynamicArrayOf(serializableValue) });
 
 const voidSchema = createSchema<void>({
   write() {},
@@ -286,6 +288,7 @@ const eventSchemas: ReadonlyArray<ISchema<any>> = [
   requestEventSchema,     // 5
   streamChunkSchema,      // 6
   streamEndSchema,        // 7
+  streamReplaySchema,     // 8
 ];
 
 // ---- Lookup tables ----
@@ -299,11 +302,13 @@ const eventNameToId: Record<string, number> = {
   request_event: EVENT_REQUEST_EVENT,
   stream_chunk: EVENT_STREAM_CHUNK,
   stream_end: EVENT_STREAM_END,
+  stream_replay: EVENT_STREAM_REPLAY,
 };
 
 const idToEventName: readonly string[] = [
   "update_views_tree", "update_view", "delete_view", "request_views_tree",
   "respond_to_event", "request_event", "stream_chunk", "stream_end",
+  "stream_replay",
 ];
 
 // ---- Wire message: encode/decode ----
