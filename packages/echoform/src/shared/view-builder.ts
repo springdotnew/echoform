@@ -192,7 +192,8 @@ export function view<
   };
   Object.defineProperty(component, "name", { value: name, configurable: true });
   component.displayName = `View(${name})`;
-  Object.assign(component, def);
+  const { name: _, ...defWithoutName } = def;
+  Object.assign(component, defWithoutName);
 
   viewDefRegistry.set(name, def as unknown as ViewDef);
 
