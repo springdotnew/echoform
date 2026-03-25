@@ -9,27 +9,35 @@ interface PrefixContextValue {
   /** True when Ctrl+B was pressed and control mode is active */
   readonly prefixRef: MutableRefObject<boolean>;
   readonly searchOpenRef: MutableRefObject<boolean>;
+  readonly copyModeRef: MutableRefObject<boolean>;
   readonly activeTabId: string;
+  readonly copyMode: boolean;
 }
 
 const PrefixContext = createContext<PrefixContextValue>({
   prefixRef: { current: false },
   searchOpenRef: { current: false },
+  copyModeRef: { current: false },
   activeTabId: "",
+  copyMode: false,
 });
 
 export const PrefixProvider = ({
   prefixRef,
   searchOpenRef,
+  copyModeRef,
   activeTabId,
+  copyMode,
   children,
 }: {
   readonly prefixRef: MutableRefObject<boolean>;
   readonly searchOpenRef: MutableRefObject<boolean>;
+  readonly copyModeRef: MutableRefObject<boolean>;
   readonly activeTabId: string;
+  readonly copyMode: boolean;
   readonly children: ReactNode;
 }): ReactNode => (
-  <PrefixContext.Provider value={{ prefixRef, searchOpenRef, activeTabId }}>
+  <PrefixContext.Provider value={{ prefixRef, searchOpenRef, copyModeRef, activeTabId, copyMode }}>
     {children}
   </PrefixContext.Provider>
 );

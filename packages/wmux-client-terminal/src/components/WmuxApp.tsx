@@ -81,6 +81,10 @@ export const WmuxApp = (props: {
   const [prefixVisible, setPrefixVisible] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchOpenRef = useRef(false);
+  const [copyMode, setCopyMode] = useState(false);
+  const copyModeRef = useRef(false);
+  const copyPrefixRef = useRef(false);
+  const copyPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activatePrefix = useCallback(() => {
     prefixRef.current = true;
@@ -95,6 +99,21 @@ export const WmuxApp = (props: {
   const handleSearchClose = useCallback(() => {
     searchOpenRef.current = false;
     setSearchOpen(false);
+  }, []);
+
+  const enterCopyMode = useCallback(() => {
+    copyModeRef.current = true;
+    setCopyMode(true);
+    copyPrefixRef.current = false;
+    if (copyPrefixTimerRef.current) {
+      clearTimeout(copyPrefixTimerRef.current);
+      copyPrefixTimerRef.current = null;
+    }
+  }, []);
+
+  const exitCopyMode = useCallback(() => {
+    copyModeRef.current = false;
+    setCopyMode(false);
   }, []);
 
   const allNavItems = useMemo(() => buildAllNavigationItems(categories), [categories]);
@@ -130,6 +149,37 @@ export const WmuxApp = (props: {
   useKeyboard((key) => {
     // ── Search overlay handles its own keys ──────────────
     if (searchOpenRef.current) return;
+
+    // ── Copy mode: only Escape exits ────────────────────
+    if (copyModeRef.current) {
+      if (key.name === "escape") exitCopyMode();
+      return;
+    }
+
+    // ── Copy prefix: Ctrl+C was pressed, waiting for 'c' ──
+    if (copyPrefixRef.current) {
+      copyPrefixRef.current = false;
+      if (copyPrefixTimerRef.current) {
+        clearTimeout(copyPrefixTimerRef.current);
+        copyPrefixTimerRef.current = null;
+      }
+      if (key.name === "c" && !key.ctrl) {
+        enterCopyMode();
+        return;
+      }
+      // Non-'c' key: fall through to normal handling
+    }
+
+    // ── Ctrl+C: set copy prefix (deferred so Ctrl+C reaches PTY) ──
+    if (key.ctrl && key.name === "c" && !prefixRef.current) {
+      setTimeout(() => { copyPrefixRef.current = true; }, 0);
+      if (copyPrefixTimerRef.current) clearTimeout(copyPrefixTimerRef.current);
+      copyPrefixTimerRef.current = setTimeout(() => {
+        copyPrefixRef.current = false;
+        copyPrefixTimerRef.current = null;
+      }, 500);
+      return;
+    }
 
     // ── Ctrl+B: toggle control mode ─────────────────────
     if (key.ctrl && key.name === "b") {
@@ -214,6 +264,13 @@ export const WmuxApp = (props: {
       return;
     }
 
+    // Copy mode
+    if (key.name === "c") {
+      consumePrefix();
+      enterCopyMode();
+      return;
+    }
+
     // Exit control mode (+ start process if idle)
     if (key.name === "enter" || key.name === "return") {
       const activeCat = categories.find((c) => c.name === activeCategory);
@@ -244,7 +301,7 @@ export const WmuxApp = (props: {
   const activeChild = registry.get(activeTabId);
 
   return (
-    <PrefixProvider prefixRef={prefixRef} searchOpenRef={searchOpenRef} activeTabId={activeTabId}>
+    <PrefixProvider prefixRef={prefixRef} searchOpenRef={searchOpenRef} copyModeRef={copyModeRef} activeTabId={activeTabId} copyMode={copyMode}>
       <box
         flexDirection="column"
         width={width}
@@ -299,7 +356,7 @@ export const WmuxApp = (props: {
         <box height={1} backgroundColor={BORDER_COLOR} />
 
         {/* Status bar */}
-        <StatusBar prefixActive={prefixVisible} />
+        <StatusBar prefixActive={prefixVisible} copyMode={copyMode} />
       </box>
     </PrefixProvider>
   );

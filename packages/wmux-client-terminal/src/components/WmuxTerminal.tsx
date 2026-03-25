@@ -32,8 +32,8 @@ const renderSegment = (seg: StyledSegment, key: number): ReactNode => {
   return <span key={key} fg={seg.fg} bg={seg.bg}>{inner}</span>;
 };
 
-const renderLine = (line: StyledLine, key: number): ReactNode => (
-  <text key={key}>
+const renderLine = (line: StyledLine, key: number, selectable?: boolean): ReactNode => (
+  <text key={key} selectable={selectable}>
     {line.segments.length === 0
       ? " "
       : line.segments.map((seg, j) => renderSegment(seg, j))}
@@ -44,7 +44,7 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   const { id, output, status } = props;
   const sendInput = props.onInput.mutate;
   const sendResize = props.onResize.mutate;
-  const { prefixRef, searchOpenRef, activeTabId } = usePrefixContext();
+  const { prefixRef, searchOpenRef, copyModeRef, activeTabId, copyMode } = usePrefixContext();
 
   const [lines, setLines] = useState<readonly StyledLine[]>([]);
   const { width, height } = useTerminalDimensions();
@@ -67,6 +67,7 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
     if (key.ctrl && key.name === "b") return; // prefix key, handled by WmuxApp
     if (prefixRef.current) return;            // control mode active, handled by WmuxApp
     if (searchOpenRef.current) return;        // search overlay is open
+    if (copyModeRef.current) return;          // copy mode active
 
     const data = key.sequence;
     if (data) {
@@ -116,8 +117,8 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
           </text>
         </box>
       ) : null}
-      <scrollbox flexGrow={1} stickyScroll stickyStart="bottom">
-        {lines.map((line, i) => renderLine(line, i))}
+      <scrollbox flexGrow={1} stickyScroll={!copyMode} stickyStart="bottom">
+        {lines.map((line, i) => renderLine(line, i, copyMode || undefined))}
       </scrollbox>
     </box>
   );
