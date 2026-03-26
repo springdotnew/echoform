@@ -252,7 +252,7 @@ export const WmuxApp = (props: {
     if (key.name === "r") {
       const activeCat = categories.find((c) => c.name === activeCategory);
       const activeTab = activeCat?.tabs.find((t) => t.id === activeTabId);
-      if (activeTab?.status === "running") restartProcess(activeTabId);
+      if (activeTab) restartProcess(activeTabId);
       return;
     }
 
@@ -285,7 +285,7 @@ export const WmuxApp = (props: {
         if (firstFile) openFile(firstFile.path);
       } else {
         const activeTab = activeCat?.tabs.find((t) => t.id === activeTabId);
-        if (activeTab?.status === "idle") startProcess(activeTabId);
+        if (activeTab && activeTab.status !== "running") startProcess(activeTabId);
       }
       consumePrefix();
       return;
