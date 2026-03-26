@@ -1,5 +1,15 @@
 # @playfast/wmux
 
+## 0.2.11
+
+### Patch Changes
+
+- 5ae684e: Add mouse click, selection-based copy, and paste support to wmux TUI
+- Updated dependencies [5ae684e]
+  - @playfast/echoform@1.0.8
+  - @playfast/echoform-render@1.0.8
+  - @playfast/wmux-client-terminal@0.0.5
+
 ## 0.2.10
 
 ### Patch Changes

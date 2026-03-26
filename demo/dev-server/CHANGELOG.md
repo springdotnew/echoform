@@ -1,5 +1,13 @@
 # @demo/dev-server
 
+## 1.0.12
+
+### Patch Changes
+
+- Updated dependencies [5ae684e]
+  - @playfast/wmux@0.2.11
+  - @playfast/wmux-client-terminal@0.0.5
+
 ## 1.0.11
 
 ### Patch Changes

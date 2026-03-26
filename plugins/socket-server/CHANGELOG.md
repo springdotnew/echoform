@@ -1,5 +1,13 @@
 # @playfast/echoform-socket-server
 
+## 1.0.8
+
+### Patch Changes
+
+- 5ae684e: Add mouse click, selection-based copy, and paste support to wmux TUI
+- Updated dependencies [5ae684e]
+  - @playfast/echoform@1.0.8
+
 ## 1.0.7
 
 ### Patch Changes

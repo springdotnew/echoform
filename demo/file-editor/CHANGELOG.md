@@ -1,5 +1,15 @@
 # file-editor-demo
 
+## 1.0.9
+
+### Patch Changes
+
+- Updated dependencies [5ae684e]
+  - @playfast/echoform@1.0.8
+  - @playfast/echoform-render@1.0.8
+  - @playfast/echoform-bun-ws-client@1.0.8
+  - @playfast/echoform-bun-ws-server@1.0.8
+
 ## 1.0.8
 
 ### Patch Changes
