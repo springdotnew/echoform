@@ -139,6 +139,45 @@ export const WmuxApp = (props: {
     if (cat.tabs.length > 0) selectTab(cat.tabs[0]!.id);
   }, [selectTab, openFile]);
 
+  // ── Mouse click handlers for sidebar ─────────────────────
+  const handleSidebarSelectCategory = useCallback((name: string) => {
+    if (prefixRef.current) consumePrefix();
+    selectCategory(name);
+    const cat = categories.find((c) => c.name === name);
+    if (cat) selectFirstInCategory(cat);
+  }, [consumePrefix, selectCategory, categories, selectFirstInCategory]);
+
+  const handleSidebarSelectTab = useCallback((tabId: string) => {
+    if (prefixRef.current) consumePrefix();
+    const cat = categories.find((c) =>
+      c.tabs.some((t) => t.id === tabId) ||
+      (c.openFiles ?? []).some((f) => `file::${f.path}` === tabId),
+    );
+    if (cat && cat.name !== activeCategory) selectCategory(cat.name);
+    selectTab(tabId);
+    if (tabId.startsWith("file::")) openFile(tabId.slice(6));
+  }, [consumePrefix, selectCategory, selectTab, openFile, categories, activeCategory]);
+
+  const handleSidebarToggleDir = useCallback((path: string) => {
+    if (prefixRef.current) consumePrefix();
+    props.onToggleDir.mutate(path);
+  }, [consumePrefix, props.onToggleDir]);
+
+  const handleSidebarOpenFile = useCallback((path: string) => {
+    if (prefixRef.current) consumePrefix();
+    openFile(path);
+    selectTab(`file::${path}`);
+  }, [consumePrefix, openFile, selectTab]);
+
+  const handleSidebarCloseFile = useCallback((path: string) => {
+    if (prefixRef.current) consumePrefix();
+    props.onCloseFile.mutate(path);
+  }, [consumePrefix, props.onCloseFile]);
+
+  const handleContentClick = useCallback(() => {
+    if (prefixRef.current) consumePrefix();
+  }, [consumePrefix]);
+
   const handleNavigate = useCallback((delta: number) => {
     const target = navigateItem(allNavItems, activeTabId, delta);
     if (!target) return;
@@ -333,10 +372,15 @@ export const WmuxApp = (props: {
             activeCategory={activeCategory}
             activeTabId={activeTabId}
             width={SIDEBAR_WIDTH}
+            onSelectCategory={handleSidebarSelectCategory}
+            onSelectTab={handleSidebarSelectTab}
+            onToggleDir={handleSidebarToggleDir}
+            onOpenFile={handleSidebarOpenFile}
+            onCloseFile={handleSidebarCloseFile}
           />
 
           {/* Content area — children stay mounted, return null when inactive */}
-          <box flexGrow={1} flexDirection="column">
+          <box flexGrow={1} flexDirection="column" onMouseDown={handleContentClick}>
             {searchOpen && (
               <SearchOverlay
                 categories={categories}

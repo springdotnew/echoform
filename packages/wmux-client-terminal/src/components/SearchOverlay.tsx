@@ -79,12 +79,13 @@ const renderItemIcon = (item: SearchItem): ReactNode => {
   return <span fg={info.color}>{info.char} </span>;
 };
 
-const renderItem = (item: SearchItem, isSelected: boolean): ReactNode => (
+const renderItem = (item: SearchItem, isSelected: boolean, onSelect?: () => void): ReactNode => (
   <box
     key={`${item.type}-${item.tabId ?? item.filePath ?? item.categoryName}`}
     height={1}
     paddingX={2}
     backgroundColor={isSelected ? ACTIVE_BG : undefined}
+    onMouseDown={onSelect}
   >
     <text>
       <span fg={isSelected ? ACCENT : DIM}>{isSelected ? "\u25b8 " : "  "}</span>
@@ -164,7 +165,7 @@ export const SearchOverlay = ({
             <text fg={MUTED}>No results</text>
           </box>
         ) : (
-          filtered.map((item, i) => renderItem(item, i === selectedIndex))
+          filtered.map((item, i) => renderItem(item, i === selectedIndex, () => selectItem(item)))
         )}
       </scrollbox>
       <box height={1} paddingX={1} backgroundColor="#2c2c2e">

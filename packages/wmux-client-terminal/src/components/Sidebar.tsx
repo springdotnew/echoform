@@ -18,6 +18,19 @@ interface SidebarProps {
   readonly activeCategory: string;
   readonly activeTabId: string;
   readonly width: number;
+  readonly onSelectCategory?: (name: string) => void;
+  readonly onSelectTab?: (tabId: string) => void;
+  readonly onToggleDir?: (path: string) => void;
+  readonly onOpenFile?: (path: string) => void;
+  readonly onCloseFile?: (path: string) => void;
+}
+
+interface CategoryCallbacks {
+  readonly onSelectCategory?: (name: string) => void;
+  readonly onSelectTab?: (tabId: string) => void;
+  readonly onToggleDir?: (path: string) => void;
+  readonly onOpenFile?: (path: string) => void;
+  readonly onCloseFile?: (path: string) => void;
 }
 
 const renderStatusDot = (status: string): ReactNode => {
@@ -25,12 +38,13 @@ const renderStatusDot = (status: string): ReactNode => {
   return <span fg={info.color}>{info.char}</span>;
 };
 
-const renderTab = (tab: TabInfo, isActive: boolean): ReactNode => (
+const renderTab = (tab: TabInfo, isActive: boolean, onSelectTab?: (tabId: string) => void): ReactNode => (
   <box
     key={tab.id}
     height={1}
     paddingX={1}
     backgroundColor={isActive ? ACTIVE_BG : undefined}
+    onMouseDown={onSelectTab ? () => onSelectTab(tab.id) : undefined}
   >
     <text>
       <span fg={MUTED}>{"  "}</span>
@@ -41,12 +55,15 @@ const renderTab = (tab: TabInfo, isActive: boolean): ReactNode => (
   </box>
 );
 
-const renderFileEntry = (entry: FileEntry): ReactNode => {
+const renderFileEntry = (entry: FileEntry, onToggleDir?: (path: string) => void, onOpenFile?: (path: string) => void): ReactNode => {
   const indent = "  ".repeat(entry.depth + 1);
   const icon = entry.isDir ? (entry.isExpanded ? "\u25be " : "\u25b8 ") : "  ";
   const color = entry.isDir ? MUTED : "#8e8e93";
+  const handleClick = entry.isDir
+    ? (onToggleDir ? () => onToggleDir(entry.path) : undefined)
+    : (onOpenFile ? () => onOpenFile(entry.path) : undefined);
   return (
-    <box key={entry.path} height={1} paddingX={1}>
+    <box key={entry.path} height={1} paddingX={1} onMouseDown={handleClick}>
       <text fg={color}>
         {indent}{icon}{entry.name}
       </text>
@@ -58,11 +75,17 @@ const renderCategory = (
   category: CategoryInfo,
   isActive: boolean,
   activeTabId: string,
+  callbacks: CategoryCallbacks,
 ): ReactNode => {
   const headerBg = isActive ? "#2c2c2e" : undefined;
   return (
     <box key={category.name} flexDirection="column">
-      <box height={1} paddingX={1} backgroundColor={headerBg}>
+      <box
+        height={1}
+        paddingX={1}
+        backgroundColor={headerBg}
+        onMouseDown={callbacks.onSelectCategory ? () => callbacks.onSelectCategory!(category.name) : undefined}
+      >
         <text>
           <span fg={category.color}>{isActive ? "\u25be" : "\u25b8"}</span>
           <span>{" "}</span>
@@ -72,10 +95,10 @@ const renderCategory = (
         </text>
       </box>
       {isActive && category.type === "process" ? (
-        category.tabs.map((tab) => renderTab(tab, tab.id === activeTabId))
+        category.tabs.map((tab) => renderTab(tab, tab.id === activeTabId, callbacks.onSelectTab))
       ) : null}
       {isActive && category.type === "files" && category.fileEntries ? (
-        category.fileEntries.map((entry) => renderFileEntry(entry))
+        category.fileEntries.map((entry) => renderFileEntry(entry, callbacks.onToggleDir, callbacks.onOpenFile))
       ) : null}
       {isActive && category.type === "files" && category.openFiles && category.openFiles.length > 0 ? (
         <box flexDirection="column">
@@ -83,7 +106,13 @@ const renderCategory = (
             <text fg="#636366">  open files:</text>
           </box>
           {category.openFiles.map((file) => (
-            <box key={file.path} height={1} paddingX={1} backgroundColor={`file::${file.path}` === activeTabId ? ACTIVE_BG : undefined}>
+            <box
+              key={file.path}
+              height={1}
+              paddingX={1}
+              backgroundColor={`file::${file.path}` === activeTabId ? ACTIVE_BG : undefined}
+              onMouseDown={callbacks.onSelectTab ? () => callbacks.onSelectTab!(`file::${file.path}`) : undefined}
+            >
               <text fg={`file::${file.path}` === activeTabId ? "#f5f5f7" : MUTED}>
                 {"    "}{file.name}
               </text>
@@ -100,19 +129,27 @@ export const Sidebar = ({
   activeCategory,
   activeTabId,
   width,
-}: SidebarProps): ReactNode => (
-  <box
-    width={width}
-    flexDirection="column"
-    backgroundColor={SIDEBAR_BG}
-    border={["right"]}
-    borderStyle="single"
-    borderColor="#38383a"
-  >
-    <scrollbox flexGrow={1}>
-      {categories.map((category) =>
-        renderCategory(category, category.name === activeCategory, activeTabId),
-      )}
-    </scrollbox>
-  </box>
-);
+  onSelectCategory,
+  onSelectTab,
+  onToggleDir,
+  onOpenFile,
+  onCloseFile,
+}: SidebarProps): ReactNode => {
+  const callbacks: CategoryCallbacks = { onSelectCategory, onSelectTab, onToggleDir, onOpenFile, onCloseFile };
+  return (
+    <box
+      width={width}
+      flexDirection="column"
+      backgroundColor={SIDEBAR_BG}
+      border={["right"]}
+      borderStyle="single"
+      borderColor="#38383a"
+    >
+      <scrollbox flexGrow={1}>
+        {categories.map((category) =>
+          renderCategory(category, category.name === activeCategory, activeTabId, callbacks),
+        )}
+      </scrollbox>
+    </box>
+  );
+};

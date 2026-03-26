@@ -65,6 +65,9 @@ export const StatusBar = ({ prefixActive, copyMode }: StatusBarProps): ReactNode
         <text fg={MUTED}>
           <span fg={ACCENT}>^Cc</span> copy
         </text>
+        <text fg={MUTED}>
+          <span fg={ACCENT}>click</span> sidebar
+        </text>
       </>
     )}
   </box>
