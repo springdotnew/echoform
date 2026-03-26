@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/react */
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
-import { useKeyboard, useTerminalDimensions } from "@opentui/react";
+import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { fromBase64, toBase64 } from "../utils/base64";
 import { getOrCreateBuffer, type StyledLine, type StyledSegment } from "../utils/ansi";
 import { usePrefixContext } from "./FocusContext";
@@ -44,6 +44,7 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   const { id, output, status } = props;
   const sendInput = props.onInput.mutate;
   const sendResize = props.onResize.mutate;
+  const renderer = useRenderer();
   const { prefixRef, searchOpenRef, hasSelectionRef, activeTabId } = usePrefixContext();
 
   const [lines, setLines] = useState<readonly StyledLine[]>([]);
@@ -70,6 +71,18 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
       sendInput(toBase64(new TextEncoder().encode(data)));
     }
   });
+
+  // Forward paste events to PTY
+  useEffect(() => {
+    const onPaste = (event: { readonly bytes: Uint8Array }) => {
+      if (!isActiveTerminal) return;
+      if (prefixRef.current || searchOpenRef.current) return;
+      sendInput(toBase64(event.bytes));
+    };
+    const keyInput = renderer.keyInput as unknown as { on(e: string, fn: (event: { readonly bytes: Uint8Array }) => void): void; off(e: string, fn: (event: { readonly bytes: Uint8Array }) => void): void };
+    keyInput.on("paste", onPaste);
+    return () => { keyInput.off("paste", onPaste); };
+  }, [renderer, isActiveTerminal, prefixRef, searchOpenRef, sendInput]);
 
   const handleOutput = useCallback((b64: string) => {
     const bytes = fromBase64(b64);
