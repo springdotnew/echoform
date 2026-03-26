@@ -1,6 +1,6 @@
 {
   "name": "@playfast/echoform-socket-server",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Socket.IO server transport for echoform",
   "type": "module",
   "exports": {
@@ -18,7 +18,7 @@
     "build": "tsgo -p ."
   },
   "peerDependencies": {
-    "@playfast/echoform": ">=1.0.7",
+    "@playfast/echoform": ">=1.0.8",
     "react": ">=19.0.0"
   },
   "dependencies": {
