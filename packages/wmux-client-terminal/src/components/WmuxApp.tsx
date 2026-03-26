@@ -1,5 +1,5 @@
 /** @jsxImportSource @opentui/react */
-import React, { useState, useCallback, useMemo, useRef, type ReactNode } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
@@ -81,11 +81,8 @@ export const WmuxApp = (props: {
   const [prefixVisible, setPrefixVisible] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchOpenRef = useRef(false);
-  const [copyMode, setCopyMode] = useState(false);
-  const copyModeRef = useRef(false);
-  const copyPrefixRef = useRef(false);
-  const copyPrefixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const terminalContentRef = useRef("");
+  const [hasSelection, setHasSelection] = useState(false);
+  const hasSelectionRef = useRef(false);
 
   const activatePrefix = useCallback(() => {
     prefixRef.current = true;
@@ -102,20 +99,16 @@ export const WmuxApp = (props: {
     setSearchOpen(false);
   }, []);
 
-  const enterCopyMode = useCallback(() => {
-    copyModeRef.current = true;
-    setCopyMode(true);
-    copyPrefixRef.current = false;
-    if (copyPrefixTimerRef.current) {
-      clearTimeout(copyPrefixTimerRef.current);
-      copyPrefixTimerRef.current = null;
-    }
-  }, []);
-
-  const exitCopyMode = useCallback(() => {
-    copyModeRef.current = false;
-    setCopyMode(false);
-  }, []);
+  // ── Selection tracking via renderer events ──────────────
+  useEffect(() => {
+    const onSelection = () => {
+      const selected = renderer.hasSelection;
+      hasSelectionRef.current = selected;
+      setHasSelection(selected);
+    };
+    renderer.on("selection", onSelection);
+    return () => { renderer.off("selection", onSelection); };
+  }, [renderer]);
 
   const allNavItems = useMemo(() => buildAllNavigationItems(categories), [categories]);
 
@@ -190,38 +183,14 @@ export const WmuxApp = (props: {
     // ── Search overlay handles its own keys ──────────────
     if (searchOpenRef.current) return;
 
-    // ── Copy mode: 'c' copies, Escape exits ────────────
-    if (copyModeRef.current) {
-      if (key.name === "c") {
-        renderer.copyToClipboardOSC52(terminalContentRef.current);
-        exitCopyMode();
+    // ── Selection copy: 'c' copies selected text ────────
+    if (hasSelectionRef.current && key.name === "c" && !key.ctrl && !prefixRef.current) {
+      const sel = renderer.getSelection();
+      if (sel) {
+        const text = sel.getSelectedText();
+        if (text) renderer.copyToClipboardOSC52(text);
+        renderer.clearSelection();
       }
-      if (key.name === "escape") exitCopyMode();
-      return;
-    }
-
-    // ── Copy prefix: Ctrl+C was pressed, waiting for 'c' ──
-    if (copyPrefixRef.current) {
-      copyPrefixRef.current = false;
-      if (copyPrefixTimerRef.current) {
-        clearTimeout(copyPrefixTimerRef.current);
-        copyPrefixTimerRef.current = null;
-      }
-      if (key.name === "c" && !key.ctrl) {
-        enterCopyMode();
-        return;
-      }
-      // Non-'c' key: fall through to normal handling
-    }
-
-    // ── Ctrl+C: set copy prefix (deferred so Ctrl+C reaches PTY) ──
-    if (key.ctrl && key.name === "c" && !prefixRef.current) {
-      setTimeout(() => { copyPrefixRef.current = true; }, 0);
-      if (copyPrefixTimerRef.current) clearTimeout(copyPrefixTimerRef.current);
-      copyPrefixTimerRef.current = setTimeout(() => {
-        copyPrefixRef.current = false;
-        copyPrefixTimerRef.current = null;
-      }, 500);
       return;
     }
 
@@ -308,13 +277,6 @@ export const WmuxApp = (props: {
       return;
     }
 
-    // Copy mode
-    if (key.name === "c") {
-      consumePrefix();
-      enterCopyMode();
-      return;
-    }
-
     // Exit control mode (+ start process if idle)
     if (key.name === "enter" || key.name === "return") {
       const activeCat = categories.find((c) => c.name === activeCategory);
@@ -345,7 +307,7 @@ export const WmuxApp = (props: {
   const hasActiveChild = registry.has(activeTabId);
 
   return (
-    <PrefixProvider prefixRef={prefixRef} searchOpenRef={searchOpenRef} copyModeRef={copyModeRef} terminalContentRef={terminalContentRef} activeTabId={activeTabId} copyMode={copyMode}>
+    <PrefixProvider prefixRef={prefixRef} searchOpenRef={searchOpenRef} hasSelectionRef={hasSelectionRef} activeTabId={activeTabId} hasSelection={hasSelection}>
       <box
         flexDirection="column"
         width={width}
@@ -407,7 +369,7 @@ export const WmuxApp = (props: {
         <box height={1} backgroundColor={BORDER_COLOR} />
 
         {/* Status bar */}
-        <StatusBar prefixActive={prefixVisible} copyMode={copyMode} />
+        <StatusBar prefixActive={prefixVisible} hasSelection={hasSelection} />
       </box>
     </PrefixProvider>
   );

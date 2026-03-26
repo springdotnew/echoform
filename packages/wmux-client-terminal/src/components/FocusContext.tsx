@@ -9,39 +9,35 @@ interface PrefixContextValue {
   /** True when Ctrl+B was pressed and control mode is active */
   readonly prefixRef: MutableRefObject<boolean>;
   readonly searchOpenRef: MutableRefObject<boolean>;
-  readonly copyModeRef: MutableRefObject<boolean>;
-  readonly terminalContentRef: MutableRefObject<string>;
+  readonly hasSelectionRef: MutableRefObject<boolean>;
   readonly activeTabId: string;
-  readonly copyMode: boolean;
+  readonly hasSelection: boolean;
 }
 
 const PrefixContext = createContext<PrefixContextValue>({
   prefixRef: { current: false },
   searchOpenRef: { current: false },
-  copyModeRef: { current: false },
-  terminalContentRef: { current: "" },
+  hasSelectionRef: { current: false },
   activeTabId: "",
-  copyMode: false,
+  hasSelection: false,
 });
 
 export const PrefixProvider = ({
   prefixRef,
   searchOpenRef,
-  copyModeRef,
-  terminalContentRef,
+  hasSelectionRef,
   activeTabId,
-  copyMode,
+  hasSelection,
   children,
 }: {
   readonly prefixRef: MutableRefObject<boolean>;
   readonly searchOpenRef: MutableRefObject<boolean>;
-  readonly copyModeRef: MutableRefObject<boolean>;
-  readonly terminalContentRef: MutableRefObject<string>;
+  readonly hasSelectionRef: MutableRefObject<boolean>;
   readonly activeTabId: string;
-  readonly copyMode: boolean;
+  readonly hasSelection: boolean;
   readonly children: ReactNode;
 }): ReactNode => (
-  <PrefixContext.Provider value={{ prefixRef, searchOpenRef, copyModeRef, terminalContentRef, activeTabId, copyMode }}>
+  <PrefixContext.Provider value={{ prefixRef, searchOpenRef, hasSelectionRef, activeTabId, hasSelection }}>
     {children}
   </PrefixContext.Provider>
 );

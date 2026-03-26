@@ -44,7 +44,7 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   const { id, output, status } = props;
   const sendInput = props.onInput.mutate;
   const sendResize = props.onResize.mutate;
-  const { prefixRef, searchOpenRef, copyModeRef, terminalContentRef, activeTabId, copyMode } = usePrefixContext();
+  const { prefixRef, searchOpenRef, hasSelectionRef, activeTabId } = usePrefixContext();
 
   const [lines, setLines] = useState<readonly StyledLine[]>([]);
   const { width, height } = useTerminalDimensions();
@@ -63,7 +63,7 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
     if (key.ctrl && key.name === "b") return; // prefix key, handled by WmuxApp
     if (prefixRef.current) return;            // control mode active, handled by WmuxApp
     if (searchOpenRef.current) return;        // search overlay is open
-    if (copyModeRef.current) return;          // copy mode active
+    if (hasSelectionRef.current && key.name === "c" && !key.ctrl) return; // selection copy, handled by WmuxApp
 
     const data = key.sequence;
     if (data) {
@@ -82,13 +82,6 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   useEffect(() => {
     return output.subscribe(handleOutput);
   }, [output, handleOutput]);
-
-  // Keep terminal content ref in sync for copy mode
-  useEffect(() => {
-    if (activeTabId === id) {
-      terminalContentRef.current = lines.map((line) => line.segments.map((seg) => seg.text).join("")).join("\n");
-    }
-  }, [lines, activeTabId, id, terminalContentRef]);
 
   useEffect(() => {
     const contentWidth = Math.max(10, width - SIDEBAR_WIDTH - 2);
@@ -123,8 +116,8 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
           </text>
         </box>
       ) : null}
-      <scrollbox flexGrow={1} stickyScroll={!copyMode} stickyStart="bottom">
-        {lines.map((line, i) => renderLine(line, i, copyMode || undefined))}
+      <scrollbox flexGrow={1} stickyScroll stickyStart="bottom">
+        {lines.map((line, i) => renderLine(line, i, true))}
       </scrollbox>
     </box>
   );

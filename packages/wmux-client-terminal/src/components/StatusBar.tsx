@@ -7,24 +7,12 @@ const WARN = "#ffd60a";
 
 interface StatusBarProps {
   readonly prefixActive: boolean;
-  readonly copyMode: boolean;
+  readonly hasSelection: boolean;
 }
 
-export const StatusBar = ({ prefixActive, copyMode }: StatusBarProps): ReactNode => (
+export const StatusBar = ({ prefixActive, hasSelection }: StatusBarProps): ReactNode => (
   <box height={1} flexDirection="row" paddingX={1} gap={2}>
-    {copyMode ? (
-      <>
-        <text fg={WARN}>
-          <strong>COPY</strong>
-        </text>
-        <text fg={MUTED}>
-          <span fg={ACCENT}>c</span> copy buffer
-        </text>
-        <text fg={MUTED}>
-          <span fg={ACCENT}>esc</span> exit
-        </text>
-      </>
-    ) : prefixActive ? (
+    {prefixActive ? (
       <>
         <text fg={WARN}>
           <strong>wmux</strong>
@@ -48,9 +36,6 @@ export const StatusBar = ({ prefixActive, copyMode }: StatusBarProps): ReactNode
           <span fg={ACCENT}>w</span> web
         </text>
         <text fg={MUTED}>
-          <span fg={ACCENT}>c</span> copy
-        </text>
-        <text fg={MUTED}>
           <span fg={ACCENT}>{"\u23ce"}</span> exit
         </text>
         <text fg={MUTED}>
@@ -63,11 +48,13 @@ export const StatusBar = ({ prefixActive, copyMode }: StatusBarProps): ReactNode
           <span fg={ACCENT}>^B</span> controls
         </text>
         <text fg={MUTED}>
-          <span fg={ACCENT}>^Cc</span> copy
-        </text>
-        <text fg={MUTED}>
           <span fg={ACCENT}>click</span> sidebar
         </text>
+        {hasSelection ? (
+          <text fg={WARN}>
+            <span fg={ACCENT}>c</span> copy selection
+          </text>
+        ) : null}
       </>
     )}
   </box>
