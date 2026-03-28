@@ -1,5 +1,13 @@
 # @playfast/wmux-client
 
+## 0.0.14
+
+### Patch Changes
+
+- Updated dependencies [ac800a7]
+  - @playfast/echoform@1.0.9
+  - @playfast/wmux@0.2.12
+
 ## 0.0.13
 
 ### Patch Changes
