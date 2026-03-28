@@ -86,4 +86,12 @@ export const WmuxIframe = view("WmuxIframe", {
   },
 });
 
-export const views = createViews({ WmuxApp, WmuxTerminal, WmuxFileContent, WmuxIframe });
+export const WmuxMarkdown = view("WmuxMarkdown", {
+  input: {
+    id: z.string(),
+    name: z.string(),
+    content: z.string(),
+  },
+});
+
+export const views = createViews({ WmuxApp, WmuxTerminal, WmuxFileContent, WmuxIframe, WmuxMarkdown });

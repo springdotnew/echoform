@@ -9,12 +9,14 @@ import { WmuxApp } from "./components/WmuxApp";
 import { WmuxTerminal } from "./components/WmuxTerminal";
 import { WmuxFileContent } from "./components/WmuxFileContent";
 import { WmuxIframe } from "./components/WmuxIframe";
+import { WmuxMarkdown } from "./components/WmuxMarkdown";
 
 const tuiViewComponents = {
   WmuxApp,
   WmuxTerminal,
   WmuxFileContent,
   WmuxIframe,
+  WmuxMarkdown,
 };
 
 export interface WmuxTUIOptions {

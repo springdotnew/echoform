@@ -4,6 +4,7 @@ import type { ManagedProcess } from "../process";
 import type { ProcessStatus } from "../types";
 import { TerminalSession } from "./TerminalSession";
 import { IframeSession } from "./IframeSession";
+import { MarkdownSession } from "./MarkdownSession";
 import { FileViewerSession, type FileViewerActions, type FileViewerState } from "./FileViewerSession";
 
 const CATEGORY_COLORS = [
@@ -22,8 +23,9 @@ interface TabDef {
   readonly id: string;
   readonly description?: string | undefined;
   readonly icon?: string | undefined;
-  readonly tabType: "process" | "iframe";
+  readonly tabType: "process" | "iframe" | "markdown";
   readonly url?: string | undefined;
+  readonly markdown?: string | undefined;
 }
 
 interface CategoryDef {
@@ -67,7 +69,7 @@ function buildProcessCategory(
       name: tab.id.split("/").pop()!,
       description: tab.description,
       icon: tab.icon,
-      status: tab.tabType === "iframe" ? ("running" as const) : (statuses[tab.id] ?? ("idle" as const)),
+      status: tab.tabType === "iframe" || tab.tabType === "markdown" ? ("running" as const) : (statuses[tab.id] ?? ("idle" as const)),
     })),
   };
 }
@@ -102,6 +104,12 @@ function resolveInitialTabId(definition: CategoryDef, fileStates: Record<string,
 function extractIframeTabs(categoryDefs: readonly CategoryDef[]): readonly TabDef[] {
   return categoryDefs.flatMap((definition) =>
     definition.tabs.filter((tab) => tab.tabType === "iframe" && tab.url),
+  );
+}
+
+function extractMarkdownTabs(categoryDefs: readonly CategoryDef[]): readonly TabDef[] {
+  return categoryDefs.flatMap((definition) =>
+    definition.tabs.filter((tab) => tab.tabType === "markdown" && tab.markdown),
   );
 }
 
@@ -150,6 +158,7 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
   );
 
   const iframeTabs = useMemo(() => extractIframeTabs(categoryDefs), [categoryDefs]);
+  const markdownTabs = useMemo(() => extractMarkdownTabs(categoryDefs), [categoryDefs]);
   const processIds = useMemo(() => [...processes.keys()], [processes]);
   const fileCategories = useMemo(
     () => categoryDefs.filter((d) => d.type === "files" && d.fileRoot),
@@ -191,6 +200,9 @@ export function WmuxRoot({ title, description, processes, categoryDefs }: WmuxRo
       ))}
       {iframeTabs.map((tab) => (
         <IframeSession key={tab.id} id={tab.id} name={tab.id.split("/").pop()!} url={tab.url!} />
+      ))}
+      {markdownTabs.map((tab) => (
+        <MarkdownSession key={tab.id} id={tab.id} name={tab.id.split("/").pop()!} content={tab.markdown!} />
       ))}
       {fileCategories.map((definition) => (
         <FileViewerSession

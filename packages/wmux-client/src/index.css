@@ -130,3 +130,100 @@ body {
   from { backdrop-filter: blur(0px); opacity: 0; }
   to { backdrop-filter: blur(12px); opacity: 1; }
 }
+
+/* ── Markdown content styles ────────────────────────────── */
+
+.wmux-markdown {
+  color: #e5e5ea;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.wmux-markdown h1, .wmux-markdown h2, .wmux-markdown h3,
+.wmux-markdown h4, .wmux-markdown h5, .wmux-markdown h6 {
+  color: #f5f5f7;
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+.wmux-markdown h1 { font-size: 1.75em; border-bottom: 1px solid #38383a; padding-bottom: 0.3em; }
+.wmux-markdown h2 { font-size: 1.4em; border-bottom: 1px solid #38383a; padding-bottom: 0.25em; }
+.wmux-markdown h3 { font-size: 1.15em; }
+
+.wmux-markdown p { margin: 0.75em 0; }
+
+.wmux-markdown a { color: #0a84ff; text-decoration: none; }
+.wmux-markdown a:hover { text-decoration: underline; }
+
+.wmux-markdown strong { color: #f5f5f7; font-weight: 600; }
+.wmux-markdown em { font-style: italic; }
+
+.wmux-markdown code {
+  background: #2c2c2e;
+  border: 1px solid #38383a;
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+  font-family: var(--font-mono);
+  color: #ff8170;
+}
+
+.wmux-markdown pre {
+  background: #1a1a1c;
+  border: 1px solid #38383a;
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.wmux-markdown pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #e5e5ea;
+  font-size: 13px;
+}
+
+.wmux-markdown blockquote {
+  border-left: 3px solid #48484a;
+  margin: 1em 0;
+  padding: 0.25em 1em;
+  color: #98989d;
+}
+
+.wmux-markdown ul, .wmux-markdown ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+}
+
+.wmux-markdown li { margin: 0.25em 0; }
+.wmux-markdown li::marker { color: #636366; }
+
+.wmux-markdown hr {
+  border: none;
+  border-top: 1px solid #38383a;
+  margin: 1.5em 0;
+}
+
+.wmux-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.wmux-markdown th, .wmux-markdown td {
+  border: 1px solid #38383a;
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.wmux-markdown th {
+  background: #2c2c2e;
+  color: #f5f5f7;
+  font-weight: 600;
+}
+
+.wmux-markdown img { max-width: 100%; border-radius: 8px; }

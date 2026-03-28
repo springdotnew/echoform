@@ -27,13 +27,40 @@ export const isCommandConfig = (c: ProcessConfig): c is CommandProcessConfig =>
 export const isTerminalConfig = (c: ProcessConfig): c is TerminalProcessConfig =>
   "terminal" in c;
 
-export interface TabConfig {
+// ── TabConfig discriminated union ──────────────────────────
+
+interface TabConfigBase {
   readonly name: string;
   readonly description?: string;
   readonly icon?: string;
-  readonly process?: ProcessConfig;
-  readonly url?: string;
 }
+
+export interface CommandTabConfig extends TabConfigBase {
+  readonly command: string | readonly string[];
+  readonly cwd?: string;
+  readonly env?: Record<string, string>;
+  readonly autoStart?: boolean;
+  readonly autoRestart?: boolean;
+}
+
+export interface TerminalTabConfig extends TabConfigBase {
+  readonly terminal: TerminalBridgeHandle;
+}
+
+export interface UrlTabConfig extends TabConfigBase {
+  readonly url: string;
+}
+
+export interface MarkdownTabConfig extends TabConfigBase {
+  readonly markdown: string;
+}
+
+export type TabConfig = CommandTabConfig | TerminalTabConfig | UrlTabConfig | MarkdownTabConfig;
+
+export const isCommandTab = (t: TabConfig): t is CommandTabConfig => "command" in t;
+export const isTerminalTab = (t: TabConfig): t is TerminalTabConfig => "terminal" in t;
+export const isUrlTab = (t: TabConfig): t is UrlTabConfig => "url" in t;
+export const isMarkdownTab = (t: TabConfig): t is MarkdownTabConfig => "markdown" in t;
 
 export interface SidebarItem {
   readonly category: string;

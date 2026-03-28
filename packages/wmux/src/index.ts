@@ -9,6 +9,11 @@ export type {
   TerminalProcessConfig,
   TerminalBridgeHandle,
   TabConfig,
+  CommandTabConfig,
+  TerminalTabConfig,
+  UrlTabConfig,
+  MarkdownTabConfig,
   SidebarItem,
   ProcessStatus,
 } from "./types";
+export { isCommandTab, isTerminalTab, isUrlTab, isMarkdownTab } from "./types";

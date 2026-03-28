@@ -4,7 +4,8 @@ import { createManagedProcess, type ManagedProcess } from "./process";
 import { createWmuxServer } from "./server";
 import { generateToken } from "./token";
 import { WmuxRoot } from "./components/WmuxRoot";
-import type { WmuxConfig, WmuxHandle, SidebarItem } from "./types";
+import type { WmuxConfig, WmuxHandle, SidebarItem, CommandProcessConfig, TerminalProcessConfig } from "./types";
+import { isCommandTab, isTerminalTab, isUrlTab, isMarkdownTab } from "./types";
 
 const BUILT_IN_CLIENT_URL = "https://wmux.play.fast";
 
@@ -27,8 +28,9 @@ interface TabDef {
   readonly id: string;
   readonly description?: string | undefined;
   readonly icon?: string | undefined;
-  readonly tabType: "process" | "iframe";
+  readonly tabType: "process" | "iframe" | "markdown";
   readonly url?: string | undefined;
+  readonly markdown?: string | undefined;
 }
 
 interface CategoryDef {
@@ -50,10 +52,23 @@ function buildProcessTabs(
   const result: TabDef[] = [];
   for (const tab of item.tabs ?? []) {
     const id = `${item.category}/${tab.name}`;
-    if (tab.url) {
+    if (isUrlTab(tab)) {
       result.push({ id, description: tab.description, icon: tab.icon, tabType: "iframe", url: tab.url });
-    } else if (tab.process) {
-      processes.set(id, createManagedProcess(id, tab.name, tab.process, () => {}));
+    } else if (isMarkdownTab(tab)) {
+      result.push({ id, description: tab.description, icon: tab.icon, tabType: "markdown", markdown: tab.markdown });
+    } else if (isCommandTab(tab)) {
+      const processConfig: CommandProcessConfig = {
+        command: tab.command,
+        cwd: tab.cwd,
+        env: tab.env,
+        autoStart: tab.autoStart,
+        autoRestart: tab.autoRestart,
+      };
+      processes.set(id, createManagedProcess(id, tab.name, processConfig, () => {}));
+      result.push({ id, description: tab.description, icon: tab.icon, tabType: "process" });
+    } else if (isTerminalTab(tab)) {
+      const processConfig: TerminalProcessConfig = { terminal: tab.terminal };
+      processes.set(id, createManagedProcess(id, tab.name, processConfig, () => {}));
       result.push({ id, description: tab.description, icon: tab.icon, tabType: "process" });
     }
   }
