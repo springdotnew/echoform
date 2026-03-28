@@ -18,6 +18,11 @@
       "types": "./src/preset/tui.ts",
       "import": "./src/preset/tui.ts",
       "default": "./src/preset/tui.ts"
+    },
+    "./preset/headless": {
+      "types": "./src/preset/headless.ts",
+      "import": "./src/preset/headless.ts",
+      "default": "./src/preset/headless.ts"
     }
   },
   "files": [
