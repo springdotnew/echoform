@@ -1,6 +1,6 @@
 {
   "name": "@playfast/wmux-client-terminal",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Terminal UI client for wmux",
   "type": "module",
   "exports": {

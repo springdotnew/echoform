@@ -1,5 +1,15 @@
 # @playfast/wmux
 
+## 0.2.12
+
+### Patch Changes
+
+- ac800a7: Add headless preset for wmux and markdown session support
+- Updated dependencies [ac800a7]
+  - @playfast/echoform@1.0.9
+  - @playfast/echoform-render@1.0.9
+  - @playfast/wmux-client-terminal@0.0.6
+
 ## 0.2.11
 
 ### Patch Changes

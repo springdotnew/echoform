@@ -1,5 +1,13 @@
 # @playfast/echoform-render
 
+## 1.0.9
+
+### Patch Changes
+
+- ac800a7: Add headless preset for wmux and markdown session support
+- Updated dependencies [ac800a7]
+  - @playfast/echoform@1.0.9
+
 ## 1.0.8
 
 ### Patch Changes

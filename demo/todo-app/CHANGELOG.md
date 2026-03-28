@@ -1,5 +1,15 @@
 # todo-app-demo
 
+## 1.0.10
+
+### Patch Changes
+
+- Updated dependencies [ac800a7]
+  - @playfast/echoform@1.0.9
+  - @playfast/echoform-render@1.0.9
+  - @playfast/echoform-bun-ws-client@1.0.9
+  - @playfast/echoform-bun-ws-server@1.0.9
+
 ## 1.0.9
 
 ### Patch Changes

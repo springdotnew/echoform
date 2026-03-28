@@ -1,5 +1,13 @@
 # @demo/dev-server
 
+## 1.0.13
+
+### Patch Changes
+
+- Updated dependencies [ac800a7]
+  - @playfast/wmux@0.2.12
+  - @playfast/wmux-client-terminal@0.0.6
+
 ## 1.0.12
 
 ### Patch Changes
