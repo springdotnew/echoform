@@ -17,6 +17,12 @@ export interface TerminalBridge {
   readonly handle: TerminalBridgeHandle;
 }
 
+export interface TerminalBridgeOptions {
+  readonly cols?: number;
+  readonly rows?: number;
+  readonly onRestart?: () => void;
+}
+
 /**
  * Creates a bridge between a Bun.spawn terminal and wmux.
  *
@@ -28,7 +34,7 @@ export interface TerminalBridge {
  * ```
  */
 export function createTerminalBridge(
-  opts?: { readonly cols?: number; readonly rows?: number },
+  opts?: TerminalBridgeOptions,
 ): TerminalBridge {
   let dataHandler: ((data: Uint8Array) => void) | null = null;
   let terminal: TerminalLike | null = null;
@@ -37,8 +43,8 @@ export function createTerminalBridge(
     cols: opts?.cols ?? 80,
     rows: opts?.rows ?? 24,
     data(t: unknown, chunk: Uint8Array) {
-      // Capture the Bun terminal reference on first data callback
-      if (!terminal && t && typeof t === "object" && "write" in t && "resize" in t && "close" in t) {
+      // Capture the current Bun terminal reference, including after external restarts.
+      if (t && typeof t === "object" && "write" in t && "resize" in t && "close" in t) {
         terminal = t as TerminalLike;
       }
       dataHandler?.(chunk);
@@ -55,8 +61,10 @@ export function createTerminalBridge(
     onData(handler: (data: Uint8Array) => void) {
       dataHandler = handler;
     },
+    ...(opts?.onRestart ? { onRestart: opts.onRestart } : {}),
     close() {
       terminal?.close();
+      terminal = null;
     },
   };
 

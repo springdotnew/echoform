@@ -1,6 +1,6 @@
 export { wmux } from "./wmux";
 export { createTerminalBridge } from "./terminal-bridge";
-export type { TerminalBridge } from "./terminal-bridge";
+export type { TerminalBridge, TerminalBridgeOptions } from "./terminal-bridge";
 export type {
   WmuxConfig,
   WmuxHandle,

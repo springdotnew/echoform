@@ -171,7 +171,7 @@ function createTerminalProcess(
     attachOutput(emitter) { outputEmitter = emitter; },
     start() {},
     stop() { handle.close(); setStatus("stopped"); },
-    restart() {},
+    restart() { handle.onRestart?.(); },
     write(b64) { handle.write(fromBase64(b64)); },
     resize(cols, rows) { handle.resize(cols, rows); },
     dispose() { handle.close(); setStatus("stopped"); },

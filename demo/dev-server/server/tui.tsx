@@ -1,4 +1,7 @@
 import { wmuxTUI } from "@playfast/wmux/preset/tui";
+import { createExposedApiTerminal } from "./exposed-api";
+
+const exposedApiTerminal = createExposedApiTerminal();
 
 const { done } = await wmuxTUI({
   title: "echoform",
@@ -26,6 +29,13 @@ const { done } = await wmuxTUI({
         { name: "failing", icon: "Bug", description: "auto-restarts", command: `bash -c 'echo "starting..."; sleep 3; echo "crash!"; exit 1'`, autoRestart: true },
         { name: "manual", icon: "Wrench", description: "manual start", command: `bash -c 'echo "manual process running"; sleep infinity'`, autoStart: false },
         { name: "example.com", icon: "Globe", description: "iframe preview", url: "https://example.com" },
+      ],
+    },
+    {
+      category: "exposed api",
+      icon: "Workflow",
+      tabs: [
+        { name: "bridge", icon: "Zap", description: "TerminalBridgeHandle.onRestart", terminal: exposedApiTerminal.handle },
       ],
     },
     {

@@ -12,6 +12,7 @@ export interface TerminalBridgeHandle {
   readonly write: (data: string | Uint8Array) => void;
   readonly resize: (cols: number, rows: number) => void;
   readonly onData: (handler: (data: Uint8Array) => void) => void;
+  readonly onRestart?: () => void;
   readonly close: () => void;
 }
 
