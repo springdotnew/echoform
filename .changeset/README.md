@@ -1,15 +1,17 @@
 # Changesets
 
-This repo uses [changesets](https://github.com/changesets/changesets) to manage versions and publish to npm.
+This folder is managed by [Changesets](https://github.com/changesets/changesets), the
+versioning and publishing tool for this workspace.
 
-## Adding a changeset
+## Releasing
 
-```bash
-bunx changeset
-```
+1. `bun changeset` - describe your change and pick a bump.
+2. `bun run release` - applies pending changesets, previews the release diff,
+   commits the version bump, and publishes to npm.
 
-Follow the prompts to select which packages changed and the bump type (patch/minor/major).
+The core echoform packages are a fixed group, so any bump to one of them moves
+that group together. The wmux packages release independently.
 
-## Publishing
-
-Push to `master` with pending changesets → CI creates a "Version Packages" PR → merge it → CI publishes to npm.
+Published packages ship TypeScript source through their `exports` entries. Keep
+runtime internal package references as plain ranges such as `"*"`. Private
+packages and dev-only references may use `workspace:*`.

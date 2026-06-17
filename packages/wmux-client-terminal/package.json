@@ -18,8 +18,8 @@
     "build": "tsgo -p ."
   },
   "dependencies": {
-    "@playfast/echoform": "workspace:*",
-    "@playfast/wmux": "workspace:*",
+    "@playfast/echoform": "*",
+    "@playfast/wmux": "*",
     "@opentui/core": "0.4.1",
     "@opentui/react": "0.4.1"
   },

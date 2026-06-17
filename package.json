@@ -23,10 +23,13 @@
     "knip:fix": "knip --fix",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "node scripts/resolve-workspace-deps.js && changeset publish"
+    "version-packages": "changeset version",
+    "publish-packages": "changeset publish",
+    "release": "bun scripts/release.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.25.2",
+    "@types/bun": "latest",
     "@typescript/native-preview": "^7.0.0-dev.20260323.1",
     "knip": "^5.0.0",
     "oxlint": "^0.13.0",
