@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/react": "^19.0.0"
+    "@types/react": "^19.2.0"
   },
   "author": "shmuelhizmi",
   "license": "MIT",

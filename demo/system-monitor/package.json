@@ -16,8 +16,8 @@
     "@playfast/echoform-bun-ws-server": "workspace:*",
     "@playfast/echoform-render": "workspace:*",
     "@tailwindcss/vite": "^4.2.2",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "systeminformation": "^5.31.5",
     "tailwindcss": "4",
     "zod": "^3.24.4"

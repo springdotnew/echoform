@@ -23,8 +23,8 @@ await wmux({
       category: "dev",
       icon: "Terminal",
       tabs: [
-        { name: "server", process: { command: "bun run dev" } },
-        { name: "shell", icon: "SquareTerminal", process: { command: "bash" } },
+        { name: "server", command: "bun run dev" },
+        { name: "shell", icon: "SquareTerminal", command: "bash" },
       ],
     },
   ],
@@ -71,7 +71,7 @@ Each sidebar item is either a **tab group** or a **file browser**:
   category: "services",
   icon: "Server",             // optional, any Lucide icon name
   tabs: [
-    { name: "api", description: "REST API", process: { command: "bun run dev" } },
+    { name: "api", description: "REST API", command: "bun run dev" },
     { name: "docs", url: "http://localhost:3001" },
   ],
 }

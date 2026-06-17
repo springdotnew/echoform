@@ -83,6 +83,17 @@ export const WmuxApp = (props: {
   const searchOpenRef = useRef(false);
   const [hasSelection, setHasSelection] = useState(false);
   const hasSelectionRef = useRef(false);
+  const [copyToast, setCopyToast] = useState<string | null>(null);
+  const copyToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showCopyToast = useCallback((msg: string) => {
+    setCopyToast(msg);
+    if (copyToastTimer.current) clearTimeout(copyToastTimer.current);
+    copyToastTimer.current = setTimeout(() => {
+      setCopyToast(null);
+      copyToastTimer.current = null;
+    }, 1500);
+  }, []);
 
   const activatePrefix = useCallback(() => {
     prefixRef.current = true;
@@ -99,16 +110,27 @@ export const WmuxApp = (props: {
     setSearchOpen(false);
   }, []);
 
-  // ── Selection tracking via renderer events ──────────────
+  // ── Selection: auto-copy to clipboard on selection complete ─
   useEffect(() => {
     const onSelection = () => {
-      const selected = renderer.hasSelection;
-      hasSelectionRef.current = selected;
-      setHasSelection(selected);
+      const sel = renderer.getSelection();
+      if (sel) {
+        const text = sel.getSelectedText();
+        if (text) {
+          renderer.copyToClipboardOSC52(text);
+          showCopyToast(`Copied ${text.length} char${text.length === 1 ? "" : "s"}`);
+        }
+      }
+      renderer.clearSelection();
+      hasSelectionRef.current = false;
+      setHasSelection(false);
     };
     renderer.on("selection", onSelection);
-    return () => { renderer.off("selection", onSelection); };
-  }, [renderer]);
+    return () => {
+      renderer.off("selection", onSelection);
+      if (copyToastTimer.current) clearTimeout(copyToastTimer.current);
+    };
+  }, [renderer, showCopyToast]);
 
   const allNavItems = useMemo(() => buildAllNavigationItems(categories), [categories]);
 
@@ -182,17 +204,6 @@ export const WmuxApp = (props: {
   useKeyboard((key) => {
     // ── Search overlay handles its own keys ──────────────
     if (searchOpenRef.current) return;
-
-    // ── Selection copy: 'c' copies selected text ────────
-    if (hasSelectionRef.current && key.name === "c" && !key.ctrl && !prefixRef.current) {
-      const sel = renderer.getSelection();
-      if (sel) {
-        const text = sel.getSelectedText();
-        if (text) renderer.copyToClipboardOSC52(text);
-        renderer.clearSelection();
-      }
-      return;
-    }
 
     // ── Ctrl+B: toggle control mode ─────────────────────
     if (key.ctrl && key.name === "b") {
@@ -369,7 +380,7 @@ export const WmuxApp = (props: {
         <box height={1} backgroundColor={BORDER_COLOR} />
 
         {/* Status bar */}
-        <StatusBar prefixActive={prefixVisible} hasSelection={hasSelection} />
+        <StatusBar prefixActive={prefixVisible} copyToast={copyToast} />
       </box>
     </PrefixProvider>
   );

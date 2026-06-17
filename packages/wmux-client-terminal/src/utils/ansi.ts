@@ -73,6 +73,14 @@ export class TerminalBuffer {
   private style: CellStyle = defaultStyle();
   private savedCursor: { row: number; col: number } | null = null;
 
+  // Alternate screen (TUI apps: vim, htop, less…). When active the buffer
+  // represents a fixed-size viewport with no scrollback.
+  private altScreen = false;
+  private savedScreenState: { grid: Cell[][]; cursorRow: number; cursorCol: number; style: CellStyle; savedCursor: { row: number; col: number } | null; cursorVisible: boolean } | null = null;
+
+  // Cursor visibility (DEC ?25h/?25l). Shell prompts default to visible.
+  private cursorVisible = true;
+
   // Parser state for incomplete escape sequences across chunks
   private partial = "";
 
@@ -87,6 +95,52 @@ export class TerminalBuffer {
     this.rows = rows;
     // Clamp cursor
     if (this.cursorCol >= cols) this.cursorCol = cols - 1;
+  }
+
+  /** True while a TUI app is using the alternate screen (no scrollback). */
+  isAltScreen(): boolean {
+    return this.altScreen;
+  }
+
+  /** Current cursor position + visibility, in buffer coordinates. */
+  getCursor(): { row: number; col: number; visible: boolean } {
+    return { row: this.cursorRow, col: this.cursorCol, visible: this.cursorVisible };
+  }
+
+  private enterAltScreen(clear: boolean): void {
+    if (this.altScreen) {
+      if (clear) this.eraseInDisplay(2);
+      return;
+    }
+    this.savedScreenState = {
+      grid: this.grid,
+      cursorRow: this.cursorRow,
+      cursorCol: this.cursorCol,
+      style: { ...this.style },
+      savedCursor: this.savedCursor,
+      cursorVisible: this.cursorVisible,
+    };
+    this.grid = [this.newRow()];
+    this.cursorRow = 0;
+    this.cursorCol = 0;
+    this.style = defaultStyle();
+    this.savedCursor = null;
+    this.altScreen = true;
+  }
+
+  private exitAltScreen(): void {
+    if (!this.altScreen) return;
+    const saved = this.savedScreenState;
+    if (saved) {
+      this.grid = saved.grid;
+      this.cursorRow = saved.cursorRow;
+      this.cursorCol = saved.cursorCol;
+      this.style = { ...saved.style };
+      this.savedCursor = saved.savedCursor;
+      this.cursorVisible = saved.cursorVisible;
+      this.savedScreenState = null;
+    }
+    this.altScreen = false;
   }
 
   private newRow(): Cell[] {
@@ -269,6 +323,22 @@ export class TerminalBuffer {
     const cleanParams = paramStr.replace(/^[?>!]/, "");
     const params = cleanParams === "" ? [] : cleanParams.split(";").map((s) => parseInt(s, 10) || 0);
 
+    // DEC private set/reset (h/l) — alternate screen modes used by TUI apps.
+    if (isPrivate && (command === "h" || command === "l")) {
+      const enable = command === "h";
+      for (const p of params) {
+        if (p === 1049 || p === 1047 || p === 47) {
+          if (enable) this.enterAltScreen(p !== 47);
+          else this.exitAltScreen();
+        } else if (p === 25) {
+          // Cursor visibility
+          this.cursorVisible = enable;
+        }
+        // ?2004h/l (bracketed paste), etc. — ignored
+      }
+      return;
+    }
+
     // DEC private modes — ignore (bracketed paste, cursor visibility, etc.)
     if (isPrivate) return;
 
@@ -417,13 +487,32 @@ export class TerminalBuffer {
 
   getLines(): readonly StyledLine[] {
     const result: StyledLine[] = [];
-    // Find last non-empty row
+    const cursor = this.cursorVisible ? this.getCursor() : null;
+
+    if (this.altScreen) {
+      // Fixed viewport: return exactly `rows` lines (the visible screen).
+      // No scrollback is exposed, so the host cannot scroll past the TUI.
+      const viewportRows = this.rows;
+      const total = this.grid.length;
+      const startRow = Math.max(0, total - viewportRows);
+      for (let r = startRow; r < startRow + viewportRows; r++) {
+        const row = this.grid[r];
+        const cursorCol = cursor && cursor.row === r ? cursor.col : undefined;
+        result.push({ segments: row ? this.rowToSegments(row, cursorCol) : [] });
+      }
+      return result;
+    }
+
+    // Scrollback mode: render from first row to last non-empty row.
     let lastRow = this.grid.length - 1;
     while (lastRow > 0 && this.isRowEmpty(this.grid[lastRow]!)) lastRow--;
+    // Ensure the cursor row is rendered even if it's an empty trailing row.
+    if (cursor && cursor.row > lastRow) lastRow = cursor.row;
 
     for (let r = 0; r <= lastRow; r++) {
       const row = this.grid[r]!;
-      result.push({ segments: this.rowToSegments(row) });
+      const cursorCol = cursor && cursor.row === r ? cursor.col : undefined;
+      result.push({ segments: this.rowToSegments(row, cursorCol) });
     }
     return result;
   }
@@ -432,7 +521,7 @@ export class TerminalBuffer {
     return row.every((cell) => cell.char === " " && !cell.style.fg && !cell.style.bg && !cell.style.bold);
   }
 
-  private rowToSegments(row: Cell[]): StyledSegment[] {
+  private rowToSegments(row: Cell[], cursorCol?: number): StyledSegment[] {
     const segments: StyledSegment[] = [];
     let current = "";
     let currentStyle: CellStyle = defaultStyle();
@@ -446,8 +535,31 @@ export class TerminalBuffer {
       }
     }
 
-    for (let c = 0; c <= lastNonSpace; c++) {
+    // Include the cursor cell even when it sits past the last non-space char.
+    const end = Math.max(lastNonSpace, cursorCol ?? -1);
+
+    const flush = (): void => {
+      if (current.length > 0) segments.push(makeSegment(current, currentStyle));
+      current = "";
+      currentStyle = defaultStyle();
+    };
+
+    for (let c = 0; c <= end; c++) {
       const cell = row[c] ?? emptyCell();
+
+      // Cursor cell: render in reverse video (block caret).
+      if (cursorCol !== undefined && c === cursorCol) {
+        flush();
+        const isEmpty = cell.char === " " && !cell.style.fg && !cell.style.bg;
+        const caretStyle: CellStyle = isEmpty
+          ? { fg: undefined, bg: CARET_COLOR, bold: false, italic: false, underline: false }
+          : { fg: cell.style.bg ?? undefined, bg: cell.style.fg ?? CARET_FG, bold: cell.style.bold, italic: cell.style.italic, underline: cell.style.underline };
+        segments.push(makeSegment(cell.char === " " ? " " : cell.char, caretStyle));
+        current = "";
+        currentStyle = defaultStyle();
+        continue;
+      }
+
       const sameStyle = cell.style.fg === currentStyle.fg
         && cell.style.bg === currentStyle.bg
         && cell.style.bold === currentStyle.bold
@@ -457,16 +569,19 @@ export class TerminalBuffer {
       if (sameStyle) {
         current += cell.char;
       } else {
-        if (current.length > 0) segments.push(makeSegment(current, currentStyle));
+        flush();
         current = cell.char;
         currentStyle = cloneStyle(cell.style);
       }
     }
 
-    if (current.length > 0) segments.push(makeSegment(current, currentStyle));
+    flush();
     return segments;
   }
 }
+
+const CARET_COLOR = "#f5f5f7";
+const CARET_FG = "#1c1c1e";
 
 const makeSegment = (text: string, style: CellStyle): StyledSegment => ({
   text,

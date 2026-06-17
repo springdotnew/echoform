@@ -364,7 +364,7 @@ function SetupModal(): React.ReactElement {
           <StepNumber n={2} />
           <div className="flex-1 min-w-0">
             <p className="text-[13px] text-foreground/90 font-medium mb-2">Create your config</p>
-            <CodeBlock delay={1000} raw={`import { wmux } from "@playfast/wmux";\n\nawait wmux({\n  title: "my-project",\n  sidebarItems: [\n    {\n      category: "services",\n      tabs: [\n        { name: "api", process: { command: "bun run dev" } },\n        { name: "web", process: { command: "next dev" } },\n      ],\n    },\n    {\n      category: "files",\n      files: "./src",\n    },\n  ],\n});`}>
+            <CodeBlock delay={1000} raw={`import { wmux } from "@playfast/wmux";\n\nawait wmux({\n  title: "my-project",\n  sidebarItems: [\n    {\n      category: "services",\n      tabs: [\n        { name: "api", command: "bun run dev" },\n        { name: "web", command: "next dev" },\n      ],\n    },\n    {\n      category: "files",\n      files: "./src",\n    },\n  ],\n});`}>
               <span className={K}>import</span> <span className={N}>{"{ "}</span><span className={F}>wmux</span><span className={N}>{" }"}</span> <span className={K}>from</span> <span className={S}>"@playfast/wmux"</span><span className={C}>;</span>{"\n"}
 {"\n"}
 <span className={K}>await</span> <span className={F}>wmux</span><span className={N}>({"{"}</span>{"\n"}

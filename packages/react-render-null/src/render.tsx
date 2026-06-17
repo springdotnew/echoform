@@ -1,9 +1,10 @@
 import Reconciler from "react-reconciler";
 import { DefaultEventPriority } from "react-reconciler/constants.js";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode } from "react";
 
 type Instance = Record<string, unknown>;
 type HostContext = Record<string, unknown>;
+type InternalTransitionContext = Reconciler.ReactContext<null>;
 
 let currentUpdatePriority: number = DefaultEventPriority;
 
@@ -37,6 +38,8 @@ const hostConfig = {
   clearContainer: () => {},
 
   prepareUpdate: () => true,
+  NotPendingTransition: null,
+  HostTransitionContext: createContext(null) as unknown as InternalTransitionContext,
 
   scheduleTimeout: setTimeout,
   cancelTimeout: clearTimeout,
@@ -53,6 +56,21 @@ const hostConfig = {
   },
   getCurrentUpdatePriority: () => currentUpdatePriority,
   resolveUpdatePriority: () => currentUpdatePriority || DefaultEventPriority,
+  resetFormInstance: () => {},
+  requestPostPaintCallback: (callback: (time: number) => void) => {
+    callback(performance.now());
+  },
+  shouldAttemptEagerTransition: () => false,
+  trackSchedulerEvent: () => {},
+  resolveEventType: () => null,
+  resolveEventTimeStamp: () => performance.now(),
+  maySuspendCommit: () => false,
+  maySuspendCommitOnUpdate: () => false,
+  maySuspendCommitInSyncRender: () => false,
+  preloadInstance: () => true,
+  startSuspendingCommit: () => {},
+  suspendInstance: () => {},
+  waitForCommitToBeReady: () => null,
 
   preparePortalMount: () => {},
   getInstanceFromNode: () => null,
@@ -78,8 +96,10 @@ export const Render = (element: ReactNode): { stop: () => void; continue: () => 
     false, // isStrictMode
     null, // concurrentUpdatesByDefaultOverride
     "", // identifierPrefix
-    (error: unknown) => console.error(error), // onRecoverableError
-    null // transitionCallbacks
+    (error: Error) => console.error(error), // onUncaughtError
+    (error: Error) => console.error(error), // onCaughtError
+    (error: Error) => console.error(error), // onRecoverableError
+    () => {}, // onDefaultTransitionIndicator
   );
 
   const update = (element: ReactNode | null): void => {

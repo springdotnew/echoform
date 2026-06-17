@@ -45,11 +45,13 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
   const sendInput = props.onInput.mutate;
   const sendResize = props.onResize.mutate;
   const renderer = useRenderer();
-  const { prefixRef, searchOpenRef, hasSelectionRef, activeTabId } = usePrefixContext();
+  const { prefixRef, searchOpenRef, activeTabId } = usePrefixContext();
 
   const [lines, setLines] = useState<readonly StyledLine[]>([]);
+  const [altScreen, setAltScreen] = useState(false);
   const { width, height } = useTerminalDimensions();
   const sentResizeRef = useRef<string>("");
+  const flushPendingRef = useRef(false);
 
   const getTerminalBuffer = useCallback(() => {
     const cols = Math.max(10, width - SIDEBAR_WIDTH - 2);
@@ -64,7 +66,6 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
     if (key.ctrl && key.name === "b") return; // prefix key, handled by WmuxApp
     if (prefixRef.current) return;            // control mode active, handled by WmuxApp
     if (searchOpenRef.current) return;        // search overlay is open
-    if (hasSelectionRef.current && key.name === "c" && !key.ctrl) return; // selection copy, handled by WmuxApp
 
     const data = key.sequence;
     if (data) {
@@ -89,7 +90,16 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
     const text = new TextDecoder().decode(bytes);
     const buf = getTerminalBuffer();
     buf.write(text);
-    setLines(buf.getLines());
+    // Batch re-renders: multiple output chunks in the same tick collapse into
+    // a single React update (important for TUI apps that redraw in bursts).
+    if (!flushPendingRef.current) {
+      flushPendingRef.current = true;
+      queueMicrotask(() => {
+        flushPendingRef.current = false;
+        setLines(buf.getLines());
+        setAltScreen(buf.isAltScreen());
+      });
+    }
   }, [getTerminalBuffer]);
 
   useEffect(() => {
@@ -129,7 +139,12 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
           </text>
         </box>
       ) : null}
-      <scrollbox flexGrow={1} stickyScroll stickyStart="bottom">
+      <scrollbox
+        flexGrow={1}
+        stickyScroll={!altScreen}
+        stickyStart={altScreen ? undefined : "bottom"}
+        scrollY={!altScreen}
+      >
         {lines.map((line, i) => renderLine(line, i, true))}
       </scrollbox>
     </box>

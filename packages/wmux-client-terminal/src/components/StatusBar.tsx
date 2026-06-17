@@ -7,10 +7,10 @@ const WARN = "#ffd60a";
 
 interface StatusBarProps {
   readonly prefixActive: boolean;
-  readonly hasSelection: boolean;
+  readonly copyToast?: string | null;
 }
 
-export const StatusBar = ({ prefixActive, hasSelection }: StatusBarProps): ReactNode => (
+export const StatusBar = ({ prefixActive, copyToast }: StatusBarProps): ReactNode => (
   <box height={1} flexDirection="row" paddingX={1} gap={2}>
     {prefixActive ? (
       <>
@@ -50,12 +50,15 @@ export const StatusBar = ({ prefixActive, hasSelection }: StatusBarProps): React
         <text fg={MUTED}>
           <span fg={ACCENT}>click</span> sidebar
         </text>
-        {hasSelection ? (
-          <text fg={WARN}>
-            <span fg={ACCENT}>c</span> copy selection
-          </text>
-        ) : null}
+        <text fg={MUTED}>
+          <span fg={ACCENT}>select</span> to copy
+        </text>
       </>
     )}
+    {copyToast ? (
+      <box flexGrow={1} justifyContent="flex-end">
+        <text fg={WARN}>{copyToast}</text>
+      </box>
+    ) : null}
   </box>
 );
