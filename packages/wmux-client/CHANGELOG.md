@@ -1,5 +1,12 @@
 # @playfast/wmux-client
 
+## 0.0.15
+
+### Patch Changes
+
+- Updated dependencies [0682349]
+  - @playfast/wmux@0.3.0
+
 ## 0.0.14
 
 ### Patch Changes

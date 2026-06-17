@@ -1,5 +1,16 @@
 # @playfast/wmux
 
+## 0.3.0
+
+### Minor Changes
+
+- 0682349: Expose restart hooks for externally managed terminal bridge processes.
+
+### Patch Changes
+
+- Updated dependencies [0682349]
+  - @playfast/wmux-client-terminal@0.0.7
+
 ## 0.2.12
 
 ### Patch Changes
