@@ -1,5 +1,18 @@
 # @playfast/wmux-client-terminal
 
+## 0.0.8
+
+### Patch Changes
+
+- 9ce2b19: Subscribe to `keyInput` paste events only from the active terminal. The renderer's
+  `keyInput` is shared across terminals, so mounting one listener per tab tripped
+  Node's default 10-listener warning in sessions with many tabs. Inactive terminals
+  already ignored paste events, so behaviour is unchanged.
+- Updated dependencies [e36e3b2]
+- Updated dependencies [e36e3b2]
+- Updated dependencies [67e385d]
+  - @playfast/echoform@2.0.0
+
 ## 0.0.7
 
 ### Patch Changes
