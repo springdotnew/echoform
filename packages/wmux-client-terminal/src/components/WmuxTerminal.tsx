@@ -73,10 +73,13 @@ export const WmuxTerminal = (props: WmuxTerminalProps): ReactNode => {
     }
   });
 
-  // Forward paste events to PTY
+  // Forward paste events to PTY. `renderer.keyInput` is one emitter shared by
+  // every terminal, so subscribing from each mounts a listener per tab and trips
+  // Node's 10-listener warning once a session has that many. Only the active
+  // terminal ever acts on a paste, so only the active terminal subscribes.
   useEffect(() => {
+    if (!isActiveTerminal) return;
     const onPaste = (event: { readonly bytes: Uint8Array }) => {
-      if (!isActiveTerminal) return;
       if (prefixRef.current || searchOpenRef.current) return;
       sendInput(toBase64(event.bytes));
     };
