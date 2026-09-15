@@ -1,5 +1,16 @@
 # @playfast/echoform
 
+## 2.0.0
+
+### Minor Changes
+
+- e36e3b2: Expose client view-tree lifecycle updates so hosts can distinguish empty and pending renders.
+
+### Patch Changes
+
+- e36e3b2: Keep client transports active across React Strict Mode lifecycle probes and deliver synchronously replayed initial frames.
+- 67e385d: Withhold `update_view` / `delete_view` broadcasts from clients that have not yet requested the view tree. Previously, in `singleInstance` mode, a client connecting while views were updating could receive an incremental prop diff before its `update_views_tree` snapshot; the client materialized the unknown view from the diff alone, yielding a view with only the changed props (missing callback and data props) and crashing the client renderer on the first missing-prop access (e.g. `props.onSelectCategory.mutate` in the wmux TUI during dev-server startup).
+
 ## 1.0.9
 
 ### Patch Changes

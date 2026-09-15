@@ -1,5 +1,14 @@
 # @playfast/echoform-render
 
+## 2.0.0
+
+### Patch Changes
+
+- Updated dependencies [e36e3b2]
+- Updated dependencies [e36e3b2]
+- Updated dependencies [67e385d]
+  - @playfast/echoform@2.0.0
+
 ## 1.0.9
 
 ### Patch Changes
