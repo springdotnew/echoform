@@ -1,0 +1,67 @@
+# Throwaway probe for the springdotnew GCP migration: proves, on GitHub-hosted
+# runners, the two paths private repos use once their hosted minutes return.
+name: gcp-migration hosted probe
+
+on:
+  push:
+    branches: [gcp-migration/hosted-probe]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  WIF_PROVIDER: projects/59831676433/locations/global/workloadIdentityPools/github/providers/springdotnew
+  PROBE_PREFIX: gs://spring-452820-gha-artifacts/artifacts/echoform/${{ github.run_id }}/hosted-probe
+
+jobs:
+  handoff-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+      - name: Upload a probe through GCS
+        run: |
+          head -c 4194304 /dev/urandom > probe.bin
+          sha256sum probe.bin | cut -d' ' -f1 > probe.sha256
+          gcloud storage cp probe.bin probe.sha256 "$PROBE_PREFIX/" --custom-time="$(date -u -d '+1 day' +%Y-%m-%dT%H:%M:%SZ)"
+          echo "uploaded sha256 $(cat probe.sha256)"
+
+  handoff-download:
+    needs: handoff-upload
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+      - name: Download the probe in another job and compare
+        run: |
+          gcloud storage cp "$PROBE_PREFIX/probe.bin" "$PROBE_PREFIX/probe.sha256" .
+          test "$(sha256sum probe.bin | cut -d' ' -f1)" = "$(cat probe.sha256)"
+          echo "downloaded sha256 $(cat probe.sha256) matches"
+
+  install-from-ar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: oven-sh/setup-bun@v2
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        id: wif-reader
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: gha-ar-reader@spring-452820.iam.gserviceaccount.com
+          token_format: access_token
+          create_credentials_file: false
+      - name: bun install --frozen-lockfile from Artifact Registry
+        env:
+          NPM_REGISTRY_TOKEN: ${{ steps.wif-reader.outputs.access_token }}
+        run: |
+          mkdir probe && cd probe
+          printf '{"name":"ar-probe","private":true,"dependencies":{"@springdotnew/strictness":"0.6.4"}}\n' > package.json
+          printf '[install.scopes]\n"@springdotnew" = { url = "https://us-central1-npm.pkg.dev/spring-452820/npm/", token = "$NPM_REGISTRY_TOKEN" }\n' > bunfig.toml
+          bun install --ignore-scripts > install.log 2>&1 || { tail -5 install.log; exit 1; }
+          rm -rf node_modules "$(bun pm cache)"
+          bun install --frozen-lockfile --ignore-scripts > frozen.log 2>&1 || { tail -5 frozen.log; exit 1; }
+          echo "@springdotnew tarball hosts in bun.lock: $(grep -o 'https://[^/"]*/spring-452820/npm/' bun.lock | sort | uniq -c | tr -s ' ')"
+          echo "GitHub Packages URLs in bun.lock: $(grep -c 'npm.pkg.github.com' bun.lock || true)"
+          test -f node_modules/@springdotnew/strictness/package.json
