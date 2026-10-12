@@ -65,3 +65,69 @@ jobs:
           echo "@springdotnew tarball hosts in bun.lock: $(grep -o 'https://[^/"]*/spring-452820/npm/' bun.lock | sort | uniq -c | tr -s ' ')"
           echo "GitHub Packages URLs in bun.lock: $(grep -c 'npm.pkg.github.com' bun.lock || true)"
           test -f node_modules/@springdotnew/strictness/package.json
+
+  # strictness release.yml's handoff on hosted runners: one job per linux platform stages its
+  # release-npm-* package (here the published strictness-<platform> tarball, read from Artifact
+  # Registry), hands it to the publish job through GCS, and the publish job verifies every copy.
+  release-npm:
+    name: release-npm-${{ matrix.platform }}
+    strategy:
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-latest
+            machine: x86_64
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+            machine: aarch64
+    runs-on: ${{ matrix.runner }}
+    env:
+      PLATFORM: ${{ matrix.platform }}
+    steps:
+      - name: Assert the job runs on the platform it stages
+        run: test "$(uname -m)" = "${{ matrix.machine }}" && echo "hosted $(uname -m) runner ${RUNNER_NAME}"
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        id: wif-reader
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: gha-ar-reader@spring-452820.iam.gserviceaccount.com
+          token_format: access_token
+          create_credentials_file: false
+      - name: Stage release-npm-${{ matrix.platform }}
+        env:
+          AR_TOKEN: ${{ steps.wif-reader.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "release-npm-${PLATFORM}"
+          printf 'Authorization: Bearer %s\n' "${AR_TOKEN}" \
+            | curl -fsSL --retry 3 -H @- -o packument.json \
+              "https://us-central1-npm.pkg.dev/spring-452820/npm/@springdotnew%2fstrictness-${PLATFORM}"
+          tarball="$(jq -r '.versions["0.6.4"].dist.tarball' packument.json)"
+          printf 'Authorization: Bearer %s\n' "${AR_TOKEN}" \
+            | curl -fsSL --retry 3 -H @- -o "release-npm-${PLATFORM}/strictness-${PLATFORM}-0.6.4.tgz" "${tarball}"
+          jq -r '.versions["0.6.4"].dist.integrity' packument.json > "release-npm-${PLATFORM}/integrity"
+          ls -l "release-npm-${PLATFORM}"
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+      - name: Hand release-npm-${{ matrix.platform }} to the publish job through GCS
+        run: |
+          gcloud storage cp -r "release-npm-${PLATFORM}" "$PROBE_PREFIX/" --custom-time="$(date -u -d '+1 day' +%Y-%m-%dT%H:%M:%SZ)"
+
+  publish:
+    needs: release-npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+      - name: Download every release-npm-* from GCS and verify it against the registry integrity
+        run: |
+          set -euo pipefail
+          gcloud storage cp -r "$PROBE_PREFIX/release-npm-*" .
+          for platform in linux-x64 linux-arm64; do
+            dir="release-npm-${platform}"
+            actual="sha512-$(openssl dgst -sha512 -binary "${dir}/strictness-${platform}-0.6.4.tgz" | base64 -w0)"
+            test "${actual}" = "$(cat "${dir}/integrity")"
+            echo "${dir}: handed off through GCS, integrity ${actual:0:30}… matches"
+          done
