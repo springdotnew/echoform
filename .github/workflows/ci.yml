@@ -14,6 +14,9 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -62,12 +65,28 @@ jobs:
         working-directory: demo/dev-server
         run: bun run test
 
+      - name: Authenticate to Google Cloud
+        if: failure()
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/59831676433/locations/global/workloadIdentityPools/github/providers/springdotnew
+
       - name: Upload test artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-results
-          path: |
-            demo/*/test-results/
-            demo/*/playwright-report/
-          retention-days: 7
+        run: |
+          dest="gs://spring-452820-gha-artifacts/artifacts/echoform/${{ github.run_id }}/playwright-results"
+          # The bucket deletes objects one day after customTime.
+          expiry="$(date -u -d "+7 days" +%Y-%m-%dT%H:%M:%SZ)"
+          uploaded=false
+          for dir in demo/*/test-results demo/*/playwright-report; do
+            [ -d "$dir" ] || continue
+            # One cp per demo: a single cp of every dir would merge all demos into one test-results/.
+            app="$(basename "$(dirname "$dir")")"
+            gcloud storage cp -r "$dir" "$dest/$app/" --custom-time="$expiry"
+            uploaded=true
+          done
+          if [ "$uploaded" = false ]; then
+            echo "::warning::No files were found in demo/*/test-results/ or demo/*/playwright-report/. No artifacts will be uploaded."
+            exit 0
+          fi
+          echo "Playwright results: https://console.cloud.google.com/storage/browser/spring-452820-gha-artifacts/artifacts/echoform/${{ github.run_id }}/playwright-results" >> "$GITHUB_STEP_SUMMARY"
