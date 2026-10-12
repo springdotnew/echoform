@@ -41,7 +41,7 @@ test.describe("Todo App E2E", () => {
   });
 
   test("should show initial todos", async ({ page }) => {
-    await expect(page.getByText("0 of 2 completed")).toBeVisible();
+    await expect(page.getByText("0 of 3 completed (deliberately wrong: throwaway probe of the GCS failure upload)")).toBeVisible();
     await expect(page.getByText("Learn echoform")).toBeVisible();
     await expect(page.getByText("Build something awesome")).toBeVisible();
   });
