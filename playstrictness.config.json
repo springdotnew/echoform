@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "checks": {
+    "bun": {
+      "kind": "settings",
+      "enabled": true,
+      "scope": { "include": ["bunfig.toml", "**/bunfig.toml"] },
+      "settings": {
+        "install": { "ignoreScripts": true, "minimumReleaseAge": 604800 }
+      },
+      "rules": { "required-setting": "error" }
+    }
+  }
+}

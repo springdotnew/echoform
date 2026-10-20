@@ -90,3 +90,32 @@ jobs:
             exit 0
           fi
           echo "Playwright results: https://console.cloud.google.com/storage/browser/spring-452820-gha-artifacts/artifacts/echoform/${{ github.run_id }}/playwright-results" >> "$GITHUB_STEP_SUMMARY"
+
+  strictness:
+    # A fork's pull request gets no id-token, so it cannot read Artifact Registry.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/59831676433/locations/global/workloadIdentityPools/github/providers/springdotnew
+
+      # @playfast/strictness is private to the organization, on Artifact Registry. It installs in
+      # tools/strictness, apart from the workspace, so the public install needs no credentials.
+      - name: Install Strictness
+        run: NPM_REGISTRY_TOKEN="$(gcloud auth print-access-token)" bun run strictness:install
+
+      - name: Strictness
+        run: bun run strictness:check

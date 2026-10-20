@@ -1,0 +1,13 @@
+[install]
+# Run no lifecycle scripts on install. Bun reads this key; it does not read an [install.lifecycle] table.
+ignoreScripts = true
+# Install no version published less than 7 days ago (604800 seconds).
+minimumReleaseAge = 604800
+minimumReleaseAgeExcludes = [
+  # The organization's own packages, from Artifact Registry: a Strictness release is checked here the day it ships.
+  "@playfast/strictness",
+  "@playfast/strictness-darwin-arm64",
+  "@playfast/strictness-darwin-x64",
+  "@playfast/strictness-linux-arm64",
+  "@playfast/strictness-linux-x64",
+]
