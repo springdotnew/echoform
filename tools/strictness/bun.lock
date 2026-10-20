@@ -1,0 +1,23 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "echoform-strictness",
+      "devDependencies": {
+        "@playfast/strictness": "0.8.3",
+      },
+    },
+  },
+  "packages": {
+    "@playfast/strictness": ["@playfast/strictness@0.8.3", "https://us-central1-npm.pkg.dev/spring-452820/npm/@playfast/strictness/-/@playfast/strictness-0.8.3.tgz", { "optionalDependencies": { "@playfast/strictness-darwin-arm64": "0.8.3", "@playfast/strictness-darwin-x64": "0.8.3", "@playfast/strictness-linux-arm64": "0.8.3", "@playfast/strictness-linux-x64": "0.8.3" }, "bin": { "playstrictness": "bin/playstrictness", "playstrictness-native": "bin/playstrictness" } }, "sha512-pHJNWGb0Ugy0lKx7Wd/Ip328XP//2+LwwwUnsRS7swdV5Jp2WUdGtIDO3JJuQv6jYTGaUJrGqN38DeGqqGFR7g=="],
+
+    "@playfast/strictness-darwin-arm64": ["@playfast/strictness-darwin-arm64@0.8.3", "https://us-central1-npm.pkg.dev/spring-452820/npm/@playfast/strictness-darwin-arm64/-/@playfast/strictness-darwin-arm64-0.8.3.tgz", { "os": "darwin", "cpu": "arm64" }, "sha512-KHylDtmHov3HcZ4d1kyqgYePbxcwbMPfXVkmzDQNz8dm1Dt1sm9HWKBmZravp1ekUG1+3zwNITMIgK30XL8cMw=="],
+
+    "@playfast/strictness-darwin-x64": ["@playfast/strictness-darwin-x64@0.8.3", "https://us-central1-npm.pkg.dev/spring-452820/npm/@playfast/strictness-darwin-x64/-/@playfast/strictness-darwin-x64-0.8.3.tgz", { "os": "darwin", "cpu": "x64" }, "sha512-QuEZVeJFZtTzWL+B0jJt+0I9d4476CD3lDCKzjihY4V+rTsx69siqMxFypmtnO8KliVEAyLGECQO+d7uJvrk3A=="],
+
+    "@playfast/strictness-linux-arm64": ["@playfast/strictness-linux-arm64@0.8.3", "https://us-central1-npm.pkg.dev/spring-452820/npm/@playfast/strictness-linux-arm64/-/@playfast/strictness-linux-arm64-0.8.3.tgz", { "os": "linux", "cpu": "arm64" }, "sha512-bWbZe3CxivmHWT89f9Pt6ciWZ5/N2kUr4L/axGRsToZ5kUZ0Dcylu1iYTb+teliOlDPAYqcD/unbt6AQ4zUnaw=="],
+
+    "@playfast/strictness-linux-x64": ["@playfast/strictness-linux-x64@0.8.3", "https://us-central1-npm.pkg.dev/spring-452820/npm/@playfast/strictness-linux-x64/-/@playfast/strictness-linux-x64-0.8.3.tgz", { "os": "linux", "cpu": "x64" }, "sha512-GwiQeXSr0heDttSFw9lzfjcJBmcBK1jEjgc1vYNKciXp4mAb8Vv+Hes5iJQncRCbKoRrHyNtwd7sd7u2vlwgBA=="],
+  }
+}
