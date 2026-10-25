@@ -15,7 +15,7 @@
     },
     "demo/dev-server": {
       "name": "@demo/dev-server",
-      "version": "1.0.14",
+      "version": "1.0.15",
       "dependencies": {
         "@playfast/wmux": "workspace:*",
         "@playfast/wmux-client-terminal": "workspace:*",
@@ -30,7 +30,7 @@
     },
     "demo/file-editor": {
       "name": "file-editor-demo",
-      "version": "1.0.10",
+      "version": "1.0.11",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-bun-ws-client": "workspace:*",
@@ -75,7 +75,7 @@
     },
     "demo/todo-app": {
       "name": "todo-app-demo",
-      "version": "1.0.10",
+      "version": "1.0.11",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-bun-ws-client": "workspace:*",
@@ -98,7 +98,7 @@
     },
     "demo/widget-plugins": {
       "name": "@demo/widget-plugins",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "dependencies": {
         "@playfast/echoform": "workspace:*",
         "@playfast/echoform-bun-ws-client": "workspace:*",
@@ -125,7 +125,7 @@
     },
     "packages/echoform": {
       "name": "@playfast/echoform",
-      "version": "1.0.9",
+      "version": "2.0.0",
       "dependencies": {
         "crypto-random-string": "5.0.0",
         "fossil-delta": "^2.0.0",
@@ -145,7 +145,7 @@
     },
     "packages/react-render-null": {
       "name": "@playfast/echoform-render",
-      "version": "1.0.9",
+      "version": "2.0.0",
       "dependencies": {
         "@types/react-reconciler": "0.33.0",
         "react-reconciler": "0.33.0",
@@ -179,7 +179,7 @@
     },
     "packages/wmux-client": {
       "name": "@playfast/wmux-client",
-      "version": "0.0.15",
+      "version": "0.0.16",
       "dependencies": {
         "@dnd-kit/react": "^0.3.2",
         "@heroui/react": "^3.0.0",
@@ -208,7 +208,7 @@
     },
     "packages/wmux-client-terminal": {
       "name": "@playfast/wmux-client-terminal",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "dependencies": {
         "@opentui/core": "0.4.1",
         "@opentui/react": "0.4.1",
@@ -225,7 +225,7 @@
     },
     "plugins/bun-ws-client": {
       "name": "@playfast/echoform-bun-ws-client",
-      "version": "1.0.9",
+      "version": "2.0.0",
       "devDependencies": {
         "@playfast/echoform": "workspace:*",
         "@types/react": "19.2.17",
@@ -239,7 +239,7 @@
     },
     "plugins/bun-ws-server": {
       "name": "@playfast/echoform-bun-ws-server",
-      "version": "1.0.9",
+      "version": "2.0.0",
       "devDependencies": {
         "@playfast/echoform": "workspace:*",
         "@types/react": "19.2.17",
@@ -251,7 +251,7 @@
     },
     "plugins/socket-client": {
       "name": "@playfast/echoform-socket-client",
-      "version": "1.0.9",
+      "version": "2.0.0",
       "dependencies": {
         "socket.io-client": "4.8.3",
       },
@@ -268,7 +268,7 @@
     },
     "plugins/socket-server": {
       "name": "@playfast/echoform-socket-server",
-      "version": "1.0.9",
+      "version": "2.0.0",
       "dependencies": {
         "socket.io": "4.8.3",
       },
@@ -1512,7 +1512,7 @@
 
     "happy-dom/@types/node": ["@types/node@26.1.1", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
 
-    "knip/@types/node": ["@types/node@18.11.9", "", {}, "sha512-CRpX21/kGdzjOpFsZSkcrXMGIBWMGNIHXXBVFSH+ggkftxg+XYP20TESbh+zFvFj3EQOl5byk0HTRn1IL6hbqg=="],
+    "knip/@types/node": ["@types/node@26.1.1", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw=="],
 
     "knip/zod": ["zod@4.2.1", "", {}, "sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw=="],
 
