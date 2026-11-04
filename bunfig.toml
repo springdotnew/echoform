@@ -1,0 +1,6 @@
+[install]
+# Run no lifecycle scripts on install, the repository's own included. Bun reads this key;
+# it does not read an [install.lifecycle] table.
+ignoreScripts = true
+# Install no version published less than 7 days ago (604800 seconds).
+minimumReleaseAge = 604800

@@ -1,0 +1,8 @@
+{
+  "name": "echoform-strictness",
+  "private": true,
+  "description": "Installs Strictness on its own: @playfast/strictness is private to the organization, and the public workspace install must not need its registry.",
+  "devDependencies": {
+    "@playfast/strictness": "0.8.3"
+  }
+}

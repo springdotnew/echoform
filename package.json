@@ -21,6 +21,8 @@
     "lint:plugins": "oxlint plugins/",
     "knip": "knip",
     "knip:fix": "knip --fix",
+    "strictness:install": "cd tools/strictness && bun install --frozen-lockfile",
+    "strictness:check": "tools/strictness/node_modules/.bin/playstrictness check",
     "changeset": "changeset",
     "version": "changeset version",
     "version-packages": "changeset version",
